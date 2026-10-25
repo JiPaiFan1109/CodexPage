@@ -28,7 +28,7 @@ try {
   $files = @(
     'VERSION','LICENSE','THIRD_PARTY_NOTICES.md','README.md','README.en.md','CHANGELOG.md','SECURITY.md','docs/earth-background.md','docs/images/wechat-donation.jpg','Install.cmd',
     'docs/images/app-icon.png','docs/images/skin-manager.png','docs/images/skin-manager-v2.0.0.png','docs/windows-application.md','docs/windows-application-validation.md','docs/pre-release-audit.md',
-    'scripts/install.ps1','scripts/manage-background.ps1','scripts/media.ps1','scripts/node-runtime.json',
+    'scripts/install.ps1','scripts/manage-background.ps1','scripts/media.ps1','scripts/media-tools.ps1','scripts/ffmpeg-runtime.json','scripts/prepare-media-tools.ps1','scripts/node-runtime.json',
     'scripts/wallpaper-library.ps1','scripts/wallpaper-preview.ps1','scripts/wallpaper-engine.ps1','scripts/skin-manager.ps1','scripts/skin-manager.xaml',
     'scripts/manager-launcher.cs','scripts/uninstall-app.ps1','appearance/skin-manager.ico','appearance/chatgpt-app-light.ico','appearance/wallpaper-engine.png','appearance/apply-wallpaper.png','appearance/confirmation-icon.png','appearance/codexpage-wordmark.png',
     'scripts/check-upgrade.ps1',

@@ -24,4 +24,14 @@ foreach($name in @('start-dream-skin.ps1','existing-session.ps1','fast-resume.ps
   $null=[Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot ('../engine/scripts/'+$name)),[ref]$tokens,[ref]$parseErrors)
   Assert ($parseErrors.Count -eq 0) "Parse error in $name"
 }
-'PASS: third-party port discovery, owner validation, healthy-session preference, ambiguity and PowerShell parsing'
+$script:attempts=0
+function Get-DreamSkinVerifiedCdpIdentity {param($Port,$Codex);$script:attempts++;if($script:attempts -ge 2){[pscustomobject]@{BrowserId='recovered'}}}
+$recovered=Wait-DreamSkinExistingEndpoint $codex @((Process 1 12910)) 9345 -WaitMilliseconds 1000
+Assert ($recovered.Port -eq 12910 -and $script:attempts -eq 2) 'A transient third-party connection must recover without restart'
+$plain=Process 1 12910;$plain.CommandLine='ChatGPT.exe'
+$script:attempts=0
+Assert ($null -eq (Wait-DreamSkinExistingEndpoint $codex @($plain) 9345)) 'No CDP launch must not invent a connection'
+Assert ($script:attempts -eq 0) 'No CDP launch must not poll arbitrary ports'
+function Get-DreamSkinVerifiedCdpIdentity {return $null}
+Assert ($null -eq (Wait-DreamSkinExistingEndpoint $codex @((Process 1 12910)) 9345 -WaitMilliseconds 0)) 'Unavailable connection must remain unverified'
+'PASS: port discovery, identity, ambiguity, transient recovery, no-CDP and bounded failure'

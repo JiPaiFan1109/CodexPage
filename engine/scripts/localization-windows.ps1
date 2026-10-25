@@ -35,7 +35,7 @@ function Get-DreamSkinText {
   $resolved = Resolve-DreamSkinLanguage -Language $Language
   $catalog = @{
     'en-US' = @{
-      RestartPrompt = 'The running Codex session has no verified wallpaper connection. It may have been opened through the original shortcut, or its connection may be unavailable. Restart to enable the wallpaper? Unsaved input and running tasks may be interrupted.'
+      RestartPrompt = 'The wallpaper connection is not ready. You can keep working and reconnect later from CodexPage. Restarting now may interrupt unsaved input and running tasks. Save your work before continuing.'
       MultipleInstancesPrompt = 'Dream Skin and another Codex profile are both open. To keep Dream Skin as the only active Codex session, both windows must close and Dream Skin must restart. Unsaved input and running tasks may be interrupted. Continue?'
       LaunchCancelled = 'Dream Skin launch was cancelled; Codex was not changed.'
       RestoreClose = 'Restore the original appearance? This requires restarting Codex.'
@@ -43,7 +43,7 @@ function Get-DreamSkinText {
       RestoreCancelled = 'Restore was cancelled; no state or configuration was changed.'
     }
     'zh-CN' = @{
-      RestartPrompt = '当前 Codex 没有可验证的壁纸连接，可能由原始入口启动，或连接暂时不可用。需要重启才能启用壁纸。未保存的输入和正在运行的任务可能被中断。现在重启吗？'
+      RestartPrompt = '壁纸连接尚未就绪。你可以继续工作，稍后从 CodexPage 重新连接。现在重启可能中断未保存的输入和正在运行的任务，请先保存工作。'
       MultipleInstancesPrompt = 'Dream Skin 与另一套 Codex 配置实例正在同时运行。若要只保留 Dream Skin，需要关闭两套窗口并重新启动 Dream Skin；未发送的输入和运行中的任务可能中断。是否继续？'
       LaunchCancelled = '已取消启动 Dream Skin；Codex 未发生改变。'
       RestoreClose = '确定恢复到原始外观吗？此操作需要重启 Codex。'

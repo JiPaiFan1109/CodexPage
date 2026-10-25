@@ -454,7 +454,7 @@ function Start-DynamicManagerWork {
     $selected=$null;$message='壁纸库已加载。';$engineReport=$null;$engineRoots=$null;$cancelled=$false;$connectionError=$null
     try { switch($Operation){
       'Import' {
-        $kind='Video';if([IO.Path]::GetExtension($Argument).ToLowerInvariant() -in @('.png','.jpg','.jpeg','.webp')){$kind='Image'}
+        $kind='Video';if([IO.Path]::GetExtension($Argument).ToLowerInvariant() -in @('.png','.jpg','.jpeg','.webp','.bmp','.tif','.tiff','.avif')){$kind='Image'}
         $result=Import-DynamicWallpaper $Argument $kind $StateRoot $report;$selected=$result.Item.Id
         $message='已保存到壁纸库，点击应用后生效。';if($result.AlreadyExists){$message='壁纸已存在，已选中原有项目。'}
       }
@@ -465,6 +465,8 @@ function Start-DynamicManagerWork {
         $batch=Import-DynamicWallpaperEngine -Roots $roots -StateRoot $StateRoot -Report $report
         $selected=$batch.SelectedId;if($Operation -eq 'EngineRefresh'){$selected=$null};$engineRoots=@($batch.Roots)
         $message=('导入 {0}，已存在 {1}，不支持 {2}，失败 {3}。' -f $batch.Imported,$batch.Existing,$batch.Skipped,$batch.Failed)
+        if($batch.Converted){$batch.Details=@(('已自动转换 '+$batch.Converted+' 项，原文件保留。'))+$batch.Details}
+        if($batch.Previews){$message+=(' 预览素材 '+$batch.Previews+' 项。')}
         if(-not $batch.Roots.Count){$message='未找到本地 Wallpaper Engine 壁纸，请选择壁纸目录。'}
         if($Operation -eq 'EngineImport'){$engineReport=$message+"`n"+($batch.Details -join "`n")}
       }
@@ -613,7 +615,7 @@ function Show-DynamicSkinManager {
   $controls.SettingsButton.Add_Click({$panel=$script:SkinManager.Controls.SettingsPanel;if($panel.Visibility -eq 'Visible'){$panel.Visibility='Collapsed'}else{$panel.Visibility='Visible'}})
   $controls.EngineImportButton.Add_Click({
     $ui=$script:SkinManager
-    Show-DynamicManagerConfirmation '导入本地壁纸？' '查找本机 Steam 库中的 Wallpaper Engine 视频和图片，批量导入并保留原文件。' {Start-DynamicManagerWork EngineImport} -AcceptText '确认导入'
+    Show-DynamicManagerConfirmation '导入本地壁纸？' '查找 Steam 壁纸并保留原文件。不兼容媒体自动转换；场景与网页仅导入标注的预览图或预览动画。首次转换需联网下载约 80 MB 组件，缓存约 192 MiB。转换可能耗时。' {Start-DynamicManagerWork EngineImport} -AcceptText '确认导入'
   })
   $controls.EngineRefreshButton.Add_Click({if(-not $script:SkinManager.Busy){Start-DynamicManagerWork EngineRefresh}})
   $controls.EngineFolderButton.Add_Click({
@@ -647,7 +649,7 @@ function Show-DynamicSkinManager {
   $controls.VideoFilter.Add_Click({Switch-DynamicManagerFilter Video})
   $controls.ImportButton.Add_Click({
     $dialog=New-Object Microsoft.Win32.OpenFileDialog
-    $dialog.Title='导入壁纸';$dialog.Filter='图片和视频|*.png;*.jpg;*.jpeg;*.webp;*.mp4;*.mov;*.m4v;*.wmv;*.avi;*.mkv;*.webm|静态图片|*.png;*.jpg;*.jpeg;*.webp|动态视频|*.mp4;*.mov;*.m4v;*.wmv;*.avi;*.mkv;*.webm'
+    $dialog.Title='导入壁纸';$dialog.Filter='图片 动图和视频|*.png;*.jpg;*.jpeg;*.webp;*.bmp;*.tif;*.tiff;*.avif;*.gif;*.apng;*.mp4;*.mov;*.m4v;*.wmv;*.avi;*.mkv;*.webm;*.flv;*.mpg;*.mpeg;*.ts;*.m2ts;*.ogv|静态图片|*.png;*.jpg;*.jpeg;*.webp;*.bmp;*.tif;*.tiff;*.avif|动图和视频|*.gif;*.apng;*.mp4;*.mov;*.m4v;*.wmv;*.avi;*.mkv;*.webm;*.flv;*.mpg;*.mpeg;*.ts;*.m2ts;*.ogv'
     if($dialog.ShowDialog($script:SkinManager.Window)){Start-DynamicManagerWork Import $dialog.FileName}
   })
   $controls.ApplyButton.Add_Click({if($script:SkinManager.PrepareOnly){Show-DynamicManagerToast '草稿预览：正式版将在这里应用选中的壁纸。' Info}else{Confirm-DynamicWallpaperApply}})

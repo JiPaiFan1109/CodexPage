@@ -7,6 +7,7 @@ param(
   [switch]$ForegroundInjector,
   [ValidateRange(0, 300000)][int]$OperationLockTimeoutMilliseconds = 0,
   [switch]$RequireUnpaused,
+  [ValidatePattern('^[a-f0-9]{64}$')][string]$UpdateRecoveryKey,
   [ValidatePattern('^[a-f0-9]{32}$')][string]$ResultToken
 )
 
@@ -97,7 +98,9 @@ $appearanceTransaction = $null
 $appearanceRecovery = 'not-needed'
 try {
   $startupTimer = [Diagnostics.Stopwatch]::StartNew()
+  if($UpdateRecoveryKey -and -not (Test-DreamSkinUpdateRecoveryCurrent $StateRoot $UpdateRecoveryKey)){exit 0}
   if(Test-DreamSkinExternalSourceMissing -StateRoot $StateRoot){
+    if($UpdateRecoveryKey){exit 0}
     Set-DreamSkinPaused -Paused $true -StateRoot $StateRoot|Out-Null
     $nativeCodex=Get-DreamSkinCodexInstall
     $null=Start-DreamSkinCodex -Codex $nativeCodex
@@ -105,8 +108,16 @@ try {
     Write-Host 'Steam wallpaper is unavailable; opening Codex with its original appearance.'
     exit 0
   }
+  if($UpdateRecoveryKey){
+    # Consent is requested outside the operation lock: an ignored prompt must not block restore/apply.
+    $recoveryLanguage=Resolve-DreamSkinLanguage -StateRoot $StateRoot
+    $recoveryMessage=if($recoveryLanguage -eq 'en'){'The app updated and its wallpaper connection was lost. Your wallpaper is saved. Restarting interrupts current work. Choose Not now to keep working and reconnect later from CodexPage.'}else{'应用更新后，壁纸连接已断开，原壁纸设置仍已保存。重启会中断当前操作，请先保存工作。选择“暂不重启”可继续工作，稍后从 CodexPage 重新连接。'}
+    if(-not (Confirm-DreamSkinRestart -Message $recoveryMessage -TimeoutSeconds 60)){exit 0}
+    $RestartExisting=$true;$PromptRestart=$false
+  }
   $operationLock = Enter-DreamSkinOperationLock `
     -TimeoutMilliseconds $OperationLockTimeoutMilliseconds
+  if($UpdateRecoveryKey -and -not (Test-DreamSkinUpdateRecoveryCurrent $StateRoot $UpdateRecoveryKey)){exit 0}
   Assert-DreamSkinPort -Port $Port
   if ($ProfilePath) { $ProfilePath = [System.IO.Path]::GetFullPath($ProfilePath) }
   Write-Host 'Opening Codex Dream Skin...'
@@ -213,7 +224,7 @@ try {
   $attachExisting=$false
   $existingEndpoint=$null
   if(-not $RestartExisting){
-    $existingEndpoint=Get-DreamSkinExistingEndpoint -Codex $currentCodex -Processes $currentProcesses -PreferredPort $Port -RequirePreferred:$PortExplicit
+    $existingEndpoint=Wait-DreamSkinExistingEndpoint -Codex $currentCodex -Processes $currentProcesses -PreferredPort $Port -RequirePreferred:$PortExplicit
     if($null -ne $existingEndpoint){
       $Port=$existingEndpoint.Port
       $attachExisting= -not ($currentInstances.IsExclusive -and $currentInstances.Managed.Count -eq 1)
@@ -233,6 +244,7 @@ try {
     exit 0
   }
   if ($coexistenceAction -ceq 'restart') {
+    if($UpdateRecoveryKey -and -not (Test-DreamSkinUpdateRecoveryCurrent $StateRoot $UpdateRecoveryKey)){exit 0}
     Stop-DreamSkinCodex -Codex $currentCodex -AllowForce
     $currentProcesses = @()
     $closedExistingCodex = $true
@@ -322,6 +334,7 @@ try {
     if (-not $restartAuthorized) {
       throw 'Codex is open without a verified Dream Skin CDP endpoint. Close it first or explicitly use -RestartExisting.'
     }
+    if($UpdateRecoveryKey -and -not (Test-DreamSkinUpdateRecoveryCurrent $StateRoot $UpdateRecoveryKey)){exit 0}
     Stop-DreamSkinCodex -Codex $codexToStop -AllowForce
     $closedExistingCodex = $true
     $codex = $currentCodex

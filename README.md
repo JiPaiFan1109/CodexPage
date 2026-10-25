@@ -14,6 +14,8 @@
 
 本项目是社区开发的独立工具，**非 OpenAI 官方产品，与 OpenAI 无隶属关系**。使用前请安装官方版 Codex。
 
+首次转换视频、动图或 AVIF 时需要联网从 BtbN 上游下载并校验 FFmpeg（约 80 MB），之后复用约 192 MiB 的本地缓存。安装包不含 FFmpeg。场景和网页壁纸仅支持预览图或预览动画，不支持完整互动场景。
+
 ## 界面与功能
 
 <p align="center">
@@ -22,13 +24,13 @@
 
 CodexPage 2.0.0 界面示意图：以 3 行 × 4 列展示 12 张示例壁纸，呈现完整画廊布局（示例素材不随软件预置）。[查看完整截图](docs/images/skin-manager-v2.0.0.png)。
 
-- **Wallpaper Engine 导入**：左侧入口自动发现 Steam 库，直接引用视频/图片源文件，仅保存索引和缩略图；Scene、Web、应用项目暂不支持。
+- **Wallpaper Engine 导入**：左侧入口自动发现 Steam 库，兼容视频/图片直接引用源文件，不兼容媒体自动转换并缓存；Scene、Web 仅导入标注的预览图或预览动画，应用项目不支持。
 - **静态与动态背景**：导入本地图片或视频，为 Codex 更换背景。
 - **壁纸收藏库**：卡片浏览、静态/动态分类、大图预览、视频静音播放；支持重命名和删除。
 - **自动识别 Codex**：打开 CodexPage 即可检测本机客户端，点击「应用壁纸」或「打开 Codex」进入换肤流程。
 - **保留收藏，随时恢复**：本地导入会保存副本，移动原文件不影响收藏；Steam 引用源文件删除后会从列表消失，下次打开 Codex 回到初始外观；升级保留壁纸库，可恢复 Codex 原始外观。
 
-Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤128 MiB），不自动转码，也不写入持久视频缓存；其他视频可通过本地导入转换并保存副本。Steam 盘离线同样视为源文件不可用，重新连接后可刷新列表。旧版 Steam 专用副本会在刷新且核对原文件一致后转为引用，正在使用的副本暂缓清理。
+Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤128 MiB），不转码，也不写入持久视频缓存；其他支持的视频自动转换为静音 H.264 缓存，仍关联 Steam 原文件。Steam 盘离线同样视为源文件不可用，重新连接后可刷新列表。旧版 Steam 专用副本会在刷新且核对原文件一致后转为引用，正在使用的副本暂缓清理。
 
 <details>
 <summary>查看 Codex 动态背景效果</summary>
@@ -43,10 +45,11 @@ Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤12
 
 ## 重要更新
 
-> **2.2.1 升级须知：此次更新请前往 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.2.1) 下载 `CodexPage-Setup.exe`，先退出 CodexPage，再运行安装包覆盖升级。暂勿点击旧版中的「立即更新」；无需卸载，壁纸库和设置保留。**
+> **2.3.0 升级须知：此次更新请前往 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.3.0) 下载 `CodexPage-Setup.exe`，先退出 CodexPage，再运行安装包覆盖升级。暂勿点击旧版中的「立即更新」；无需卸载，壁纸库和设置保留。**
 
 | 日期（北京时间） | 版本 | 更新内容 |
 | --- | --- | --- |
+| 2026-10-25 | [2.3.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.3.0) | 扩展 Wallpaper Engine 媒体导入与预览，按需下载转换组件，改善宿主恢复及重启确认 |
 | 2026-10-24 | [2.2.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.2.1) | 修正 CodexPage 下载命名与发行附件，保留旧版更新兼容 |
 | 2026-10-23 | [2.1.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.1.0) | 自选安装目录、Steam 源文件引用、失效壁纸隐藏、启动恢复与弹窗改进 |
 | 2026-10-23 | [2.0.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.0.0) | 正式更名 CodexPage，更新艺术字与界面说明，修复成功换壁纸后误回滚，保留壁纸库与设置 |
@@ -82,16 +85,16 @@ Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤12
 
 | 类型 | 要求 |
 | --- | --- |
-| 图片 | PNG、JPG/JPEG、WebP，最大 10 MiB |
-| 视频 | 原文件最大 2 GiB；兼容 H.264 MP4（≤1080p/60fps、≤128 MiB）直接复制，其他视频转换为静音 MP4；预览与应用均静音 |
+| 图片 | PNG、JPG/JPEG、WebP、BMP、TIFF、AVIF，最大 10 MiB；BMP/TIFF/AVIF 转为 PNG |
+| 视频与动图 | 支持常见视频及 GIF/APNG，原文件最大 2 GiB；兼容 H.264 MP4（≤1080p/60fps、≤128 MiB）直接复制，其他视频转换为静音 MP4；预览与应用均静音 |
 
-视频解码取决于本机 Windows 媒体组件。导入失败时可先导出为 H.264 MP4；视频过长或转换后超过限制时，请缩短后重新导入。应用不会自动截取视频。
+转换使用按需下载的 FFmpeg 解码和 Windows Media Foundation 编码。导入失败时可先导出为 H.264 MP4；视频过长或转换后超过限制时，请缩短后重新导入。应用不会自动截取视频。
 
 默认背景为项目生成的 **Night Sky** 图片。演示中的地球背景请按[素材获取说明](docs/earth-background.md)自行获取。
 
 ### 升级、卸载与常见问题
 
-- **升级至 2.2.1**：请从 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.2.1) 下载安装包，退出 CodexPage 后覆盖安装，暂勿使用旧版「立即更新」。无需卸载，壁纸库与设置保留；完成后重新应用壁纸即可恢复换肤连接。CodexPage 打开时每天最多自动检查一次，支持稍后和跳过此版本；应用未运行时不会推送通知。
+- **升级至 2.3.0**：请从 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.3.0) 下载安装包，退出 CodexPage 后覆盖安装，暂勿使用旧版「立即更新」。无需卸载，壁纸库与设置保留；完成后重新应用壁纸即可恢复换肤连接。CodexPage 打开时每天最多自动检查一次，支持稍后和跳过此版本；应用未运行时不会推送通知。
 - **卸载**：从 Windows「已安装的应用」卸载。卸载前会执行外观恢复；取消或失败时停止卸载。壁纸库默认保留。
 - **未找到 Codex**：确认当前 Windows 用户已安装官方 Store 版客户端，再点击左下角连接图标重试。
 - **从官方入口打开后没有皮肤**：回到 CodexPage 重新应用壁纸，按提示处理正在运行的会话。

@@ -60,7 +60,7 @@ function Import-DynamicSteamReference {
         if($item.IsAvailable -and $item.Sha256 -eq $hash){return [pscustomobject]@{Item=$item;AlreadyExists=$true}}
         break
       }
-      if($item.IsAvailable -and -not $item.External -and $item.Kind -eq $Kind -and $item.Sha256 -eq $hash -and $item.Sources -contains 'WallpaperEngine'){
+      if($item.IsAvailable -and -not $item.External -and -not $item.SourceBound -and $item.Kind -eq $Kind -and $item.Sha256 -eq $hash -and $item.Sources -contains 'WallpaperEngine'){
         if($item.Sources -contains 'Local'){$localRecords+=Join-Path $directory.FullName 'item.json';continue}
         # Do not delete a legacy copy while a live background/server may use it.
         if((Get-DynamicWallpaperStatus $StateRoot).CurrentId -eq $item.Id){return [pscustomobject]@{Item=$item;AlreadyExists=$true}}
@@ -94,10 +94,91 @@ function Import-DynamicSteamReference {
   }
 }
 
+function Get-DynamicSteamSourceIdentity {
+  param([string[]]$Paths)
+  foreach($path in $Paths|Select-Object -Unique){
+    Assert-DreamSkinNoReparseComponents -Path $path
+    $file=Get-Item -LiteralPath $path -ErrorAction Stop
+    if($file.PSIsContainer -or $file.Length -le 0 -or $file.Length -gt 2GB){throw 'Steam 源文件大小无效。'}
+    [pscustomobject]@{path=$file.FullName;size=$file.Length;lastWriteTimeUtc=$file.LastWriteTimeUtc.ToString('o');sha256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()}
+  }
+}
+
+function Import-DynamicSteamCache {
+  param([string]$Media,[string]$Kind,[string]$StateRoot,[string]$Title,[scriptblock]$Report,[string[]]$SourceFiles,[ValidateSet('Converted','StaticPreview','AnimatedPreview')][string]$Mode='Converted')
+  if(-not $SourceFiles){$SourceFiles=@($Media)}
+  $dependencies=@(Get-DynamicSteamSourceIdentity $SourceFiles)
+  $identity=ConvertTo-Json -InputObject $dependencies -Compress
+  $paths=Get-DynamicWallpaperPaths $StateRoot
+  # Serialize the lookup + conversion + commit so concurrent refreshes cannot produce duplicate caches.
+  Invoke-DynamicWallpaperLock $StateRoot {
+    foreach($item in Get-DynamicWallpaperItems $StateRoot){
+      if($item.SourceBound -and $item.IsAvailable -and $item.ConversionMode -eq $Mode -and (ConvertTo-Json -InputObject @($item.SourceDependencies) -Compress) -eq $identity -and (Get-FileHash -LiteralPath $item.MediaPath -Algorithm SHA256).Hash.ToLowerInvariant() -eq $item.Sha256){return [pscustomobject]@{Item=$item;AlreadyExists=$true}}
+    }
+    $prepared=$null
+    try{
+      $prepared=New-DynamicPreparedMedia -SourcePath $Media -Kind $Kind -StateRoot $StateRoot -PreparationRoot $paths.Staging -Report $Report
+      $after=@(Get-DynamicSteamSourceIdentity $SourceFiles)
+      $mediaHash=(Get-FileHash -LiteralPath $Media -Algorithm SHA256).Hash.ToLowerInvariant()
+      if((ConvertTo-Json -InputObject $after -Compress) -ne $identity -or $mediaHash -ne $prepared.SourceSha256){throw 'Steam 源文件在转换时改变，请刷新后重试。'}
+      $prepared|Add-Member -NotePropertyName ImportSource -NotePropertyValue 'WallpaperEngine'
+      $prepared|Add-Member -NotePropertyName SourceDependencies -NotePropertyValue $dependencies
+      $prepared|Add-Member -NotePropertyName ConversionMode -NotePropertyValue $Mode
+      $displayTitle=$Title
+      if($displayTitle.Length -gt 100){$displayTitle=$displayTitle.Substring(0,100);if([char]::IsHighSurrogate($displayTitle[$displayTitle.Length-1])){$displayTitle=$displayTitle.Substring(0,$displayTitle.Length-1)}}
+      if($Mode -eq 'StaticPreview'){$displayTitle+=' · 静态预览'}
+      if($Mode -eq 'AnimatedPreview'){$displayTitle+=' · 预览动画'}
+      Complete-DynamicWallpaperImport $StateRoot $prepared $displayTitle $Report
+    }finally{
+      if($prepared){
+        $directory=[IO.Path]::GetFullPath((Split-Path $prepared.Path -Parent))
+        if($directory.StartsWith($paths.Staging+'\',[StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $directory)){
+          Assert-DreamSkinNoReparseComponents -Path $directory
+          Remove-Item -LiteralPath $directory -Recurse -Force
+        }
+      }
+    }
+  }
+}
+
+function Remove-DynamicStaleSteamCache {
+  param([string]$StateRoot)
+  Invoke-DynamicWallpaperLock $StateRoot {
+    $paths=Get-DynamicWallpaperPaths $StateRoot
+    $themePath=Join-Path $StateRoot 'active-theme/theme.json';$activeId=$null
+    try{
+      $video=Read-DynamicCurrentVideo $StateRoot
+      if(Test-Path -LiteralPath $themePath){Assert-DreamSkinNoReparseComponents $themePath;$activeId=([IO.File]::ReadAllText($themePath)|ConvertFrom-Json).steamCacheId}
+    }catch{return} # If current state cannot be read, preserve every cache.
+    foreach($directory in Get-ChildItem -LiteralPath $paths.Items -Directory){
+      if($directory.Name -cnotmatch '^[0-9a-f]{32}$' -or ($directory.Attributes -band [IO.FileAttributes]::ReparsePoint)){continue}
+      $item=Read-DynamicWallpaperItem $directory.FullName $directory.Name
+      if(-not $item.SourceBound -or $item.IsAvailable -or $item.Id -eq $activeId){continue}
+      if($video -and [IO.Path]::GetFullPath($video.filePath).StartsWith($directory.FullName+'\',[StringComparison]::OrdinalIgnoreCase)){continue}
+      # Only reclaim source-invalid records, never corrupt media whose source is still available.
+      if(Test-DreamSkinSourceDependenciesMissing $item.SourceDependencies){Remove-DynamicWallpaper $StateRoot $item.Id}
+    }
+  }
+}
+
+function Resolve-DynamicSteamProjectFile {
+  param([string]$Directory,[string]$Relative,[switch]$PackedScene)
+  if(-not $Relative -or [IO.Path]::IsPathRooted($Relative) -or $Relative.Contains(':')){throw '媒体路径无效。'}
+  $path=[IO.Path]::GetFullPath((Join-Path $Directory $Relative))
+  if(-not $path.StartsWith($Directory.TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase)){throw '媒体路径越出项目目录。'}
+  Assert-DreamSkinNoReparseComponents -Path $path
+  if($PackedScene -and [IO.Path]::GetExtension($path) -ieq '.json' -and -not (Test-Path -LiteralPath $path)){
+    $path=Join-Path $Directory 'scene.pkg'
+    Assert-DreamSkinNoReparseComponents -Path $path
+  }
+  if(-not (Test-Path -LiteralPath $path -PathType Leaf)){throw '项目媒体文件不存在。'}
+  return $path
+}
+
 function Import-DynamicWallpaperEngine {
   param([string[]]$Roots,[string]$StateRoot,[scriptblock]$Report)
   if(-not $Roots){$Roots=@(Get-DynamicWallpaperEngineRoots)}
-  $result=[pscustomobject]@{Imported=0;Existing=0;Skipped=0;Failed=0;Details=@();SelectedId=$null;Roots=@($Roots)}
+  $result=[pscustomobject]@{Imported=0;Existing=0;Skipped=0;Failed=0;Converted=0;Previews=0;Details=@();SelectedId=$null;Roots=@($Roots)}
   $visited=@{}
   foreach($root in $Roots|Sort-Object -Unique){
     foreach($directory in Get-DynamicWallpaperEngineProjects $root -OnError {param($path,$message);$result.Failed++;$result.Details+=($path+'：'+$message)}){
@@ -111,25 +192,34 @@ function Import-DynamicWallpaperEngine {
         if((Get-Item -LiteralPath $metadata).Length -gt 1MB){throw '项目描述文件过大。'}
         $project=[IO.File]::ReadAllText($metadata)|ConvertFrom-Json -ErrorAction Stop
         if($project.title){$label=[string]$project.title}
-        if([string]$project.type -notin @('video','image')){
+        $previewOnly=[string]$project.type -in @('scene','web') -and [bool]$project.preview
+        if([string]$project.type -notin @('video','image') -and -not $previewOnly){
           $result.Skipped++;$result.Details+=($label+'：不支持 '+$project.type+' 类型，需要 Wallpaper Engine 渲染。');continue
         }
-        $relative=[string]$project.file
-        if(-not $relative -or [IO.Path]::IsPathRooted($relative) -or $relative.Contains(':')){throw '媒体路径无效。'}
-        $media=[IO.Path]::GetFullPath((Join-Path $directory.FullName $relative))
-        if(-not $media.StartsWith($directory.FullName+'\',[StringComparison]::OrdinalIgnoreCase)){throw '媒体路径越出项目目录。'}
-        Assert-DreamSkinNoReparseComponents -Path $media
-        if(-not (Test-Path -LiteralPath $media -PathType Leaf)){throw '项目媒体文件不存在。'}
-        $kind='Image';if($project.type -eq 'video'){$kind='Video'}
+        $media=Resolve-DynamicSteamProjectFile $directory.FullName ([string]$project.file) -PackedScene:($previewOnly -and $project.type -eq 'scene')
+        $kind='Image';if($project.type -eq 'video' -or [IO.Path]::GetExtension($media) -in @('.gif','.apng')){$kind='Video'}
         if($Report){& $Report ('正在导入：'+$label)}
-        $import=Import-DynamicSteamReference -Media $media -Kind $kind -StateRoot $StateRoot -Title $label
+        if($previewOnly){
+          $preview=Resolve-DynamicSteamProjectFile $directory.FullName ([string]$project.preview)
+          if([IO.Path]::GetExtension($preview) -notin @('.png','.jpg','.jpeg','.webp','.bmp','.tif','.tiff','.avif','.gif','.apng')){throw '此项目没有可用的预览素材。'}
+          $previewKind='Image';$mode='StaticPreview'
+          if([IO.Path]::GetExtension($preview) -in @('.gif','.apng')){$previewKind='Video';$mode='AnimatedPreview'}
+          $import=Import-DynamicSteamCache $preview $previewKind $StateRoot $label $Report -SourceFiles @($media,$preview) -Mode $mode
+          $result.Previews++;$result.Details+=($label+'：仅导入项目预览素材，未还原完整场景、网页或互动效果。')
+        }elseif(($kind -eq 'Image' -and [IO.Path]::GetExtension($media) -in @('.png','.jpg','.jpeg','.webp')) -or ($kind -eq 'Video' -and (Test-DynamicVideoDirectImport $media))){
+          $import=Import-DynamicSteamReference -Media $media -Kind $kind -StateRoot $StateRoot -Title $label
+        }else{
+          $import=Import-DynamicSteamCache $media $kind $StateRoot $label $Report
+          if(-not $import.AlreadyExists){$result.Converted++}
+        }
         $result.SelectedId=$import.Item.Id
         if($import.AlreadyExists){$result.Existing++}else{
           $result.Imported++
-          try{$null=Rename-DynamicWallpaper $StateRoot $import.Item.Id $label}catch{}
+          if(-not $previewOnly){try{$null=Rename-DynamicWallpaper $StateRoot $import.Item.Id $label}catch{}}
         }
       }catch{$result.Failed++;$result.Details+=($label+'：'+$_.Exception.Message)}
     }
   }
+  try{$null=Remove-DynamicStaleSteamCache $StateRoot}catch{$result.Details+=('旧缓存清理暂缓：'+$_.Exception.Message)}
   return $result
 }

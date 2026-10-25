@@ -55,7 +55,7 @@ function Get-DynamicWallpaperDirectory {
 
 function Read-DynamicWallpaperItem {
   param([string]$Directory,[string]$Id)
-  $item=[pscustomobject]@{Id=$Id;Name='不可用壁纸';Kind='Unknown';MediaPath=$null;ThumbnailPath=$null;Size=0L;Sha256=$null;ImportedAtUtc=[datetime]::MinValue;IsAvailable=$false;Error=$null;DiskSize=0L;Sources=@('Local');Transparency=0;PreviewLevel=50;External=$false}
+  $item=[pscustomobject]@{Id=$Id;Name='不可用壁纸';Kind='Unknown';MediaPath=$null;ThumbnailPath=$null;Size=0L;Sha256=$null;ImportedAtUtc=[datetime]::MinValue;IsAvailable=$false;Error=$null;DiskSize=0L;Sources=@('Local');Transparency=0;PreviewLevel=50;External=$false;SourceBound=$false;SourceDependencies=@();ConversionMode=$null}
   try {
     Assert-DreamSkinNoReparseComponents -Path $Directory
     $json=Join-Path $Directory 'item.json'
@@ -88,6 +88,10 @@ function Read-DynamicWallpaperItem {
       $item.External=$true
       if(-not [IO.Path]::IsPathRooted([string]$entry.sourcePath) -or $item.Sources -notcontains 'WallpaperEngine'){throw 'Steam 壁纸引用无效。'}
       $item.MediaPath=[IO.Path]::GetFullPath([string]$entry.sourcePath)
+    }
+    if($entry.storage -eq 'SteamCache'){
+      $item.SourceBound=$true;$item.SourceDependencies=@($entry.sourceDependencies);$item.ConversionMode=$entry.conversionMode
+      if($item.Sources -notcontains 'WallpaperEngine' -or (Test-DreamSkinSourceDependenciesMissing $item.SourceDependencies)){throw 'Steam 源文件已改变或丢失，请刷新壁纸库。'}
     }
     $item.ThumbnailPath=Join-Path $Directory $entry.thumbnailFile
     foreach($file in @($item.MediaPath,$item.ThumbnailPath)){Assert-DreamSkinNoReparseComponents -Path $file}
@@ -122,7 +126,7 @@ function Get-DynamicWallpaperItems {
         $entry=Read-DynamicWallpaperItem $directory.FullName $directory.Name
         # External files can disappear after an unsubscribe or library unmount.
         # Hide stale references; never delete anything in the Steam library.
-        if(-not $entry.External -or $entry.IsAvailable){$entry}
+        if((-not $entry.External -and -not $entry.SourceBound) -or $entry.IsAvailable){$entry}
       }
     }
   }) | Sort-Object ImportedAtUtc -Descending
@@ -203,7 +207,7 @@ function Complete-DynamicWallpaperImport {
   if(-not $directory.StartsWith($paths.Staging+'\',[StringComparison]::OrdinalIgnoreCase)){throw '导入暂存位置无效。'}
   $displayName=Assert-DynamicWallpaperName $Name
   Invoke-DynamicWallpaperLock $StateRoot {
-    $existing=@(Get-DynamicWallpaperItems $StateRoot | Where-Object { -not $_.External -and $_.IsAvailable -and $_.Kind -eq $Prepared.Kind -and $_.Sha256 -eq $Prepared.Sha256 -and (Get-FileHash -LiteralPath $_.MediaPath -Algorithm SHA256).Hash.ToLowerInvariant() -eq $Prepared.Sha256 })
+    $existing=@(Get-DynamicWallpaperItems $StateRoot | Where-Object { -not $_.External -and -not $_.SourceBound -and -not $Prepared.SourceDependencies -and $_.IsAvailable -and $_.Kind -eq $Prepared.Kind -and $_.Sha256 -eq $Prepared.Sha256 -and (Get-FileHash -LiteralPath $_.MediaPath -Algorithm SHA256).Hash.ToLowerInvariant() -eq $Prepared.Sha256 })
     if($existing.Count -gt 0){
       $source='Local';if($Prepared.ImportSource){$source=$Prepared.ImportSource}
       return [pscustomobject]@{Item=(Add-DynamicWallpaperSource $StateRoot $existing[0].Id $source);AlreadyExists=$true}
@@ -217,6 +221,9 @@ function Complete-DynamicWallpaperImport {
     $entry=[ordered]@{schema='codex-dynamic-skin-wallpaper/1';id=$id;name=$displayName;kind=$Prepared.Kind;mediaFile=$mediaName;thumbnailFile='thumbnail.png';size=$Prepared.Size;sha256=$Prepared.Sha256;importedAtUtc=[datetime]::UtcNow.ToString('o')}
     if($Prepared.SourceSha256){$entry.sourceSha256=$Prepared.SourceSha256}
     $entry.sources=@('Local');if($Prepared.ImportSource){$entry.sources=@($Prepared.ImportSource)}
+    if($Prepared.SourceDependencies){
+      $entry.storage='SteamCache';$entry.sourceDependencies=@($Prepared.SourceDependencies);$entry.conversionMode=$Prepared.ConversionMode
+    }
     if(Get-Command New-DynamicWallpaperThumbnail -ErrorAction SilentlyContinue){
       if(-not (New-DynamicWallpaperThumbnail $destination $Prepared.Kind (Join-Path $directory 'thumbnail.png')) -and $Report){& $Report '媒体已保存，缩略图暂不可用。'}
     }
@@ -245,6 +252,7 @@ function Add-DynamicWallpaperSource {
 
 function Import-DynamicWallpaper {
   param([string]$SourcePath,[ValidateSet('Image','Video')][string]$Kind,[string]$StateRoot,[scriptblock]$Report,[ValidateSet('Local','WallpaperEngine')][string]$Source='Local')
+  if([IO.Path]::GetExtension($SourcePath) -in @('.gif','.apng')){$Kind='Video'}
   $paths=Get-DynamicWallpaperPaths $StateRoot
   Assert-DreamSkinNoReparseComponents -Path $SourcePath
   $sourceInfo=Get-Item -LiteralPath $SourcePath -ErrorAction Stop
@@ -252,7 +260,7 @@ function Import-DynamicWallpaper {
   if($sourceInfo.PSIsContainer -or $sourceInfo.Length -le 0 -or $sourceInfo.Length -gt $sourceLimit){throw '媒体大小超出导入限制。'}
   $sourceHash=(Get-FileHash -LiteralPath $SourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
   foreach($existing in Get-DynamicWallpaperItems $StateRoot){
-    if($existing.IsAvailable -and -not $existing.External -and $existing.Kind -eq $Kind){
+    if($existing.IsAvailable -and -not $existing.External -and -not $existing.SourceBound -and $existing.Kind -eq $Kind){
       $metadata=Join-Path (Split-Path $existing.MediaPath) 'item.json'
       $entry=[IO.File]::ReadAllText($metadata)|ConvertFrom-Json
       if(-not $existing.External -and ($existing.Sha256 -eq $sourceHash -or $entry.sourceSha256 -eq $sourceHash) -and (Get-FileHash -LiteralPath $existing.MediaPath -Algorithm SHA256).Hash.ToLowerInvariant() -eq $existing.Sha256){
@@ -306,7 +314,7 @@ function Get-DynamicWallpaperStatus {
       if(-not (Test-Path -LiteralPath $active -PathType Container)){return $status}
       $theme=Read-DreamSkinTheme -ThemeDirectory $active
       $hash=(Get-FileHash -LiteralPath $theme.ImagePath -Algorithm SHA256).Hash.ToLowerInvariant()
-      $matches=@($items|Where-Object { $_.Kind -eq 'Image' -and $_.Sha256 -eq $hash -and $(if($theme.Theme.externalSource){$_.External -and $_.MediaPath -ieq $theme.ImagePath}else{-not $_.External}) })
+      $matches=@($items|Where-Object { $_.Kind -eq 'Image' -and $_.Sha256 -eq $hash -and $(if($theme.Theme.externalSource){$_.External -and $_.MediaPath -ieq $theme.ImagePath}elseif($theme.Theme.steamCacheId){$_.SourceBound -and $_.Id -eq $theme.Theme.steamCacheId}else{-not $_.External -and -not $_.SourceBound}) })
     }
     if($matches.Count){$status.CurrentId=$matches[0].Id}else{$status.HasExternalCurrent=$true}
   }catch{$status.Error=$_.Exception.Message}
@@ -328,7 +336,10 @@ function Use-DynamicWallpaper {
         try {Assert-DreamSkinImageFile -Path $item.ThumbnailPath; $preview=$item.ThumbnailPath} catch { }
       }
     }
-    $prepared=[pscustomobject]@{Kind=$item.Kind;Path=$item.MediaPath;Preview=$preview;Size=$item.Size;Sha256=$item.Sha256;External=$item.External;ImageOpacity=(1-[Math]::Max(0.0,($item.PreviewLevel-50)/50.0));ImageShade=([Math]::Min(1.0,$item.PreviewLevel/50.0))}
+    foreach($source in @($item.SourceDependencies)){
+      if((Get-FileHash -LiteralPath $source.path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $source.sha256){throw 'Steam 源文件内容已改变，请刷新壁纸库。'}
+    }
+    $prepared=[pscustomobject]@{Kind=$item.Kind;Path=$item.MediaPath;Preview=$preview;Size=$item.Size;Sha256=$item.Sha256;External=$item.External;SourceDependencies=$item.SourceDependencies;SteamCacheId=$item.Id;ImageOpacity=(1-[Math]::Max(0.0,($item.PreviewLevel-50)/50.0));ImageShade=([Math]::Min(1.0,$item.PreviewLevel/50.0))}
     Set-DynamicBackground -Prepared $prepared -StateRoot $StateRoot -Apply $Apply
     return $item
   }

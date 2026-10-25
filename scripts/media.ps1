@@ -14,6 +14,8 @@
   }
 }
 
+. (Join-Path $PSScriptRoot 'media-tools.ps1')
+
 function Wait-DynamicWinRT {
   param($Operation, [type]$ResultType, [switch]$Progress, [scriptblock]$Report)
   Add-Type -AssemblyName System.Runtime.WindowsRuntime
@@ -26,6 +28,12 @@ function Wait-DynamicWinRT {
 }
 
 function Convert-DynamicVideo {
+  param([string]$SourcePath, [string]$TargetPath, [scriptblock]$Report)
+  $null=Get-DynamicMediaTool ffmpeg -Report $Report
+  Convert-DynamicExtendedVideo $SourcePath $TargetPath $Report
+}
+
+function Convert-DynamicWindowsVideo {
   param([string]$SourcePath, [string]$TargetPath, [scriptblock]$Report)
   Add-Type -AssemblyName System.Runtime.WindowsRuntime
   $null = [Windows.Storage.StorageFile,Windows.Storage,ContentType=WindowsRuntime]
@@ -77,13 +85,14 @@ function Test-DynamicVideoDirectImport {
 function New-DynamicPreparedMedia {
   param([Parameter(Mandatory)][string]$SourcePath, [ValidateSet('Image','Video')][string]$Kind, [Parameter(Mandatory)][string]$StateRoot, [scriptblock]$Report, [string]$PreparationRoot)
   $source = [IO.Path]::GetFullPath($SourcePath)
+  if([IO.Path]::GetExtension($source) -in @('.gif','.apng')){$Kind='Video'}
   $limit = 10MB; if ($Kind -eq 'Video') { $limit = 2GB }
   $file = Get-Item -LiteralPath $source -ErrorAction Stop
   if ($file.PSIsContainer -or $file.Length -le 0 -or $file.Length -gt $limit) { throw "媒体文件必须为 1 字节至 $($limit / 1MB) MiB。" }
   Assert-DreamSkinNoReparseComponents -Path $source
   $ext = $file.Extension.ToLowerInvariant()
-  if ($Kind -eq 'Image' -and $ext -notin @('.png','.jpg','.jpeg','.webp')) { throw '图片仅支持 PNG、JPEG、WebP。' }
-  if ($Kind -eq 'Video' -and $ext -notin @('.mp4','.mov','.m4v','.wmv','.avi','.mkv','.webm')) { throw '请选择 MP4、MOV、M4V、WMV、AVI、MKV 或 WebM 视频。' }
+  if ($Kind -eq 'Image' -and $ext -notin @('.png','.jpg','.jpeg','.webp','.bmp','.tif','.tiff','.avif')) { throw '图片支持 PNG、JPEG、WebP、BMP、TIFF、AVIF。' }
+  if ($Kind -eq 'Video' -and $ext -notin @('.mp4','.mov','.m4v','.wmv','.avi','.mkv','.webm','.gif','.apng','.flv','.mpg','.mpeg','.ts','.m2ts','.ogv')) { throw '不支持此媒体扩展名。' }
   $mediaRoot = Join-Path ([IO.Path]::GetFullPath($StateRoot)) 'media'
   if ($PreparationRoot) {
     $mediaRoot = [IO.Path]::GetFullPath($PreparationRoot)
@@ -102,7 +111,16 @@ function New-DynamicPreparedMedia {
     try { $buffer = New-Object byte[] 65536; $total = 0L; while (($count = $inputStream.Read($buffer,0,$buffer.Length)) -gt 0) { $total += $count; if ($total -gt $limit) { throw '媒体超过大小限制。' }; $output.Write($buffer,0,$count) } } finally { $output.Dispose() }
   } finally { $inputStream.Dispose() }
   $sourceSha256=(Get-FileHash -LiteralPath $snapshot -Algorithm SHA256).Hash.ToLowerInvariant()
-  if ($Kind -eq 'Image') { Assert-DreamSkinImageFile -Path $snapshot; $ready = $snapshot; $preview = $snapshot }
+  if ($Kind -eq 'Image') {
+    $ready=$snapshot
+    if($ext -in @('.bmp','.tif','.tiff','.avif')){
+      $ready=Join-Path $directory 'converted.png'
+      if($ext -eq '.avif'){$null=Get-DynamicMediaTool ffmpeg -Report $Report}
+      Convert-DynamicExtendedImage $snapshot $ready
+      Remove-Item -LiteralPath $snapshot -Force
+    }else{Assert-DreamSkinImageFile -Path $snapshot}
+    $preview=$ready
+  }
   else {
     $ready = Join-Path $directory 'background.mp4'
     if(Test-DynamicVideoDirectImport $snapshot){
@@ -171,6 +189,12 @@ function Invoke-DynamicBackgroundTransaction {
       if([double]::IsNaN($opacity) -or $opacity -lt 0 -or $opacity -gt 1){throw '壁纸透明度无效。'}
       $theme=[pscustomobject]@{schemaVersion=1;id='custom';name='本地背景';appearance='auto';imageOpacity=$opacity;imageShade=1}
       if($null -ne $Prepared.ImageShade){$theme.imageShade=[Math]::Max(0.0,[Math]::Min(1.0,[double]$Prepared.ImageShade))}
+    }
+    if($Prepared.SourceDependencies){
+      if(Test-DreamSkinSourceDependenciesMissing $Prepared.SourceDependencies){throw 'Steam 源文件已改变或丢失，请刷新壁纸库。'}
+      if(-not $theme){$theme=[pscustomobject]@{schemaVersion=1;id='custom';name='Steam 转换壁纸';appearance='auto'}}
+      $theme|Add-Member -NotePropertyName sourceDependencies -NotePropertyValue @($Prepared.SourceDependencies) -Force
+      $theme|Add-Member -NotePropertyName steamCacheId -NotePropertyValue $Prepared.SteamCacheId -Force
     }
     if($Prepared.External){
       if(-not $theme){$theme=[pscustomobject]@{schemaVersion=1;id='custom';name='Steam 壁纸';appearance='auto'}}

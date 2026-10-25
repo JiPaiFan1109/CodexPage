@@ -565,6 +565,7 @@ export async function loadTheme(themeDir) {
     themePath,
     imagePath: realImagePath,
     externalSource: raw.externalSource ?? null,
+    sourceDependencies: raw.sourceDependencies ?? null,
     imageBytes,
     safeCss: safeCss?.source ?? "",
     safeCssRuntime: safeCss?.runtimeSource ?? "",
@@ -649,7 +650,7 @@ export async function loadPayload(
   loadedTheme.theme.artKey = createHash("sha256")
     .update(loadedTheme.imageBytes).digest("hex").slice(0, 20);
   const normalizedVideo = normalizeVideoPayloadConfig(videoConfig);
-  if (normalizedVideo && loadedTheme.externalSource) normalizedVideo.persistentCache = false;
+  if (normalizedVideo && (loadedTheme.externalSource || loadedTheme.sourceDependencies)) normalizedVideo.persistentCache = false;
   const payloadTheme = normalizedVideo
     ? { ...loadedTheme.theme, video: normalizedVideo }
     : loadedTheme.theme;
@@ -1544,11 +1545,23 @@ async function runOneShot(options) {
 }
 
 export async function externalSourceUnavailable(themeDir) {
-  let source;
+  let source, dependencies;
   try {
     const raw = JSON.parse(await fs.readFile(path.join(themeDir, 'theme.json'), 'utf8'));
     source = raw.externalSource;
+    dependencies = raw.sourceDependencies;
   } catch { return false; }
+  if (dependencies !== undefined) {
+    if (!Array.isArray(dependencies) || !dependencies.length || dependencies.length > 4) return true;
+    for (const entry of dependencies) {
+      try {
+        const timestamp = Date.parse(entry.lastWriteTimeUtc);
+        if (!path.isAbsolute(entry.path ?? '') || !Number.isFinite(timestamp) || !(entry.size > 0)) return true;
+        const stat = await fs.stat(entry.path);
+        if (!stat.isFile() || stat.size !== entry.size || Math.abs(stat.mtimeMs - timestamp) >= 1) return true;
+      } catch { return true; }
+    }
+  }
   if (!source) return false;
   try {
     if (!path.isAbsolute(source.path ?? '') || !['Image', 'Video'].includes(source.kind)) return true;

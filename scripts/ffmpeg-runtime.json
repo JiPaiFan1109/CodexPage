@@ -1,0 +1,9 @@
+{
+  "version": "8.1.3-24-g92611900bb",
+  "distribution": "BtbN win64 LGPL shared",
+  "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-24-13-02/ffmpeg-n8.1.3-24-g92611900bb-win64-lgpl-shared-8.1.zip",
+  "sha256": "0c2e70f180ae48a748acf2308229ae19eafc734515e9876c75cfe36998981c53",
+  "directory": "ffmpeg-n8.1.3-24-g92611900bb-win64-lgpl-shared-8.1",
+  "source": "https://github.com/FFmpeg/FFmpeg/tree/92611900bb",
+  "build": "https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-10-24-13-02"
+}

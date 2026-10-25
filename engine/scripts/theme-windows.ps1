@@ -195,6 +195,21 @@ function Test-DreamSkinThemePathWithin {
   }
 }
 
+function Test-DreamSkinSourceDependenciesMissing {
+  param($Dependencies)
+  if(-not $Dependencies -or @($Dependencies).Count -gt 4){return $true}
+  foreach($source in @($Dependencies)){
+    try{
+      if(-not [IO.Path]::IsPathRooted([string]$source.path) -or [long]$source.size -le 0 -or -not $source.lastWriteTimeUtc){return $true}
+      Assert-DreamSkinNoReparseComponents -Path $source.path
+      $file=Get-Item -LiteralPath $source.path -ErrorAction Stop
+      $time=[datetime]::Parse([string]$source.lastWriteTimeUtc,[Globalization.CultureInfo]::InvariantCulture,[Globalization.DateTimeStyles]::RoundtripKind).ToUniversalTime()
+      if($file.PSIsContainer -or $file.Length -ne [long]$source.size -or [Math]::Abs(($file.LastWriteTimeUtc-$time).TotalMilliseconds) -ge 1){return $true}
+    }catch{return $true}
+  }
+  return $false
+}
+
 function Test-DreamSkinExternalSourceMissing {
   param([string]$StateRoot)
   $metadata=Join-Path $StateRoot 'active-theme/theme.json'
@@ -202,6 +217,7 @@ function Test-DreamSkinExternalSourceMissing {
   try{
     Assert-DreamSkinNoReparseComponents -Path $metadata
     $theme=Read-DreamSkinUtf8File -Path $metadata|ConvertFrom-Json
+    if($theme.PSObject.Properties['sourceDependencies'] -and (Test-DreamSkinSourceDependenciesMissing $theme.sourceDependencies)){return $true}
     if(-not $theme.externalSource){return $false}
     $source=$theme.externalSource
     if(-not [IO.Path]::IsPathRooted([string]$source.path)){return $true}

@@ -1340,10 +1340,90 @@ function Stop-DreamSkinCodex {
   }
 }
 
-function Confirm-DreamSkinRestart {
+function New-DreamSkinRestartDialog {
   param([string]$Message)
-  $shell = New-Object -ComObject WScript.Shell
-  return $shell.Popup($Message, 0, 'CodexPage', 52) -eq 6
+  $ErrorActionPreference='Stop'
+  Add-Type -AssemblyName PresentationFramework
+  $root=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+  # Reuse the approved MIT-licensed product dialog, including button states.
+  $source=[xml](Get-Content (Join-Path $root 'scripts/skin-manager.xaml') -Raw -Encoding UTF8)
+  $ns=New-Object Xml.XmlNamespaceManager($source.NameTable)
+  $ns.AddNamespace('p','http://schemas.microsoft.com/winfx/2006/xaml/presentation')
+  $ns.AddNamespace('x','http://schemas.microsoft.com/winfx/2006/xaml')
+  $resources=$source.SelectSingleNode('//p:Window.Resources',$ns).OuterXml
+  $panel=$source.SelectSingleNode('//*[@x:Name="ConfirmationOverlay"]/p:Border',$ns).OuterXml
+  $markup='<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="CodexPage" SizeToContent="WidthAndHeight" WindowStartupLocation="CenterScreen" WindowStyle="None" AllowsTransparency="True" ResizeMode="NoResize" Background="Transparent" Foreground="#172134" FontFamily="Microsoft YaHei UI, Segoe UI" FontSize="15">'+($resources.Replace(' xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"',''))+$panel+'</Window>'
+  $window=[Windows.Markup.XamlReader]::Parse($markup)
+  $english=$Message -notmatch '[\u4e00-\u9fff]'
+  $window.FindName('ConfirmationTitle').Text=if($english){'Restart Codex?'}else{'重新启动 Codex？'}
+  $window.FindName('ConfirmationMessage').Text=$Message
+  $cancel=$window.FindName('ConfirmCancelButton')
+  $cancel.Content=if($english){'Not now'}else{'暂不重启'}
+  $cancel.IsDefault=$true
+  $accept=$window.FindName('ConfirmAcceptButton')
+  $accept.Content=if($english){'Restart now'}else{'重启 Codex'}
+  $asset=Join-Path $root 'appearance/codexpage-wordmark.png'
+  $window.FindName('ConfirmationWordmark').Source=[Windows.Media.Imaging.BitmapFrame]::Create([uri]$asset)
+  $window.Tag=@{Accepted=$false;Closing=$false;Timer=$null;CloseTimer=$null}
+  $close={
+    param($sender,$event)
+    $w=[Windows.Window]::GetWindow($sender)
+    if($w.Tag.Closing){return}
+    $w.Tag.Accepted=($sender.Name -eq 'ConfirmAcceptButton')
+    $w.Close()
+  }
+  $accept.Add_Click($close);$cancel.Add_Click($close)
+  $window.FindName('ConfirmCloseButton').Add_Click($close)
+  $window.Add_PreviewKeyDown({param($w,$e) if($e.Key -eq 'Escape'){$e.Handled=$true;$w.Close()}})
+  $window.Add_ContentRendered({param($w,$e)
+    $null=$w.FindName('ConfirmCancelButton').Focus()
+    if([Windows.SystemParameters]::ClientAreaAnimation){
+      $a=New-Object Windows.Media.Animation.DoubleAnimation(0,1,[TimeSpan]::FromMilliseconds(160))
+      $w.BeginAnimation([Windows.UIElement]::OpacityProperty,$a)
+    }
+  })
+  $window.Add_Closing({param($w,$e)
+    if($w.Tag.Closing){return}
+    $w.Tag.Closing=$true
+    if($w.Tag.Timer){$w.Tag.Timer.Stop()}
+    if([Windows.SystemParameters]::ClientAreaAnimation){
+      $e.Cancel=$true;$w.IsEnabled=$false
+      $a=New-Object Windows.Media.Animation.DoubleAnimation(0,[TimeSpan]::FromMilliseconds(120))
+      $w.BeginAnimation([Windows.UIElement]::OpacityProperty,$a)
+      $timer=New-Object Windows.Threading.DispatcherTimer
+      $timer.Interval=[TimeSpan]::FromMilliseconds(130)
+      $timer.Add_Tick({param($t,$e) $t.Stop();$w.Close()}.GetNewClosure())
+      $w.Tag.CloseTimer=$timer;$timer.Start()
+    }
+  })
+  return $window
+}
+
+function Confirm-DreamSkinRestart {
+  param([string]$Message,[ValidateRange(0,300)][int]$TimeoutSeconds=0)
+  $dialog=$null;$mutex=$null;$owned=$false
+  try {
+    $mutex=New-Object Threading.Mutex($false,'Local\CodexPage.RestartConfirmation')
+    try{$owned=$mutex.WaitOne(0)}catch [Threading.AbandonedMutexException]{$owned=$true}
+    if(-not $owned){return $false}
+    $dialog=New-DreamSkinRestartDialog -Message $Message
+    if($TimeoutSeconds -gt 0){
+      $timer=New-Object Windows.Threading.DispatcherTimer
+      $timer.Interval=[TimeSpan]::FromSeconds($TimeoutSeconds)
+      $timer.Add_Tick({param($t,$e) $t.Stop();$dialog.Close()}.GetNewClosure())
+      $dialog.Tag.Timer=$timer;$timer.Start()
+    }
+    $null=$dialog.ShowDialog()
+    return [bool]$dialog.Tag.Accepted
+  } catch {
+    Write-Warning ('Restart confirmation unavailable; Codex was preserved. '+$_.Exception.Message)
+    return $false
+  } finally {
+    if($dialog -and $dialog.Tag.Timer){$dialog.Tag.Timer.Stop()}
+    if($dialog -and $dialog.Tag.CloseTimer){$dialog.Tag.CloseTimer.Stop()}
+    if($owned){$mutex.ReleaseMutex()}
+    if($mutex){$mutex.Dispose()}
+  }
 }
 
 function Invoke-DreamSkinCodexWindowActivation {

@@ -1,4 +1,20 @@
 ﻿# Discover only ports advertised by verified Codex executables, never scan arbitrary ports.
+function Wait-DreamSkinExistingEndpoint {
+  param([object]$Codex,[object[]]$Processes,[int]$PreferredPort,[switch]$RequirePreferred,
+    [int]$WaitMilliseconds=4000)
+  $deadline=[datetime]::UtcNow.AddMilliseconds($WaitMilliseconds)
+  do {
+    $endpoint=Get-DreamSkinExistingEndpoint -Codex $Codex -Processes $Processes -PreferredPort $PreferredPort -RequirePreferred:$RequirePreferred
+    if($null -ne $endpoint){return $endpoint}
+    $advertised=@($Processes | Where-Object {
+      (Test-DreamSkinPathEqual $_.ExecutablePath $Codex.Executable) -and
+      $_.CommandLine -match '--remote-debugging-port(?:=|\s+)\d+'
+    }).Count -gt 0
+    if(-not $advertised -or [datetime]::UtcNow -ge $deadline){return $null}
+    Start-Sleep -Milliseconds 200
+  } while($true)
+}
+
 function Get-DreamSkinExistingEndpoint {
   param([object]$Codex,[object[]]$Processes,[int]$PreferredPort,[switch]$RequirePreferred)
   $candidates=@()

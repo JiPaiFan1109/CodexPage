@@ -1,4 +1,4 @@
-# Third-party notices
+﻿# Third-party notices
 
 ## Codex Dream Skin
 
@@ -9,6 +9,12 @@ Upstream license: MIT. The original notice is retained in [LICENSE](LICENSE):
 > Copyright (c) 2026 Codex Dream Skin Studio contributors
 
 The MIT license applies to project code. It does not grant rights to unrelated third-party media, trademarks, or application resources.
+
+## FFmpeg media conversion
+
+FFmpeg binaries are not included in this release. When conversion requires them, the application downloads the BtbN Windows x64 LGPL shared distribution directly from upstream and verifies its archive SHA-256. Licenses, documentation and shared libraries are retained in the user's LocalAppData/CodexPage/MediaTools cache. The selected upstream URL and digest are recorded in codexpage-source.json. Media files are processed locally and are never uploaded.
+
+Upstream: https://ffmpeg.org/ ; builds and source/build references: https://github.com/BtbN/FFmpeg-Builds . The preferred build is pinned in scripts/ffmpeg-runtime.json. If it expires, the same 8.1 LGPL shared branch is accepted only with an upstream GitHub SHA-256 digest. Windows H.264 encoding uses Media Foundation (h264_mf).
 
 ## Node.js
 

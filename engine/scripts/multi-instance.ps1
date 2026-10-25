@@ -61,6 +61,54 @@ function Stop-DreamSkinInstanceWorker {
   $Worker.Process.Dispose()
 }
 
+function Get-DreamSkinUpdateRecoveryCandidate {
+  param($State,[object[]]$Installs,[object[]]$Processes)
+  if(-not $State.codexVersion -or -not $State.codexPackageFamilyName){return $null}
+  $registered=@($Processes|Where-Object {$p=$_;@($Installs|Where-Object {Test-DreamSkinPathEqual $_.Executable $p.ExecutablePath}).Count -gt 0})
+  $main=@(Get-DreamSkinCodexMainProcesses $registered)
+  if($main.Count -ne 1){return $null}
+  $process=$main[0]
+  if(-not $process.CreationDate -or $process.CommandLine -match '--remote-debugging-port'){return $null}
+  $install=@($Installs|Where-Object {Test-DreamSkinPathEqual $_.Executable $process.ExecutablePath})[0]
+  if($install.PackageFamilyName -cne $State.codexPackageFamilyName -or -not $install.Version -or $install.Version -eq $State.codexVersion){return $null}
+  $identity="$($process.ProcessId)|$($process.CreationDate)|$($install.Executable)"
+  $sha=[Security.Cryptography.SHA256]::Create()
+  try{$key=[BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($identity))).Replace('-','').ToLowerInvariant()}finally{$sha.Dispose()}
+  return [pscustomobject]@{Key=$key;Version=$install.Version;ProcessId=$process.ProcessId}
+}
+
+function Request-DreamSkinUpdateRecovery {
+  param($Candidate,[string]$StateRoot,[hashtable]$Observation,[datetime]$Now=[datetime]::UtcNow)
+  if(-not $Candidate -or (Test-Path (Join-Path $StateRoot 'paused'))){$Observation.Clear();return}
+  if($Observation.Key -cne $Candidate.Key){$Observation.Clear();$Observation.Key=$Candidate.Key;$Observation.Since=$Now;return}
+  if(($Now-$Observation.Since).TotalSeconds -lt 15){return}
+  $receiptPath=Join-Path $StateRoot 'update-recovery-notice.json'
+  if(Test-Path -LiteralPath $receiptPath){
+    # Corrupt receipts are reported instead of creating an unbounded prompt loop.
+    $receipt=Read-DreamSkinUtf8File $receiptPath|ConvertFrom-Json -ErrorAction Stop
+    if($receipt.Key -ceq $Candidate.Key){return}
+  }
+  # Never let an incorrectly rooted monitor launch against another installation's state.
+  if(-not (Test-DreamSkinPathEqual $StateRoot (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent))){return}
+  $launcher=Join-Path $PSScriptRoot 'start-dream-skin.ps1'
+  $args='-NoProfile -WindowStyle Hidden -ExecutionPolicy RemoteSigned -File '+(ConvertTo-DreamSkinProcessArgument $launcher)+' -PromptRestart -RequireUnpaused -OperationLockTimeoutMilliseconds 30000 -UpdateRecoveryKey '+$Candidate.Key
+  Write-DreamSkinUtf8FileAtomically $receiptPath (@{Key=$Candidate.Key;Version=$Candidate.Version;RequestedAt=$Now.ToString('o')}|ConvertTo-Json)
+  $logs=Join-Path $StateRoot 'logs/multi-instance'
+  [IO.Directory]::CreateDirectory($logs)|Out-Null
+  try{Start-Process (Join-Path $PSHOME 'powershell.exe') -ArgumentList $args -WindowStyle Hidden -ErrorAction Stop -RedirectStandardOutput (Join-Path $logs 'update-recovery.log') -RedirectStandardError (Join-Path $logs 'update-recovery-error.log')|Out-Null}
+  catch{Remove-Item -LiteralPath $receiptPath -Force -ErrorAction SilentlyContinue;$Observation.Since=$Now;throw}
+}
+
+function Test-DreamSkinUpdateRecoveryCurrent {
+  param([string]$StateRoot,[string]$Key)
+  if(Test-Path (Join-Path $StateRoot 'paused')){return $false}
+  $state=Read-DreamSkinState -Path (Join-Path $StateRoot 'state.json')
+  if(-not $state){$state=Read-DreamSkinRecoveryIntent -StateRoot $StateRoot}
+  if(-not $state){return $false}
+  $candidate=Get-DreamSkinUpdateRecoveryCandidate $state @(Get-DreamSkinRegisteredCodexInstalls) @(Get-CimInstance Win32_Process -Filter "Name = 'ChatGPT.exe'")
+  return $candidate -and $candidate.Key -ceq $Key
+}
+
 function Invoke-DreamSkinInstanceMonitor {
   param([string]$StateRoot,[int]$MaxCycles=0,[int]$PollMilliseconds=2000)
   $sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
@@ -72,6 +120,7 @@ function Invoke-DreamSkinInstanceMonitor {
   if(-not $acquired){$mutex.Dispose();return}
   $workers=@{};$failures=@{};$lastState=$null;$lastError=$null;$endpointCache=@{};$installRefresh=[datetime]::MinValue
   $lastVideoAvailable=$null;$videoRetryAt=[datetime]::MinValue
+  $recoveryObservation=@{};$unknownInstallRetry=[datetime]::MinValue
   $logDir=Join-Path $StateRoot 'logs/multi-instance';[IO.Directory]::CreateDirectory($logDir)|Out-Null
   try{
     $cycle=0
@@ -85,6 +134,7 @@ function Invoke-DreamSkinInstanceMonitor {
         if(-not $state){
           foreach($key in @($workers.Keys)){Stop-DreamSkinInstanceWorker $workers[$key] -Remove;$workers.Remove($key)}
           $lastState=$null
+          $recoveryObservation.Clear()
           $lastVideoAvailable=$null;$videoRetryAt=[datetime]::MinValue
           $status=[pscustomobject]@{UpdatedAt=[datetime]::UtcNow.ToString('o');Enabled=$false;VerifiedConnections=0;AdditionalWatchers=0;Ports=@();ProcessesWithoutConnection=@()}
           Write-DreamSkinInstanceStatus $status $workers $StateRoot
@@ -101,6 +151,11 @@ function Invoke-DreamSkinInstanceMonitor {
           if([datetime]::UtcNow -ge $installRefresh){$installs=@(Get-DreamSkinRegisteredCodexInstalls);$installRefresh=[datetime]::UtcNow.AddSeconds(60)}
           foreach($cacheKey in @($endpointCache.Keys)){if($endpointCache[$cacheKey].Until -lt [datetime]::UtcNow){$endpointCache.Remove($cacheKey)}}
           $processes=@(Get-CimInstance Win32_Process -Filter "Name = 'ChatGPT.exe'")
+          $unknown=@($processes|Where-Object {$p=$_;$p.ExecutablePath -and @($installs|Where-Object {Test-DreamSkinPathEqual $_.Executable $p.ExecutablePath}).Count -eq 0})
+          if($unknown.Count -gt 0 -and [datetime]::UtcNow -ge $unknownInstallRetry){
+            $unknownInstallRetry=[datetime]::UtcNow.AddSeconds(5)
+            $installs=@(Get-DreamSkinRegisteredCodexInstalls);$endpointCache.Clear()
+          }
           $endpoints=@(Get-DreamSkinInstanceEndpoints $installs $processes $endpointCache)
           $node=Join-Path $StateRoot 'engine/runtime/node/node.exe';$injector=Join-Path $PSScriptRoot 'injector.mjs'
           $videoAvailable=$false
@@ -157,9 +212,11 @@ function Invoke-DreamSkinInstanceMonitor {
           }
           $registeredProcesses=@($processes|Where-Object {$candidate=$_;@($installs|Where-Object {Test-DreamSkinPathEqual $_.Executable $candidate.ExecutablePath}).Count -gt 0})
           $unavailable=@(Get-DreamSkinCodexMainProcesses $registeredProcesses|Where-Object {$_.CommandLine -notmatch '--remote-debugging-port(?:=|\s+)\d+'}|ForEach-Object {$_.ProcessId})
+          $updateCandidate=Get-DreamSkinUpdateRecoveryCandidate $state $installs $processes
           $recoveryState=if($unavailable.Count -gt 0){'connection-required'}elseif($endpoints.Count -eq 0){'waiting-for-codex'}else{'monitoring'}
-          $status=[pscustomobject]@{UpdatedAt=[datetime]::UtcNow.ToString('o');Enabled=$true;RecoveryState=$recoveryState;VideoFallback=[bool]($state.videoPid -and -not $videoAvailable);VerifiedConnections=$endpoints.Count;AdditionalWatchers=$workers.Count;Ports=@($endpoints|ForEach-Object {$_.Port});ProcessesWithoutConnection=$unavailable}
+          $status=[pscustomobject]@{UpdatedAt=[datetime]::UtcNow.ToString('o');Enabled=$true;RecoveryState=$recoveryState;HostUpdateDetected=[bool]$updateCandidate;VideoFallback=[bool]($state.videoPid -and -not $videoAvailable -and $endpoints.Count -gt 0);VerifiedConnections=$endpoints.Count;AdditionalWatchers=$workers.Count;Ports=@($endpoints|ForEach-Object {$_.Port});ProcessesWithoutConnection=$unavailable}
           Write-DreamSkinInstanceStatus $status $workers $StateRoot
+          Request-DreamSkinUpdateRecovery -Candidate $updateCandidate -StateRoot $StateRoot -Observation $recoveryObservation
           $lastError=$null
         }
       }catch{
