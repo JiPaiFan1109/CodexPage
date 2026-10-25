@@ -433,7 +433,7 @@ function Start-DynamicManagerWork {
   $ui.Controls.StatusText.Visibility='Visible'
   $ui.PendingOperation=$Operation
   if($Operation -in @('Refresh','Open')){Set-DynamicConnectionChecking $true}
-  if($Operation -in @('EngineLocate','EngineImport','EngineRefresh')){Set-DynamicEngineSearchState -Searching $true}
+  if($Operation -in @('EngineLocate','EngineImport','EngineRefresh','EngineConvert')){Set-DynamicEngineSearchState -Searching $true}
   Update-DynamicManagerButtons
   $queue=New-Object 'System.Collections.Concurrent.ConcurrentQueue[string]'
   $worker=[PowerShell]::Create()
@@ -451,7 +451,7 @@ function Start-DynamicManagerWork {
     $connection=$PreviousConnection
     if(-not $connection -or $Operation -in @('Refresh','Apply','Restore')){$connection=Get-DynamicCodexConnection -StateRoot $StateRoot}
     if($Operation -eq 'Apply' -and -not $connection.Available){throw $connection.Message}
-    $selected=$null;$message='壁纸库已加载。';$engineReport=$null;$engineRoots=$null;$cancelled=$false;$connectionError=$null
+    $selected=$null;$message='壁纸库已加载。';$engineReport=$null;$engineRoots=$null;$conversionPrompt=$null;$cancelled=$false;$connectionError=$null
     try { switch($Operation){
       'Import' {
         $kind='Video';if([IO.Path]::GetExtension($Argument).ToLowerInvariant() -in @('.png','.jpg','.jpeg','.webp','.bmp','.tif','.tiff','.avif')){$kind='Image'}
@@ -459,16 +459,25 @@ function Start-DynamicManagerWork {
         $message='已保存到壁纸库，点击应用后生效。';if($result.AlreadyExists){$message='壁纸已存在，已选中原有项目。'}
       }
       'EngineLocate' {$engineRoots=@(Get-DynamicWallpaperEngineRoots);$message='目录定位完成。'}
-      {$_ -in @('EngineImport','EngineRefresh')} {
-        $roots=@($KnownEngineRoots);if($Argument){$roots=@($Argument)}
+      {$_ -in @('EngineImport','EngineRefresh','EngineConvert')} {
+        $roots=@($KnownEngineRoots);if($Argument -and $Operation -ne 'EngineConvert'){$roots=@($Argument)}
         if($roots.Count){$roots=@($roots|Where-Object {Test-Path -LiteralPath $_ -PathType Container});if(-not $roots.Count){throw '已定位的目录不可用，请重新选择壁纸目录。'}}
-        $batch=Import-DynamicWallpaperEngine -Roots $roots -StateRoot $StateRoot -Report $report
+        if($Operation -eq 'EngineConvert'){
+          $projects=ConvertFrom-Json -InputObject $Argument
+          $batch=Import-DynamicWallpaperEngine -Roots $roots -StateRoot $StateRoot -Report $report -ProjectDirectories $projects
+        }else{
+          $batch=Import-DynamicWallpaperEngine -Roots $roots -StateRoot $StateRoot -Report $report -DeferConversion
+          if($batch.PendingProjects.Count){
+            $download=$batch.NeedsConverter -and -not (Get-DynamicMediaTool ffmpeg -Optional)
+            $conversionPrompt=[pscustomobject]@{Projects=@($batch.PendingProjects);NeedsDownload=$download;Imported=$batch.Imported;Existing=$batch.Existing}
+          }
+        }
         $selected=$batch.SelectedId;if($Operation -eq 'EngineRefresh'){$selected=$null};$engineRoots=@($batch.Roots)
         $message=('导入 {0}，已存在 {1}，不支持 {2}，失败 {3}。' -f $batch.Imported,$batch.Existing,$batch.Skipped,$batch.Failed)
         if($batch.Converted){$batch.Details=@(('已自动转换 '+$batch.Converted+' 项，原文件保留。'))+$batch.Details}
         if($batch.Previews){$message+=(' 预览素材 '+$batch.Previews+' 项。')}
         if(-not $batch.Roots.Count){$message='未找到本地 Wallpaper Engine 壁纸，请选择壁纸目录。'}
-        if($Operation -eq 'EngineImport'){$engineReport=$message+"`n"+($batch.Details -join "`n")}
+        if($Operation -in @('EngineImport','EngineConvert')){$engineReport=$message+"`n"+($batch.Details -join "`n")}
       }
       'Swap' {Switch-DynamicWallpaperOrder $StateRoot $Argument $Name;$selected=$Argument;$message='壁纸位置已交换。'}
       'Apply' {Use-DynamicWallpaper $StateRoot $Argument {Invoke-DynamicEngine -StateRoot $StateRoot}|Out-Null;$selected=$Argument;$message='壁纸已应用。'}
@@ -498,7 +507,7 @@ function Start-DynamicManagerWork {
     if($Operation -in @('Apply','Restore')){$connection=Get-DynamicCodexConnection -StateRoot $StateRoot}
     if($status.Error){$message='读取当前背景失败：'+$status.Error}
     if($PrepareOnly){$message='预览模式 · '+$message}
-    [pscustomobject]@{Items=@(Get-DynamicWallpaperItems $StateRoot);Status=$status;Connection=$connection;SelectedId=$selected;Message=$message;EngineReport=$engineReport;EngineRoots=$engineRoots;Cancelled=$cancelled;ConnectionError=$connectionError}
+    [pscustomobject]@{Items=@(Get-DynamicWallpaperItems $StateRoot);Status=$status;Connection=$connection;SelectedId=$selected;Message=$message;EngineReport=$engineReport;EngineRoots=$engineRoots;ConversionPrompt=$conversionPrompt;Cancelled=$cancelled;ConnectionError=$connectionError}
   }
   $null=$worker.AddScript($body.ToString()).AddArgument($ui.InstallRoot).AddArgument($ui.StateRoot).AddArgument($ui.ModuleRoot).AddArgument($Operation).AddArgument($Argument).AddArgument($Name).AddArgument($ui.PrepareOnly).AddArgument($queue).AddArgument($ui.Connection).AddArgument(@($ui.EngineRoots))
   $ui.Worker=$worker;$ui.Runspace=$runspace;$ui.Queue=$queue;$ui.Async=$worker.BeginInvoke();$ui.Timer.Start()
@@ -509,19 +518,20 @@ function Complete-DynamicManagerWork {
   $message=$null
   while($ui.Queue.TryDequeue([ref]$message)){$ui.Controls.StatusText.Text=$message}
   if(-not $ui.Async.IsCompleted){return}
-  $ui.Timer.Stop();$importReport=$null;$connectionFailure=$null
+  $ui.Timer.Stop();$importReport=$null;$conversionPrompt=$null;$connectionFailure=$null
   try {
     $results=$ui.Worker.EndInvoke($ui.Async)
     if($ui.Worker.HadErrors){throw $ui.Worker.Streams.Error[0].Exception}
     $result=$results|Select-Object -Last 1
     if(-not $result){throw '后台操作未返回结果。'}
-    if($ui.PendingOperation -in @('EngineLocate','EngineImport','EngineRefresh')){$ui.EngineLocated=$true;Set-DynamicEngineSearchState -Roots @($result.EngineRoots)}
+    if($ui.PendingOperation -in @('EngineLocate','EngineImport','EngineRefresh','EngineConvert')){$ui.EngineLocated=$true;Set-DynamicEngineSearchState -Roots @($result.EngineRoots)}
+    $conversionPrompt=$result.ConversionPrompt
     $ui.Items=@($result.Items);$ui.Status=$result.Status;$ui.Controls.StatusText.Text=$result.Message
     if($null -ne $result.EngineReport){$importReport=$result.EngineReport;$ui.Controls.StatusText.Text='';$ui.Controls.StatusText.Visibility='Collapsed'}
      $ui.Connection=$result.Connection
     Update-DynamicManagerConnectionBadge
     if($ui.PendingOperation -in @('Import','SaveCurrent')){$ui.Source='Local'}
-    if($ui.PendingOperation -in @('EngineImport','EngineRefresh')){$ui.Source='WallpaperEngine'}
+    if($ui.PendingOperation -in @('EngineImport','EngineRefresh','EngineConvert')){$ui.Source='WallpaperEngine'}
     Update-DynamicManagerList $result.SelectedId
     if($ui.PendingOperation -eq 'EngineRefresh'){Show-DynamicManagerToast $result.Message Info}
     if($result.Cancelled){Show-DynamicManagerToast $result.Message Info}
@@ -535,7 +545,7 @@ function Complete-DynamicManagerWork {
     }
     if($ui.PendingOperation -eq 'Refresh'){$ui.HasCheckedConnection=$true}
   }catch{
-    if($ui.PendingOperation -in @('EngineLocate','EngineImport','EngineRefresh')){Set-DynamicEngineSearchState}
+    if($ui.PendingOperation -in @('EngineLocate','EngineImport','EngineRefresh','EngineConvert')){Set-DynamicEngineSearchState}
     $errorMessage=Get-DynamicManagerErrorMessage $_.Exception
     $ui.Controls.StatusText.Text='操作未完成：'+$errorMessage
     Show-DynamicManagerToast ('操作未完成：'+$errorMessage) Error
@@ -544,7 +554,8 @@ function Complete-DynamicManagerWork {
     $ui.Worker.Dispose();$ui.Runspace.Dispose();$ui.Worker=$null;$ui.Runspace=$null;$ui.Async=$null
     $ui.Busy=$false;$ui.Controls.WorkProgress.Visibility='Collapsed';Update-DynamicManagerButtons
   }
-  if($null -ne $importReport){Show-DynamicImportResult $importReport}
+  if($conversionPrompt){Show-DynamicSteamConversionConfirmation $conversionPrompt $importReport}
+  elseif($null -ne $importReport){Show-DynamicImportResult $importReport}
   if($connectionFailure){Show-DynamicManagerConfirmation -Title 'Codex 连接未完成' -Message $connectionFailure -Action {} -AcceptText '知道了' -NoticeOnly}
 }
 
@@ -615,7 +626,7 @@ function Show-DynamicSkinManager {
   $controls.SettingsButton.Add_Click({$panel=$script:SkinManager.Controls.SettingsPanel;if($panel.Visibility -eq 'Visible'){$panel.Visibility='Collapsed'}else{$panel.Visibility='Visible'}})
   $controls.EngineImportButton.Add_Click({
     $ui=$script:SkinManager
-    Show-DynamicManagerConfirmation '导入本地壁纸？' '查找 Steam 壁纸并保留原文件。不兼容媒体自动转换；场景与网页仅导入标注的预览图或预览动画。首次转换需联网下载约 80 MB 组件，缓存约 192 MiB。转换可能耗时。' {Start-DynamicManagerWork EngineImport} -AcceptText '确认导入'
+    Show-DynamicManagerConfirmation '导入本地壁纸？' '先导入可直接使用的壁纸，保留原文件。若有需要转换的文件，将在导入完成后询问。场景与网页仅导入标注的预览素材。' {Start-DynamicManagerWork EngineImport} -AcceptText '确认导入'
   })
   $controls.EngineRefreshButton.Add_Click({if(-not $script:SkinManager.Busy){Start-DynamicManagerWork EngineRefresh}})
   $controls.EngineFolderButton.Add_Click({
@@ -828,6 +839,7 @@ function Show-DynamicManagerConfirmation {
   param([string]$Title,[string]$Message,[scriptblock]$Action,[scriptblock]$CancelAction,[string]$AcceptText='确认',[switch]$NoticeOnly)
   $ui=$script:SkinManager
   if($ui.Busy){return}
+  $ui.Controls.ConfirmCancelButton.Content='取消'
   $ui.Controls.ConfirmCancelButton.Visibility='Visible'
   $ui.Controls.ConfirmationCancelColumn.Width=[Windows.GridLength]::new(1,[Windows.GridUnitType]::Star)
   $ui.Controls.ConfirmationGapColumn.Width=[Windows.GridLength]::new(12)
@@ -843,6 +855,22 @@ function Show-DynamicManagerConfirmation {
   $ui.Controls.ConfirmAcceptButton.Content=$AcceptText;$ui.Controls.ConfirmationOverlay.Visibility='Visible'
   $ui.Controls.ConfirmationScroll.ScrollToTop()
 }
+function Show-DynamicSteamConversionConfirmation {
+  param($Pending,[string]$ImportReport)
+  $count=@($Pending.Projects).Count
+  $message=('已导入 {0} 项，已有 {1} 项。另有 {2} 项需要转换后才能导入。' -f $Pending.Imported,$Pending.Existing,$count)
+  $title='转换剩余壁纸？';$accept='转换并导入'
+  if($Pending.NeedsDownload){
+    $title='下载转换器并继续？';$accept='下载并转换'
+    $message+=' 需要从上游下载约 80 MB 的转换器，缓存约 192 MiB，下载后可重复使用。'
+  }
+  $message+=' 跳过不会影响已经导入的壁纸。'
+  $projects=ConvertTo-Json -InputObject @($Pending.Projects) -Compress
+  $cancelReport=$ImportReport+"`n"+('已跳过 {0} 项待转换壁纸，已导入的壁纸保留。' -f $count)
+  Show-DynamicManagerConfirmation -Title $title -Message $message -AcceptText $accept -Action {Start-DynamicManagerWork EngineConvert $projects}.GetNewClosure() -CancelAction {Show-DynamicImportResult $cancelReport}.GetNewClosure()
+  $script:SkinManager.Controls.ConfirmCancelButton.Content='跳过'
+}
+
 function Show-DynamicImportResult {
   param([string]$Report)
   $ui=$script:SkinManager
