@@ -7,7 +7,9 @@ import { createHash } from 'node:crypto';
 import { loadTheme, loadPayload, externalSourceUnavailable } from '../engine/scripts/injector.mjs';
 
 test('Steam image loads directly, validates identity and becomes unavailable when deleted', async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'steam-reference-'));
+  // Hosted Windows TEMP may use a short path or junction. The normal-source
+  // fixture must record the canonical identity required by the loader.
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'steam-reference-')));
   try {
     const themeDir = path.join(root, 'active-theme');
     await fs.mkdir(themeDir);
@@ -22,6 +24,12 @@ test('Steam image loads directly, validates identity and becomes unavailable whe
     assert.deepEqual(await fs.readdir(themeDir), ['theme.json']);
     const payload = await loadPayload(themeDir, null, {url:`http://127.0.0.1:49152/${'a'.repeat(64)}/video.mp4`, fileSize:100, fileSha256:'b'.repeat(64)});
     assert.equal(payload.video.persistentCache, false);
+    const alias = path.join(root, 'linked-source');
+    await fs.symlink(root, alias, process.platform === 'win32' ? 'junction' : 'dir');
+    source.path = path.join(alias, 'Steam image.png');
+    await fs.writeFile(path.join(themeDir,'theme.json'), JSON.stringify(theme));
+    await assert.rejects(loadTheme(themeDir), /link or junction/);
+    source.path = media;
     source.sha256 = '0'.repeat(64);
     await fs.writeFile(path.join(themeDir,'theme.json'), JSON.stringify(theme));
     await assert.rejects(loadTheme(themeDir), /changed/);
