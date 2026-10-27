@@ -4,14 +4,20 @@ $ErrorActionPreference='Stop'
 $pin=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'ffmpeg-runtime.json') -Raw|ConvertFrom-Json
 $target=[IO.Path]::GetFullPath($Destination)
 . (Join-Path $PSScriptRoot '../engine/scripts/theme-windows.ps1')
+. (Join-Path $PSScriptRoot 'media-tools.ps1')
 Assert-DreamSkinNoReparseComponents -Path $target
 $mutex=[Threading.Mutex]::new($false,'Local\CodexPage-MediaTools-Download')
-$locked=$false;$temp=$null
+$locked=$false;$temp=$null;$backup=$null
 try{
   try{$locked=$mutex.WaitOne(600000)}catch [Threading.AbandonedMutexException]{$locked=$true}
   if(-not $locked){throw '等待媒体组件下载超时，请稍后重试。'}
-  if(Test-Path -LiteralPath (Join-Path $target 'codexpage-source.json')){return $target}
-  if(Test-Path -LiteralPath $target){throw '媒体组件目录不完整，请移除该缓存目录后重试。'}
+  if(Test-DynamicMediaRuntime $target){return $target}
+  if(Test-Path -LiteralPath $target){
+    $managedCache=[IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA 'CodexPage/MediaTools/ffmpeg-8.1'))
+    if($target -ine $managedCache -and -not (Test-Path -LiteralPath (Join-Path $target 'codexpage-source.json') -PathType Leaf)){
+      throw 'Refusing to replace an existing directory that is not a media component cache.'
+    }
+  }
   $parent=Split-Path $target -Parent
   [void][IO.Directory]::CreateDirectory($parent)
   $temp=Join-Path $parent ('download-'+[guid]::NewGuid().ToString('N'))
@@ -39,8 +45,16 @@ try{
   foreach($relative in @('bin/ffmpeg.exe','bin/ffprobe.exe','LICENSE.txt')){
     if(-not (Test-Path -LiteralPath (Join-Path $source $relative) -PathType Leaf)){throw "FFmpeg distribution is incomplete: $relative"}
   }
-  $pin|ConvertTo-Json|Set-Content -LiteralPath (Join-Path $source 'codexpage-source.json') -Encoding UTF8
+  $binFiles=@(Get-ChildItem -LiteralPath (Join-Path $source 'bin') -File|Where-Object Extension -in @('.exe','.dll')|ForEach-Object {[pscustomobject]@{name=$_.Name;size=$_.Length}})
+  $pin|Add-Member -NotePropertyName binFiles -NotePropertyValue $binFiles -Force
+  $pin|ConvertTo-Json -Depth 4|Set-Content -LiteralPath (Join-Path $source 'codexpage-source.json') -Encoding UTF8
+  if(-not (Test-DynamicMediaRuntime $source)){throw 'Downloaded media runtime is incomplete.'}
   Assert-DreamSkinNoReparseComponents -Path $target
+  if(Test-Path -LiteralPath $target){
+    foreach($item in Get-ChildItem -LiteralPath $target -Recurse -Force){Assert-DreamSkinNoReparseComponents -Path $item.FullName}
+    $backup=Join-Path $temp 'previous-runtime'
+    [IO.Directory]::Move($target,$backup)
+  }
   # Antivirus scanners can briefly hold newly extracted executables open.
   for($attempt=0;$attempt -lt 10;$attempt++){
     try{[IO.Directory]::Move($source,$target);break}
@@ -48,6 +62,12 @@ try{
   }
   return $target
 }finally{
+  try{
+  if($backup -and (Test-Path -LiteralPath $backup) -and -not (Test-Path -LiteralPath $target)){
+    [IO.Directory]::Move($backup,$target)
+  }
   if($temp -and [IO.Path]::GetFullPath($temp).StartsWith($parent+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){Remove-Item -LiteralPath $temp -Recurse -Force}
+  }finally{
   if($locked){$mutex.ReleaseMutex()};$mutex.Dispose()
+  }
 }

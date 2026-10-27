@@ -19,9 +19,11 @@ foreach($readme in @('README.md','README.en.md')){
   Assert (-not $text.Contains('Codex-Skin-Manager-Setup.exe')) 'README must not direct users to the legacy alias.'
 }
 $workflow=[IO.File]::ReadAllText((Join-Path $repo '.github/workflows/release-windows.yml'))
-Assert ($workflow.Contains('get-release-assets.ps1')) 'CI must validate the complete release inventory.'
-Assert ($workflow.Contains('@assetPaths')) 'CI must upload all validated assets.'
-Assert ($workflow.Contains('--title "CodexPage')) 'Release title must use CodexPage.'
+Assert ($workflow.Contains('publish-release-assets.ps1 -OutputDirectory .\dist -Version $version -Publish')) 'CI must use the verified resumable publisher.'
+$publisher=[IO.File]::ReadAllText((Join-Path $repo 'scripts/publish-release-assets.ps1'))
+Assert ($publisher.Contains('get-release-assets.ps1')) 'Publisher must validate the complete release inventory.'
+Assert ($publisher.Contains('foreach($name in $names)')) 'Publisher must process all validated assets.'
+Assert ($publisher.Contains("'--title',('CodexPage '")) 'Release title must use CodexPage.'
 $verification=[IO.File]::ReadAllText((Join-Path $repo '.github/workflows/verify-windows.yml'))
 Assert (-not $verification.Contains('Expand-Archive .\dist\*.zip')) 'CI extraction must select the canonical ZIP, not both aliases.'
 $updater=[IO.File]::ReadAllText((Join-Path $repo 'scripts/app-update.ps1'))

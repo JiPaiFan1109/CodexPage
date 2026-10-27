@@ -223,8 +223,12 @@ function parseCliArguments(argumentsList) {
 async function writeJsonAtomically(filePath, value) {
   const resolved = path.resolve(filePath);
   const temporary = resolved + ".tmp-" + process.pid + "-" + crypto.randomBytes(4).toString("hex");
-  await fsp.writeFile(temporary, JSON.stringify(value), { encoding: "utf8", flag: "wx" });
-  await fsp.rename(temporary, resolved);
+  try {
+    await fsp.writeFile(temporary, JSON.stringify(value), { encoding: "utf8", flag: "wx" });
+    await fsp.rename(temporary, resolved);
+  } finally {
+    await fsp.rm(temporary, { force: true }).catch(() => {});
+  }
 }
 
 async function runCli() {
@@ -233,18 +237,23 @@ async function runCli() {
   const startedAt = new Date().toISOString();
   const instance = await startVideoServer(config);
   const tokenSha256 = crypto.createHash("sha256").update(instance.token).digest("hex");
-  await writeJsonAtomically(options.ready, {
-    schema: "codex-dream-skin-video-ready/1",
-    pid: process.pid,
-    startedAt,
-    host: instance.address.address,
-    port: instance.address.port,
-    token: instance.token,
-    tokenSha256,
-    url: instance.url,
-    fileSize: instance.source.size,
-    fileSha256: instance.source.sha256,
-  });
+  try {
+    await writeJsonAtomically(options.ready, {
+      schema: "codex-dream-skin-video-ready/1",
+      pid: process.pid,
+      startedAt,
+      host: instance.address.address,
+      port: instance.address.port,
+      token: instance.token,
+      tokenSha256,
+      url: instance.url,
+      fileSize: instance.source.size,
+      fileSha256: instance.source.sha256,
+    });
+  } catch (error) {
+    await instance.close();
+    throw error;
+  }
   process.stdout.write("READY\n");
   const stop = async () => {
     await instance.close();

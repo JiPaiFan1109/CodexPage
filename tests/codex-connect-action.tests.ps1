@@ -8,10 +8,16 @@ Assert $clickMatch.Success 'Connection icon must have an actual click binding'
 $clickHandler=[scriptblock]::Create($clickMatch.Groups[1].Value.TrimStart('{').TrimEnd('}'))
 # Only the application launch boundary is mocked: these tests must never restart real Codex.
 function Start-DynamicManagerWork {param($Operation);$script:requested=$Operation}
-$startupMatch=[regex]::Match($managerSource,'\$window\.Add_ContentRendered\((\{[^\r\n]*\})\)')
-Assert $startupMatch.Success 'Manager must have a startup binding'
-$startupText=$startupMatch.Groups[1].Value
-$startupHandler=[scriptblock]::Create($startupText.Substring(1,$startupText.Length-2))
+$tokens=$null;$parseErrors=$null
+$managerAst=[Management.Automation.Language.Parser]::ParseInput($managerSource,[ref]$tokens,[ref]$parseErrors)
+Assert (-not $parseErrors) 'Manager source must parse'
+$startupBinding=$managerAst.Find({param($node)
+  $node -is [Management.Automation.Language.InvokeMemberExpressionAst] -and
+  $node.Expression.Extent.Text -eq '$window' -and $node.Member.Value -eq 'Add_ContentRendered'
+},$true)
+Assert ($startupBinding -and $startupBinding.Arguments[0] -is [Management.Automation.Language.ScriptBlockExpressionAst]) 'Manager must have a startup binding'
+# Execute the actual handler, including multiline readiness logic, while mocking only launch.
+$startupHandler=$startupBinding.Arguments[0].ScriptBlock.GetScriptBlock()
 $script:SkinManager=@{Busy=$false;PrepareOnly=$false;Async=$null}
 $script:requested=$null
 & $startupHandler

@@ -30,10 +30,31 @@ try{
   if($messages[-1] -ne '正在校验更新包…'){throw 'Verification stage must follow download completion'}
   if((Get-FileHash (Join-Path $stage 'codexpage-wordmark.png')).Hash -ne (Get-FileHash (Join-Path $root 'appearance/codexpage-wordmark.png')).Hash){throw 'Detached update window lost its wordmark'}
   if([IO.File]::ReadAllText((Join-Path $root 'VERSION')) -ne '1.0.1'){throw 'Download changed the running install'}
+  $firstStage=$stage
+  # Metadata must be fetched again, but a valid cached payload avoids another transfer.
+  $script:payloadRequests=0
+  function Receive-DynamicUpdateFile {
+    param($Url,$Path,$Limit,$Report)
+    if($Url.EndsWith('/update.json')){[IO.File]::WriteAllText($Path,$manifestText,[Text.UTF8Encoding]::new($false))}
+    elseif($Url.EndsWith('/update.sig')){[IO.File]::WriteAllText($Path,$signature)}
+    else{$script:payloadRequests++;Copy-Item $script:fixtureSetup $Path}
+  }
+  $stage=Save-DynamicAppUpdate $root $manifest
+  if($script:payloadRequests -ne 0){throw 'Verified cache was downloaded again'}
+  Assert-DynamicUpdateFile (Join-Path $stage 'setup.exe') $manifest
+  $cacheFile=Join-Path $root ('update-cache/'+$manifest.sha256+'.exe')
+  [IO.File]::AppendAllText($cacheFile,'corrupt')
+  $secondStage=$stage
+  $stage=Save-DynamicAppUpdate $root $manifest
+  if($script:payloadRequests -ne 1){throw 'Corrupt cache was reused or not repaired'}
+  $cancel=[hashtable]::Synchronized(@{Cancel=$false;Request=$null})
+  $cancelled=$false
+  try{Save-DynamicAppUpdate $root $manifest {param($Message)$cancel.Cancel=$true} $cancel|Out-Null}catch{$cancelled=$true}
+  if(-not $cancelled){throw 'Cancellation during final verification was ignored'}
   'PASS signed staging, complete detached helper dependencies and verification progress'
 }finally{
   $rsa.Dispose()
-  foreach($path in @($stage,$root)){
+  foreach($path in @($stage,$firstStage,$secondStage,$root)){
     if($path -and [IO.Path]::GetFullPath($path).StartsWith([IO.Path]::GetFullPath([IO.Path]::GetTempPath()))){Remove-Item -LiteralPath $path -Recurse -Force}
   }
 }

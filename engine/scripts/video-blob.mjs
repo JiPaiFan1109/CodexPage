@@ -115,7 +115,7 @@ export async function installVideoBlob(session, videoConfig) {
       s.videoBlobUrl = url;
       s.videoBlobKey = ${JSON.stringify(key)};
       try {
-        await s.attachVideoBlob(url);
+        if (await s.attachVideoBlob(url) === false) throw Error('Video attachment refused: upload cancelled');
         if (window.__CODEX_DREAM_SKIN_STATE__ !== s || !(${uploadCheck})) {
           throw Error('Video upload cancelled: runtime changed during attachment');
         }

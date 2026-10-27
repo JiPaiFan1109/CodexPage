@@ -20,10 +20,10 @@ function New-DynamicUpdateProgressWindow {
 function Save-ProgressPreview($Name){
   if(-not $PreviewDirectory){return}
   $content=$script:testWindow.Content
-  $content.Measure([Windows.Size]::new(464,245));$content.Arrange([Windows.Rect]::new(0,0,464,245));$content.UpdateLayout()
-  $bitmap=[Windows.Media.Imaging.RenderTargetBitmap]::new(464,245,96,96,[Windows.Media.PixelFormats]::Pbgra32)
+  $content.Measure([Windows.Size]::new(576,399));$content.Arrange([Windows.Rect]::new(0,0,576,399));$content.UpdateLayout()
+  $bitmap=[Windows.Media.Imaging.RenderTargetBitmap]::new(576,399,96,96,[Windows.Media.PixelFormats]::Pbgra32)
   $background=[Windows.Media.DrawingVisual]::new();$drawing=$background.RenderOpen()
-  $drawing.DrawRectangle([Windows.Media.BrushConverter]::new().ConvertFromString('#EDF4FC'),$null,[Windows.Rect]::new(0,0,464,245));$drawing.Close();$bitmap.Render($background)
+  $drawing.DrawRectangle([Windows.Media.BrushConverter]::new().ConvertFromString('#EDF4FC'),$null,[Windows.Rect]::new(0,0,576,399));$drawing.Close();$bitmap.Render($background)
   $bitmap.Render($content);$encoder=[Windows.Media.Imaging.PngBitmapEncoder]::new();$encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap))
   $stream=[IO.File]::Create((Join-Path $PreviewDirectory ($Name+'.png')))
   try{$encoder.Save($stream)}finally{$stream.Dispose()}
@@ -38,6 +38,7 @@ function Invoke-DynamicUpdateInstall {
  param($Root,$Stage,$TargetVersion,$ParentId,$Report)
  & $Report '正在安装更新，请稍候…'
  Start-Sleep -Milliseconds 300
+ if(Test-Path (Join-Path $Root 'slow')){& $Report '安装仍在进行，已等待 2 分钟。可查看日志或最小化窗口，请勿重复安装。';Start-Sleep -Milliseconds 700}
  if(Test-Path (Join-Path $Root 'fail')){throw '测试安装失败，原有程序仍可打开。'}
  & $Report '正在确认安装结果…'
 }
@@ -48,6 +49,21 @@ function Invoke-DynamicUpdateInstall {
   Assert ($result.Success -and (Test-Path $ready)) 'Successful helper must signal ready and return success'
   Assert ($script:testWindow.FindName('InstallProgress').Value -eq 100) 'Only a completed install reaches 100%'
   Save-ProgressPreview 'update-success'
+  [IO.File]::WriteAllText((Join-Path $root 'slow'),'')
+  $script:slowObserved=$false
+  $slowObserver=[Windows.Threading.DispatcherTimer]::new();$slowObserver.Interval=[timespan]::FromMilliseconds(50)
+  $slowObserver.Add_Tick({
+    if($script:testWindow.FindName('ReturnButton').Content -eq '查看安装日志'){
+      $script:slowObserved=$true
+      Assert ($script:testWindow.FindName('InstallProgress').IsIndeterminate) 'Slow install must not be marked successful'
+      Assert ($script:testWindow.ResizeMode -eq 'CanMinimize') 'Slow install must allow minimizing'
+      Save-ProgressPreview 'update-slow'
+    }
+  })
+  $slowObserver.Start()
+  try{$result=Show-DynamicUpdateInstallProgress $root $root '1.0.2' 0 $ready}finally{$slowObserver.Stop()}
+  Assert ($script:slowObserved -and $result.Success) 'Slow state must remain observable and recover to success'
+  Remove-Item -LiteralPath (Join-Path $root 'slow')
   [IO.File]::WriteAllText((Join-Path $root 'fail'),'fail')
   $observer=New-Object Windows.Threading.DispatcherTimer
   $observer.Interval=[timespan]::FromMilliseconds(100)

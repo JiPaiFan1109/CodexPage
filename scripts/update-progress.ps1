@@ -38,10 +38,20 @@ function Show-DynamicUpdateInstallProgress {
     $state.Async=$worker.BeginInvoke();$timer.Start()
   }.GetNewClosure())
   $window.Add_Closing({param($sender,$e) if(-not $state.Done){$e.Cancel=$true}}.GetNewClosure())
-  $button.Add_Click({$window.Close()}.GetNewClosure())
+  $button.Add_Click({
+    if($state.Done){$window.Close()}
+    else{
+      $log=Join-Path $Stage 'install.log'
+      if(Test-Path $log){Start-Process -FilePath (Join-Path $env:SystemRoot 'System32/notepad.exe') -ArgumentList ('"'+$log+'"')}
+      else{$detail.Text='安装日志尚未生成，安装进程仍在运行。可最小化窗口继续工作。'}
+    }
+  }.GetNewClosure())
   $timer.Add_Tick({
     $message=$null
-    while($queue.TryDequeue([ref]$message)){$status.Text=$message}
+    while($queue.TryDequeue([ref]$message)){
+      $status.Text=$message
+      if($message.StartsWith('安装仍在进行')){$detail.Text='安装耗时较长，可最小化窗口继续工作。请勿重复安装或强制结束安装进程。';$button.Content='查看安装日志';$button.Visibility='Visible'}
+    }
     if($state.Done){
       if($state.Result.Success -and ([datetime]::UtcNow-$state.CompletedAt).TotalSeconds -ge 1.5){$window.Close()}
       return
@@ -56,7 +66,7 @@ function Show-DynamicUpdateInstallProgress {
       if($worker.HadErrors -and $result.Success){throw ([string]$worker.Streams.Error[0])}
       $state.Result=$result
     }catch{$state.Result=[pscustomobject]@{Success=$false;Message=('更新未完成：'+$_.Exception.Message)}}
-    $state.Done=$true;$state.CompletedAt=[datetime]::UtcNow
+    $state.Done=$true;$state.CompletedAt=[datetime]::UtcNow;$button.Content='返回管理中心';$button.Visibility='Collapsed'
     $bar.IsIndeterminate=$false
     if($state.Result.Success){
       $bar.Value=100;$window.FindName('UpdateHeading').Text='更新完成'

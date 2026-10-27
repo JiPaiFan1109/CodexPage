@@ -7,7 +7,7 @@ $window=New-DynamicSkinManagerWindow
 try{
   $notes=[IO.File]::ReadAllText((Join-Path $repo 'docs/releases/v1.2.1-app-notes.txt')).Trim()
   $script:SkinManager=@{Window=$window;AvailableUpdate=@{version='1.2.1';notes=$notes};AppVersion='1.2.0';Controls=@{}}
-  foreach($name in @('UpdateText','UpdateNotes','UpdateBanner')){$script:SkinManager.Controls[$name]=$window.FindName($name)}
+  foreach($name in @('UpdateText','UpdateNotes','UpdateBanner','ToastMessage','ToastIcon','ToastIconBorder','ToastPanel')){$script:SkinManager.Controls[$name]=$window.FindName($name)}
   Show-DynamicUpdateNotice
   $block=$script:SkinManager.Controls.UpdateNotes
   if($block.Inlines.FirstInline.Foreground.ToString() -ne '#FFB42318'){throw 'Manual upgrade first line must be dark red'}
@@ -26,4 +26,4 @@ try{
   Show-DynamicUpdateNotice
   if($block.Text -ne 'Regular update' -or $block.Inlines.FirstInline.Foreground.ToString() -eq '#FFB42318'){throw 'Warning color leaked into regular notes'}
   'PASS warning color, full text preservation and reset to regular notes'
-}finally{$window.Close();$script:SkinManager=$null}
+}finally{if($script:SkinManager.ToastTimer){$script:SkinManager.ToastTimer.Stop()};$window.Close();$script:SkinManager=$null}

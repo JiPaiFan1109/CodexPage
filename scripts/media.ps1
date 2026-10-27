@@ -230,6 +230,18 @@ function Invoke-DynamicBackgroundTransaction {
     try { & $Apply } catch { throw "新背景应用失败：$failure；旧配置已恢复，但重新应用失败：$_。请使用打开 Codex 重试。" }
     throw $failure
   }
+  # Only this successful transaction's snapshot is disposable. Failed/older
+  # snapshots remain recovery evidence and must never be swept here.
+  try {
+    Assert-DreamSkinNoReparseComponents -Path $backup
+    foreach($entry in Get-ChildItem -LiteralPath $backup -Recurse -Force -ErrorAction Stop){
+      Assert-DreamSkinNoReparseComponents -Path $entry.FullName
+    }
+    Remove-DreamSkinManagedDirectoryVerified -Path $backup -Root $root
+  } catch {
+    # A locked backup must not turn a verified apply into a rollback or retry.
+    Write-Warning ('背景已应用，但临时备份未能清理：'+$backup+'；'+$_.Exception.Message)
+  }
 }
 
 function Invoke-DynamicEngine {

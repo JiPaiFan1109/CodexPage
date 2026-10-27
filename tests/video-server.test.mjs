@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, rm, readdir, mkdir } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
@@ -86,4 +88,34 @@ test('cancelled video requests leave the service available', async t => {
   }
   const response = await fetch(server.url, { headers: { Range: 'bytes=0-9' } });
   assert.equal((await response.arrayBuffer()).byteLength, 10);
+});
+
+test('CLI exits and removes temporary readiness files when readiness commit fails', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'skin-video-ready-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const bytes = Buffer.from('isolated fixture');
+  const filePath = path.join(root, 'video.mp4');
+  const configPath = path.join(root, 'config.json');
+  const readyPath = path.join(root, 'ready.json');
+  await writeFile(filePath, bytes);
+  await writeFile(configPath, JSON.stringify({ filePath, expectedSize: bytes.length,
+    expectedSha256: createHash('sha256').update(bytes).digest('hex') }));
+  // An existing directory makes rename fail after listening and writing the temp file.
+  await mkdir(readyPath);
+  const child = spawn(process.execPath, [fileURLToPath(new URL('../engine/scripts/video-server.mjs', import.meta.url)),
+    '--config', configPath, '--ready', readyPath], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  let stderr = '', stdout = '', forced = false;
+  child.stderr.on('data', chunk => { stderr += chunk; });
+  child.stdout.on('data', chunk => { stdout += chunk; });
+  const timeout = setTimeout(() => { forced = true; child.kill(); }, 5000);
+  t.after(() => { clearTimeout(timeout); if (child.exitCode === null) child.kill(); });
+  const exitCode = await new Promise((resolve, reject) => {
+    child.once('error', reject); child.once('close', resolve);
+  });
+  clearTimeout(timeout);
+  assert.equal(forced, false, 'failed startup left the HTTP listener/process alive');
+  assert.equal(exitCode, 1);
+  assert.match(stderr, /Video server failed/);
+  assert.equal(stdout, '');
+  assert.deepEqual((await readdir(root)).filter(name => name.startsWith('ready.json.tmp-')), []);
 });

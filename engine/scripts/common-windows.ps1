@@ -197,12 +197,17 @@ function Enter-DreamSkinOperationLock {
     }
     throw "Another Codex Dream Skin operation did not finish within $TimeoutMilliseconds ms."
   }
+  try{
+    $root=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+    $gate=[IO.File]::Open((Join-Path $root '.update-gate'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::ReadWrite)
+    $mutex|Add-Member -NotePropertyName UpdateGate -NotePropertyValue $gate -Force
+  }catch{$mutex.ReleaseMutex();$mutex.Dispose();throw 'CodexPage 正在更新，请等待安装完成后重试。'}
   return $mutex
 }
 
 function Exit-DreamSkinOperationLock {
   param([Parameter(Mandatory = $true)][System.Threading.Mutex]$Mutex)
-  try { $Mutex.ReleaseMutex() } finally { $Mutex.Dispose() }
+  try { $Mutex.ReleaseMutex() } finally { if($Mutex.UpdateGate){$Mutex.UpdateGate.Dispose()};$Mutex.Dispose() }
 }
 
 function Assert-DreamSkinPort {

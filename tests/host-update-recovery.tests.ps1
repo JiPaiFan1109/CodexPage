@@ -46,6 +46,15 @@ try {
   Request-DreamSkinUpdateRecovery $candidate $root $observation $now
   Request-DreamSkinUpdateRecovery $candidate $root $observation $now.AddSeconds(16)
   Assert ($script:starts -eq 1) 'Monitor restart must preserve dismissed receipt'
+  Request-DreamSkinUpdateRecovery $candidate $root $observation $now.AddMinutes(6)
+  Assert ($script:starts -eq 2) 'Created but unacknowledged helper must be retried after its lease'
+  $receiptPath=Join-Path $root 'update-recovery-notice.json'
+  $receipt=Read-DreamSkinUtf8File $receiptPath|ConvertFrom-Json
+  $receipt.Status='declined'
+  Write-DreamSkinUtf8FileAtomically $receiptPath ($receipt|ConvertTo-Json)
+  Request-DreamSkinUpdateRecovery $candidate $root $observation $now.AddMinutes(12)
+  Assert ($script:starts -eq 2) 'Explicit refusal must never trigger another prompt for the same process'
+  $script:starts=1
   [IO.File]::WriteAllText((Join-Path $root 'paused'),'')
   Request-DreamSkinUpdateRecovery $replacement $root $observation $now.AddSeconds(90)
   Assert ($script:starts -eq 1 -and $observation.Count -eq 0) 'Paused state must suppress prompts'

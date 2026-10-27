@@ -1,4 +1,4 @@
-﻿# Third-party notices
+# Third-party notices
 
 ## Codex Dream Skin
 
@@ -18,9 +18,9 @@ Upstream: https://ffmpeg.org/ ; builds and source/build references: https://gith
 
 ## Node.js
 
-Release packages bundle the official Windows x64 **Node.js 24.19.0** executable. The runtime's complete upstream license file, including notices for its bundled dependencies, is distributed at `engine/runtime/node/LICENSE` inside the Release ZIP and installed tree.
+Release 3.0.0 bundles the official Windows x64 **Node.js 24.22.1** executable. The runtime's complete upstream license file, including notices for its bundled dependencies, is distributed at `engine/runtime/node/LICENSE` inside the Release ZIP and installed tree.
 
-Source and license information: [Node.js](https://nodejs.org/) and [Node.js v24.19.0 distribution](https://nodejs.org/dist/v24.19.0/). The pinned download and hashes are recorded in `scripts/node-runtime.json`. The build verifies the archive hash; build and installation verify the executable hash and its OpenJS Foundation Authenticode signature.
+Source and license information: [Node.js](https://nodejs.org/) and [Node.js v24.22.1 distribution](https://nodejs.org/dist/v24.22.1/). The pinned download and hashes are recorded in `scripts/node-runtime.json`. The build verifies the archive hash; build and installation verify the executable hash and its OpenJS Foundation Authenticode signature.
 
 ## OpenAI Codex and icons
 

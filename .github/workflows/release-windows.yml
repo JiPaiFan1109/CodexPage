@@ -48,6 +48,10 @@ jobs:
           & powershell.exe -NoProfile -STA -ExecutionPolicy RemoteSigned -File installer/verify-setup.ps1
           if ($LASTEXITCODE -ne 0) { throw 'Setup lifecycle test failed' }
 
+      - name: Complete update regression gate
+        shell: powershell
+        run: .\scripts\test-updates.ps1
+
       - name: Sign and verify update manifest
         shell: powershell
         env:
@@ -67,18 +71,4 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           $version = (Get-Content VERSION -Raw).Trim()
-          $assetNames = @(./scripts/get-release-assets.ps1 -OutputDirectory ./dist -Version $version)
-          $assetPaths = @($assetNames | ForEach-Object { Join-Path './dist' $_ })
-          $viewOutputPath = Join-Path $env:RUNNER_TEMP 'release-view-output.txt'
-          $viewErrorPath = Join-Path $env:RUNNER_TEMP 'release-view-error.txt'
-          $viewProcess = Start-Process -FilePath 'gh.exe' -ArgumentList @('release','view',$env:RELEASE_TAG,'--json','isDraft','--jq','.isDraft') -RedirectStandardOutput $viewOutputPath -RedirectStandardError $viewErrorPath -NoNewWindow -Wait -PassThru
-          $viewOutput = @(Get-Content -Raw $viewOutputPath -ErrorAction SilentlyContinue)
-          $viewExitCode = $viewProcess.ExitCode
-          if ($viewExitCode -ne 0) {
-            gh release create "$env:RELEASE_TAG" --verify-tag --draft --title "CodexPage $env:RELEASE_TAG" --notes-file (Join-Path 'docs/releases' ($env:RELEASE_TAG+'.md'))
-            if ($LASTEXITCODE -ne 0) { throw 'Draft creation failed' }
-          } elseif (($viewOutput -join '').Trim() -ne 'true') { throw 'Refusing to change an already published release' }
-          gh release upload "$env:RELEASE_TAG" @assetPaths
-          if ($LASTEXITCODE -ne 0) { throw 'Release upload failed' }
-          gh release edit "$env:RELEASE_TAG" --draft=false --latest
-          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }
+          .\scripts\publish-release-assets.ps1 -OutputDirectory .\dist -Version $version -Publish

@@ -181,6 +181,7 @@ function Import-DynamicWallpaperEngine {
   if(-not $Roots){$Roots=@(Get-DynamicWallpaperEngineRoots)}
   $result=[pscustomobject]@{Imported=0;Existing=0;Skipped=0;Failed=0;Converted=0;Previews=0;Details=@();SelectedId=$null;Roots=@($Roots);PendingProjects=@();NeedsConverter=$false}
   $visited=@{}
+  $componentError=$null
   $directories=@()
   if($PSBoundParameters.ContainsKey('ProjectDirectories')){
     foreach($path in $ProjectDirectories){
@@ -216,11 +217,14 @@ function Import-DynamicWallpaperEngine {
         }
         $ext=[IO.Path]::GetExtension($inputMedia).ToLowerInvariant()
         if(($inputKind -eq 'Image' -and $ext -notin @('.png','.jpg','.jpeg','.webp','.bmp','.tif','.tiff','.avif')) -or ($inputKind -eq 'Video' -and $ext -notin @('.mp4','.mov','.m4v','.wmv','.avi','.mkv','.webm','.gif','.apng','.flv','.mpg','.mpeg','.ts','.m2ts','.ogv'))){throw '此媒体格式暂不支持转换。'}
+        $inputLength=(Get-Item -LiteralPath $inputMedia).Length
+        $inputLimit=10MB;if($inputKind -eq 'Video'){$inputLimit=2GB}
+        if($inputLength -le 0 -or $inputLength -gt $inputLimit){throw '媒体为空或超过导入大小限制，请缩小文件后重试。'}
         $direct=($inputKind -eq 'Image' -and $ext -in @('.png','.jpg','.jpeg','.webp')) -or ($inputKind -eq 'Video' -and (Test-DynamicVideoDirectImport $inputMedia))
         $import=$null
-        if($DeferConversion -and -not $direct){
+        if(-not $direct){
           $import=Import-DynamicSteamCache $inputMedia $inputKind $StateRoot $label $Report -SourceFiles $sourceFiles -Mode $mode -ExistingOnly
-          if(-not $import){
+          if(-not $import -and $DeferConversion){
             $result.PendingProjects+=$directory.FullName
             if($inputKind -eq 'Video' -or $ext -eq '.avif'){$result.NeedsConverter=$true}
             continue
@@ -228,7 +232,13 @@ function Import-DynamicWallpaperEngine {
         }
         if(-not $import){
           if($direct -and -not $previewOnly){$import=Import-DynamicSteamReference -Media $media -Kind $kind -StateRoot $StateRoot -Title $label}
-          else{$import=Import-DynamicSteamCache $inputMedia $inputKind $StateRoot $label $Report -SourceFiles $sourceFiles -Mode $mode}
+          else{
+            if(-not $direct -and ($inputKind -eq 'Video' -or $ext -eq '.avif')){
+              if($componentError){throw $componentError}
+              try{$null=Get-DynamicMediaTool ffmpeg -Report $Report}catch{$componentError=$_.Exception;throw}
+            }
+            $import=Import-DynamicSteamCache $inputMedia $inputKind $StateRoot $label $Report -SourceFiles $sourceFiles -Mode $mode
+          }
         }
         if($previewOnly){$result.Previews++;$result.Details+=($label+'：仅导入项目预览素材，未还原完整场景、网页或互动效果。')}
         elseif(-not $direct -and -not $import.AlreadyExists){$result.Converted++}

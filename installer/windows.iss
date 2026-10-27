@@ -1,4 +1,4 @@
-﻿#ifndef SourceRoot
+#ifndef SourceRoot
   #error SourceRoot is required; use scripts/build-app.ps1
 #endif
 #ifndef AppVersion
@@ -57,6 +57,8 @@ Source: "{#SourceRoot}\VERSION"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceRoot}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceRoot}\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 
+Source: "{#SourceRoot}\installed-files.json"; DestDir: "{app}"; Flags: ignoreversion
+
 [InstallDelete]
 #ifndef TestInstallRoot
 Type: files; Name: "{userdesktop}\Codex 换肤管理中心.lnk"
@@ -88,13 +90,48 @@ Filename: "{app}\CodexSkinManager.exe"; Description: "打开 CodexPage"; Flags: 
 #endif
 
 [Code]
+var
+  UpdateGate: THandle;
+  UpdateGateHeld: Boolean;
+
+function CreateFileW(FileName: String; Access, Share: LongWord; Security: NativeUInt; Creation, Flags: LongWord; Template: THandle): THandle;
+  external 'CreateFileW@kernel32.dll stdcall';
+function CloseHandle(Handle: THandle): Boolean;
+  external 'CloseHandle@kernel32.dll stdcall';
+
+procedure DeinitializeSetup();
+begin
+  if UpdateGateHeld then begin
+    CloseHandle(UpdateGate);
+    UpdateGateHeld := False;
+  end;
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ExitCode: Integer;
   Params: String;
   BlockReason: AnsiString;
+  GateAttempt: Integer;
 begin
   Result := '';
+  if not UpdateGateHeld then begin
+    if not ForceDirectories(ExpandConstant('{app}')) then begin
+      Result := '无法创建安装目录，请检查权限。';
+      Exit;
+    end;
+    { A monitor may briefly hold a shared lease during its poll. Allow it to finish. }
+    for GateAttempt := 1 to 50 do begin
+      UpdateGate := CreateFileW(ExpandConstant('{app}\.update-gate'), $C0000000, 0, 0, 4, $80, 0);
+      if UpdateGate <> THandle(-1) then Break;
+      Sleep(100);
+    end;
+    if UpdateGate = THandle(-1) then begin
+      Result := 'CodexPage 正在运行或另一个安装尚未完成，请关闭管理器后重试。';
+      Exit;
+    end;
+    UpdateGateHeld := True;
+  end;
   ExtractTemporaryFile('check-upgrade.ps1');
   Params := '-NoProfile -WindowStyle Hidden -ExecutionPolicy RemoteSigned -File "' + ExpandConstant('{tmp}\check-upgrade.ps1') + '" -InstallRoot "' + ExpandConstant('{app}') + '" -ResultPath "' + ExpandConstant('{tmp}\upgrade-check-result.txt') + '"';
   if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Params, '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then
@@ -121,4 +158,12 @@ begin
   if ExitCode = 2 then Abort;
   if ExitCode <> 0 then
     RaiseException('外观恢复未完成，卸载已停止。请先在 CodexPage 恢复原始外观后重试。');
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if (CurStep = ssPostInstall) and UpdateGateHeld then begin
+    CloseHandle(UpdateGate);
+    UpdateGateHeld := False;
+  end;
 end;

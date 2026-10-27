@@ -139,4 +139,11 @@ function Invoke-DynamicQuickLauncher {
   }
 }
 
-if($MyInvocation.InvocationName-ne'.'){[void](Invoke-DynamicQuickLauncher)}
+if($MyInvocation.InvocationName-ne'.'){
+  $root=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+  $updateGate=$null
+  try{
+    $updateGate=[IO.File]::Open((Join-Path $root '.update-gate'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::ReadWrite)
+    [void](Invoke-DynamicQuickLauncher)
+  }finally{if($updateGate){$updateGate.Dispose()}}
+}

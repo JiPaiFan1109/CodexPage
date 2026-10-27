@@ -92,12 +92,14 @@ $StateRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $ConfigPath = Join-Path $HOME '.codex\config.toml'
 $BackupPath = Join-Path $StateRoot 'config.before-dream-skin.toml'
 $operationLock = $null
+$updateEntryGate = $null
 $startFailureCategory = 'internal-start-failure'
 $startupPending = $false
 $appearanceTransaction = $null
 $appearanceRecovery = 'not-needed'
 try {
   $startupTimer = [Diagnostics.Stopwatch]::StartNew()
+  $updateEntryGate=[IO.File]::Open((Join-Path $StateRoot '.update-gate'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::ReadWrite)
   if($UpdateRecoveryKey -and -not (Test-DreamSkinUpdateRecoveryCurrent $StateRoot $UpdateRecoveryKey)){exit 0}
   if(Test-DreamSkinExternalSourceMissing -StateRoot $StateRoot){
     if($UpdateRecoveryKey){exit 0}
@@ -112,7 +114,11 @@ try {
     # Consent is requested outside the operation lock: an ignored prompt must not block restore/apply.
     $recoveryLanguage=Resolve-DreamSkinLanguage -StateRoot $StateRoot
     $recoveryMessage=if($recoveryLanguage -eq 'en'){'The app updated and its wallpaper connection was lost. Your wallpaper is saved. Restarting interrupts current work. Choose Not now to keep working and reconnect later from CodexPage.'}else{'应用更新后，壁纸连接已断开，原壁纸设置仍已保存。重启会中断当前操作，请先保存工作。选择“暂不重启”可继续工作，稍后从 CodexPage 重新连接。'}
-    if(-not (Confirm-DreamSkinRestart -Message $recoveryMessage -TimeoutSeconds 60)){exit 0}
+    $accepted=Confirm-DreamSkinRestart -Message $recoveryMessage -TimeoutSeconds 60
+    $receiptPath=Join-Path $StateRoot 'update-recovery-notice.json'
+    $receipt=Read-DreamSkinUtf8File $receiptPath|ConvertFrom-Json
+    if($receipt.Key -ceq $UpdateRecoveryKey){$receipt|Add-Member -NotePropertyName Status -NotePropertyValue $(if($accepted){'confirmed'}else{'declined'}) -Force;Write-DreamSkinUtf8FileAtomically $receiptPath ($receipt|ConvertTo-Json)}
+    if(-not $accepted){exit 0}
     $RestartExisting=$true;$PromptRestart=$false
   }
   $operationLock = Enter-DreamSkinOperationLock `
@@ -882,5 +888,6 @@ try {
   }
   throw $startError
 } finally {
+  if ($updateEntryGate) { $updateEntryGate.Dispose() }
   if ($null -ne $operationLock) { Exit-DreamSkinOperationLock -Mutex $operationLock }
 }

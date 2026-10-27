@@ -27,8 +27,9 @@ try{
   }
   $result=Get-DynamicAppUpdate $fixtureRoot $fixtureRoot -Manual
   Assert ($result.version -eq '1.1.1') 'API 403 must fall back to a verified release manifest'
-  Assert ($script:requests.Count -eq 3) 'Fallback must be bounded to one API attempt and two signed metadata files'
-  Assert ($script:requests[1] -eq 'https://github.com/JiPaiFan1109/Codex-SkinDIY/releases/latest/download/update.json') 'Fallback must use the canonical official release endpoint'
+  Assert ($script:requests.Count -eq 5) 'Fallback must be bounded to one API attempt, latest discovery and version-pinned signed metadata'
+  Assert ($script:requests[1] -eq 'https://github.com/JiPaiFan1109/CodexPage/releases/latest/download/update.json') 'Fallback must use the canonical official release endpoint'
+  Assert ($script:requests[3] -eq 'https://github.com/JiPaiFan1109/CodexPage/releases/download/v1.1.1/update.json' -and $script:requests[4] -eq 'https://github.com/JiPaiFan1109/CodexPage/releases/download/v1.1.1/update.sig') 'Fallback must pin both signed files to the discovered version'
   $before=$script:requests.Count
   Assert ($null -eq (Get-DynamicAppUpdate $fixtureRoot $fixtureRoot)) 'Daily throttle must remain active'
   Assert ($script:requests.Count -eq $before) 'Fallback bypassed daily throttling'

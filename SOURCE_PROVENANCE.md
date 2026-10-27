@@ -1,3 +1,13 @@
+# 2026-10-27 当前来源核对
+
+3.0.0 来源补充：用户已授权将当前媒体、更新和审查修复发布为 3.0.0，VERSION/package.json 已同步，固定运行时为 Node 24.22.1。从 GitHub main `cd0036cdf57fc0b86fd31cb205a4de27ea8abcef` 创建独立发布副本，保留根与既有发布工作树。最终候选包在 ../.local-evidence/release-3.0.0/final/，验证证据在其父目录；本机生产仍为 2.1.0。下段为发布准备前的核实快照。
+
+current/VERSION 与 package.json 均为 2.3.1。公开 main 为 cd0036cdf57fc0b86fd31cb205a4de27ea8abcef，最新公开 Release 为 v2.3.1；本地 .local-evidence/release-2.3.1/publish/ 的十附件与公开 API 大小/SHA256 匹配，包内 74 项清单匹配。本机安装 VERSION 与卸载注册表均为 2.1.0。
+
+当前源码还包括 10 月 26–27 日的媒体、更新和全面审查修复，未重新构建或发布；不能凭同为 2.3.1 认定源码与公开包一致。根仓库无 remote，current 在根仓库为未跟踪目录。初始重建来源仍保留在下文；未证明可逐字节复现历史安装包。本轮变更前文件哈希、备份与验证记录在 ../.local-evidence/comprehensive-audit-20261027/，报告见 docs/comprehensive-audit-2026-10-27.md。
+
+以下版本、安装及授权描述均为带日期的历史记录，不代表当前状态。
+
 # 2.1.0 来源补充
 
 当前源码从公开 2.0.0 基线继续开发，包含安装目录、Steam 引用、稳定性恢复及弹窗改进。发布副本已快进至线上 1655efd，并保留其 README 修改。本机生产安装仍为 2.0.0。下方为历史记录。

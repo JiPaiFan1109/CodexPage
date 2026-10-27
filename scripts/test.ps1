@@ -4,7 +4,8 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 if (-not $NodeRuntimePath) { $NodeRuntimePath = Join-Path $root 'engine/runtime/node/node.exe' }
 if (-not (Test-Path -LiteralPath $NodeRuntimePath -PathType Leaf)) {
-  throw 'Pass -NodeRuntimePath with the pinned Node 24.19.0 executable, or build/extract the Release ZIP first.'
+  $pinnedVersion=(Get-Content (Join-Path $PSScriptRoot 'node-runtime.json') -Raw|ConvertFrom-Json).version
+  throw "Pass -NodeRuntimePath with the pinned Node $pinnedVersion executable, or build/extract the Release ZIP first."
 }
 $env:PATH=(Split-Path ([IO.Path]::GetFullPath($NodeRuntimePath)))+';'+$env:PATH
 & $NodeRuntimePath --test (Join-Path $root 'tests/*.test.mjs')

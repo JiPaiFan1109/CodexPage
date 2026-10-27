@@ -23,6 +23,11 @@ namespace CodexDynamicSkin {
           string script = Path.Combine(root, "scripts", "manage-background.ps1");
           if (!File.Exists(script)) throw new FileNotFoundException("安装文件不完整，请重新安装 CodexPage。", script);
           string arguments = "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy RemoteSigned -File \"" + script + "\" -InstallRoot \"" + root + "\"";
+          if (args.Length == 2 && args[0] == "--update-ready") {
+            Guid token;
+            if (!Guid.TryParseExact(args[1], "N", out token)) throw new ArgumentException("Invalid update token");
+            arguments += " -UpdateReadyToken " + token.ToString("N");
+          }
           // Isolated package verification can open the real UI without changing Codex.
           if (args.Length == 1 && args[0] == "--prepare-only") arguments += " -PrepareOnly";
           var info = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe"), arguments);

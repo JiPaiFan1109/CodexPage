@@ -10,6 +10,7 @@ if (-not $OutputDirectory) { $OutputDirectory = Join-Path $repo 'dist' }
 $pin = Get-Content (Join-Path $PSScriptRoot 'node-runtime.json') -Raw | ConvertFrom-Json
 $version = (Get-Content (Join-Path $repo 'VERSION') -Raw).Trim()
 if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid release version.' }
+if((Get-Content (Join-Path $repo 'package.json') -Raw|ConvertFrom-Json).version -cne $version){throw 'package.json version differs from VERSION'}
 $temp = Join-Path ([IO.Path]::GetTempPath()) ('dynamic-build-' + [guid]::NewGuid().ToString('N'))
 $stage = Join-Path $temp 'package'
 New-Item -ItemType Directory -Path $stage -Force | Out-Null
@@ -59,6 +60,14 @@ try {
   Assert-DynamicSkinNode (Join-Path $runtime 'node.exe') (Join-Path $stage 'scripts/node-runtime.json')
   $null=New-DynamicSkinQuickLauncher -StageRoot $stage
   $null=New-DynamicSkinManagerLauncher -StageRoot $stage
+  # Inventory matches the EXE [Files] selection, excluding the extracted preflight helper.
+  $installed=@(Get-ChildItem -LiteralPath $stage -Recurse -File | ForEach-Object {
+    $relative=$_.FullName.Substring($stage.Length+1).Replace('\','/')
+    if(($relative -match '^(engine/|scripts/|appearance/)' -and $relative -ne 'scripts/check-upgrade.ps1') -or $relative -in @('VERSION','LICENSE','THIRD_PARTY_NOTICES.md','CodexSkinManager.exe')){
+      [ordered]@{path=$relative;size=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()}
+    }
+  })
+  [IO.File]::WriteAllText((Join-Path $stage 'installed-files.json'),(@{schema=1;version=$version;files=$installed}|ConvertTo-Json -Depth 4),[Text.UTF8Encoding]::new($false))
   $hashes = @(Get-ChildItem -LiteralPath $stage -Recurse -File | Sort-Object FullName | ForEach-Object {
     (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $_.FullName.Substring($stage.Length + 1).Replace('\','/')
   })

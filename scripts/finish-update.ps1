@@ -30,23 +30,61 @@ function Invoke-DynamicUpdateInstall {
     Assert-DynamicUpdateFile $setup $manifest
     if($Report){& $Report '正在安装更新，请稍候…'}
     $process=Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="'+[IO.Path]::GetFullPath($Root).TrimEnd('\')+'"'),('/LOG="'+(Join-Path $Stage 'install.log')+'"')) -WindowStyle Hidden -PassThru
-    try{$process.WaitForExit();$exitCode=$process.ExitCode}finally{$process.Dispose()}
-    if($exitCode -ne 0){throw ('安装未完成（代码 '+$exitCode+'）。请关闭占用程序后重试。安装日志：'+(Join-Path $Stage 'install.log'))}
+    try{
+      $elapsed=[Diagnostics.Stopwatch]::StartNew();$nextNotice=120
+      while(-not $process.WaitForExit(1000)){
+        if($elapsed.Elapsed.TotalSeconds -ge $nextNotice){
+          if($Report){& $Report ('安装仍在进行，已等待 '+[int]$elapsed.Elapsed.TotalMinutes+' 分钟。可查看日志或最小化窗口，请勿重复安装。')}
+          $nextNotice+=30
+        }
+      }
+      $exitCode=$process.ExitCode
+    }finally{$process.Dispose()}
+    if($exitCode -ne 0){throw ((Get-DynamicSetupFailureMessage $exitCode)+' 安装日志：'+(Join-Path $Stage 'install.log'))}
     if($Report){& $Report '正在确认安装结果…'}
-    if([IO.File]::ReadAllText((Join-Path $Root 'VERSION')).Trim() -cne $TargetVersion){throw '安装后的版本校验失败，请返回 CodexPage 重试。'}
+    Assert-DynamicInstalledUpdate $Root $TargetVersion
   }finally{$lock.Dispose()}
 }
 
+function Start-DynamicUpdatedManager {
+  param([string]$Root,[int]$TimeoutMilliseconds=30000)
+  $token=[guid]::NewGuid().ToString('N');$ready=Join-Path $Root ('update-ready-'+$token)
+  $launcher=Join-Path $Root 'CodexSkinManager.exe'
+  $process=Start-Process -FilePath $launcher -ArgumentList @('--update-ready',$token) -WindowStyle Hidden -PassThru
+  try{
+    $watch=[Diagnostics.Stopwatch]::StartNew()
+    while(-not(Test-Path $ready)){
+      if($process.HasExited -or $watch.ElapsedMilliseconds -ge $TimeoutMilliseconds){throw '管理器启动未确认，请手动打开或修复安装。'}
+      Start-Sleep -Milliseconds 100
+    }
+  }finally{$process.Dispose();if(Test-Path $ready){Remove-Item -LiteralPath $ready -Force}}
+}
+
 if($MyInvocation.InvocationName -ne '.'){
-  $success=$false
+  $success=$false;$session=$null;$stageLease=$null
+  try{
+    $session=[IO.File]::Open((Join-Path $InstallRoot '.update-session'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+    $stageLease=[IO.File]::Open((Join-Path $PSScriptRoot '.lease'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+  }catch{if($session){$session.Dispose()};throw '另一个更新仍在进行，请等待完成。'}
+  try{
   try{
     if($ReadyPath -and [IO.Path]::GetFullPath($ReadyPath) -ine (Join-Path $PSScriptRoot 'ui-ready')){throw '更新状态路径无效。'}
     . (Join-Path $PSScriptRoot 'update-progress.ps1')
     $result=Show-DynamicUpdateInstallProgress $InstallRoot $PSScriptRoot $Version $ManagerProcessId $ReadyPath
     $success=[bool]$result.Success;$message=[string]$result.Message
   }catch{$message='更新未完成：'+$_.Exception.Message}
-  [IO.File]::WriteAllText((Join-Path $InstallRoot 'update-result.json'),(@{Success=$success;Message=$message}|ConvertTo-Json -Compress),(New-Object Text.UTF8Encoding($false)))
-  $launcher=Join-Path $InstallRoot 'CodexSkinManager.exe'
-  if(Test-Path -LiteralPath $launcher){Start-Process -FilePath $launcher -WindowStyle Hidden}
-  if($success){Remove-Item -LiteralPath (Join-Path $PSScriptRoot 'setup.exe') -Force}
+  try{Save-DynamicUpdateResult $InstallRoot @{Success=$success;Message=$message;Version=$Version;CompletedUtc=[datetime]::UtcNow.ToString('o')}}
+  catch{Write-DynamicUpdateFailure $PSScriptRoot 'result-write' $_.Exception}
+  # Result persistence and launching are independent: a full/read-only disk must not prevent recovery.
+  try{Start-DynamicUpdatedManager $InstallRoot}
+  catch{
+    $success=$false
+    Write-DynamicUpdateFailure $PSScriptRoot 'manager-start' $_.Exception
+    $message='安装流程已结束，但管理器未能就绪。请手动打开或修复安装。日志：'+$PSScriptRoot
+    try{Save-DynamicUpdateResult $InstallRoot @{Success=$false;Message=$message}}catch{}
+    Add-Type -AssemblyName PresentationFramework
+    [Windows.MessageBox]::Show($message,'CodexPage')|Out-Null
+  }
+  if($success){Remove-Item -LiteralPath (Join-Path $PSScriptRoot 'setup.exe') -Force -ErrorAction SilentlyContinue}
+  }finally{$stageLease.Dispose();$session.Dispose()}
 }

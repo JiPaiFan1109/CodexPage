@@ -86,13 +86,19 @@ function Request-DreamSkinUpdateRecovery {
   if(Test-Path -LiteralPath $receiptPath){
     # Corrupt receipts are reported instead of creating an unbounded prompt loop.
     $receipt=Read-DreamSkinUtf8File $receiptPath|ConvertFrom-Json -ErrorAction Stop
-    if($receipt.Key -ceq $Candidate.Key){return}
+    if($receipt.Key -ceq $Candidate.Key){
+      if(-not $receipt.Status -or $receipt.Status -in @('declined','confirmed')){return}
+      # A created process is not evidence that its confirmation UI ran.
+      if($Now -lt [datetime]::Parse($receipt.RequestedAt).ToUniversalTime().AddMinutes(5)){return}
+      if([int]$receipt.Attempts -ge 3){return}
+    }
   }
   # Never let an incorrectly rooted monitor launch against another installation's state.
   if(-not (Test-DreamSkinPathEqual $StateRoot (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent))){return}
   $launcher=Join-Path $PSScriptRoot 'start-dream-skin.ps1'
   $args='-NoProfile -WindowStyle Hidden -ExecutionPolicy RemoteSigned -File '+(ConvertTo-DreamSkinProcessArgument $launcher)+' -PromptRestart -RequireUnpaused -OperationLockTimeoutMilliseconds 30000 -UpdateRecoveryKey '+$Candidate.Key
-  Write-DreamSkinUtf8FileAtomically $receiptPath (@{Key=$Candidate.Key;Version=$Candidate.Version;RequestedAt=$Now.ToString('o')}|ConvertTo-Json)
+  $attempt=1;if($receipt -and $receipt.Key -ceq $Candidate.Key){$attempt=[int]$receipt.Attempts+1}
+  Write-DreamSkinUtf8FileAtomically $receiptPath (@{Key=$Candidate.Key;Version=$Candidate.Version;Status='requested';Attempts=$attempt;RequestedAt=$Now.ToString('o')}|ConvertTo-Json)
   $logs=Join-Path $StateRoot 'logs/multi-instance'
   [IO.Directory]::CreateDirectory($logs)|Out-Null
   try{Start-Process (Join-Path $PSHOME 'powershell.exe') -ArgumentList $args -WindowStyle Hidden -ErrorAction Stop -RedirectStandardOutput (Join-Path $logs 'update-recovery.log') -RedirectStandardError (Join-Path $logs 'update-recovery-error.log')|Out-Null}

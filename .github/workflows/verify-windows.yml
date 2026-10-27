@@ -1,7 +1,7 @@
 name: Windows UX regression review
 on:
   push:
-    branches: ['codex/windows-release-audit', 'codex/upgrade-helper-cleanup', 'codex/in-app-updates']
+    branches: [main, 'codex/**']
   pull_request:
     branches: [main]
 permissions:
@@ -44,6 +44,9 @@ jobs:
             if ($LASTEXITCODE -ne 0) { $failed += $test }
           }
           if ($failed.Count) { throw ('Failed: '+($failed -join ', ')) }
+      - name: Complete update regressions
+        shell: powershell
+        run: .\scripts\test-updates.ps1
       - name: Install pinned compiler in the hosted VM
         shell: powershell
         run: |

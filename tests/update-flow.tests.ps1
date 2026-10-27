@@ -52,6 +52,19 @@ try{
   Reject {Invoke-DynamicUpdateInstall $root $stage '0.4.0' 0}
   Assert ((Get-Content (Join-Path $root 'VERSION')) -eq '0.3.0') 'Failed install changed version'
   Remove-Item (Join-Path $root 'fail')
+  # A zero exit and updated VERSION alone must never count as a healthy install.
+  Reject {Invoke-DynamicUpdateInstall $root $stage '0.4.0' 0}
+  [IO.File]::WriteAllText((Join-Path $root 'VERSION'),'0.3.0')
+  $inventory=@()
+  foreach($name in @('CodexSkinManager.exe','scripts/manage-background.ps1','scripts/skin-manager.ps1','engine/runtime/node/node.exe')){
+    $file=Join-Path $root $name;[IO.Directory]::CreateDirectory((Split-Path $file -Parent))|Out-Null
+    [IO.File]::WriteAllText($file,'fixture')
+    $inventory+=@{path=$name;size=(Get-Item $file).Length;sha256=(Get-FileHash $file).Hash.ToLowerInvariant()}
+  }
+  $sha=[Security.Cryptography.SHA256]::Create()
+  try{$hash=[BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes('0.4.0'))).Replace('-','').ToLowerInvariant()}finally{$sha.Dispose()}
+  $inventory+=@{path='VERSION';size=5;sha256=$hash}
+  [IO.File]::WriteAllText((Join-Path $root 'installed-files.json'),(@{schema=1;version='0.4.0';files=$inventory}|ConvertTo-Json -Depth 4))
   $installMessages=[Collections.Generic.List[string]]::new()
   Invoke-DynamicUpdateInstall $root $stage '0.4.0' 0 {param($Message)$installMessages.Add($Message)}
   Assert ($installMessages.Count -ge 3 -and $installMessages[-1] -eq '正在确认安装结果…') 'Installer did not report its actual stages'

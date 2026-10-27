@@ -296,6 +296,7 @@ function Update-DynamicManagerButtons {
   if($ui.Controls.CheckUpdateButton){
     $ui.Controls.CheckUpdateButton.IsEnabled=(-not $ui.Busy -and -not $ui.UpdateWorker -and -not $ui.PrepareOnly)
     foreach($name in @('InstallUpdateButton','LaterUpdateButton','SkipUpdateButton')){$ui.Controls[$name].IsEnabled=(-not $ui.Busy -and -not $ui.UpdateWorker)}
+    if($ui.UpdateWorker -and $ui.UpdateOperation -eq 'Download'){$ui.Controls.InstallUpdateButton.IsEnabled=(-not $ui.UpdateCancellation.Cancel)}
   }
 }
 
@@ -675,7 +676,13 @@ function Show-DynamicSkinManager {
   $controls.PreviewVideo.Add_MediaEnded({$video=$script:SkinManager.Controls.PreviewVideo;$video.Position=[timespan]::Zero;$video.Play()})
   $controls.PreviewVideo.Add_MediaFailed({Stop-DynamicManagerPreview;$script:SkinManager.Controls.PreviewNotice.Text='本机无法播放此预览。文件仍保留，可尝试应用壁纸。'})
   Register-DynamicManagerClosingGuard $window
-  $window.Add_ContentRendered({Start-DynamicManagerStartup})
+  $window.Add_ContentRendered({
+    if($script:DynamicUpdateReadyToken -match '^[a-f0-9]{32}$'){
+      [IO.File]::WriteAllText((Join-Path $script:SkinManager.InstallRoot ('update-ready-'+$script:DynamicUpdateReadyToken)),'ready')
+      $script:DynamicUpdateReadyToken=$null
+    }
+    Start-DynamicManagerStartup
+  })
   try {Update-DynamicManagerButtons;$null=$window.ShowDialog()}
   finally {
     Save-DynamicManagerOpacity;$script:SkinManager.OpacityTimer.Stop()
@@ -683,6 +690,7 @@ function Show-DynamicSkinManager {
     Stop-DynamicManagerPreview;$timer.Stop()
     if($script:SkinManager.ToastTimer){$script:SkinManager.ToastTimer.Stop()}
     $script:SkinManager.UpdateTimer.Stop();$script:SkinManager.UpdateStartupTimer.Stop()
+    if($script:SkinManager.UpdateCancellation){$script:SkinManager.UpdateCancellation.Cancel=$true;$request=$script:SkinManager.UpdateCancellation.Request;if($request){$request.Abort()}}
     if($script:SkinManager.UpdateWorker){$script:SkinManager.UpdateWorker.Stop();$script:SkinManager.UpdateWorker.Dispose()}
     if($script:SkinManager.UpdateRunspace){$script:SkinManager.UpdateRunspace.Dispose()}
     if($script:SkinManager.Worker){$script:SkinManager.Worker.Dispose()};if($script:SkinManager.Runspace){$script:SkinManager.Runspace.Dispose()};$script:SkinManager=$null
@@ -724,7 +732,7 @@ function Move-DynamicSelectionThumb {
   $from=[double]$Transform.$Axis
   if([math]::Abs($from-$To) -lt 0.01 -and -not $Transform.HasAnimatedProperties){return}
   $Transform.BeginAnimation($property,$null);$Transform.$Axis=$To
-  if($Animate){
+  if($Animate -and (Test-DynamicManagerMotionEnabled)){
     $animation=New-Object Windows.Media.Animation.DoubleAnimation
     $animation.From=$from;$animation.To=$To;$animation.Duration=[timespan]::FromMilliseconds(240)
     $ease=New-Object Windows.Media.Animation.CubicEase;$ease.EasingMode='EaseOut';$animation.EasingFunction=$ease
@@ -816,6 +824,10 @@ function Update-DynamicManagerConnectionBadge {
   if($ui.Connection.Available -and -not $ui.Connection.Connected -and -not $ui.PrepareOnly){$action='点击图标建立连接；需要重启时会先征求确认。'}
   $ui.Controls.OpenButton.ToolTip=$ui.Connection.Message+"`n"+$action
 }
+function Test-DynamicManagerMotionEnabled {
+  return [Windows.SystemParameters]::ClientAreaAnimation
+}
+
 function Set-DynamicConnectionChecking {
   param([bool]$Checking)
   $ui=$script:SkinManager
@@ -825,9 +837,12 @@ function Set-DynamicConnectionChecking {
     $checkingText='正在检测…';if($ui.PendingOperation -eq 'Open'){$checkingText='正在连接…'}
     $ui.Controls.OpenButton.ToolTip=$checkingText
     if($ui.Controls.ConnectionLabel){$ui.Controls.ConnectionLabel.Text=$checkingText;$ui.Controls.ConnectionDetail.Text='请稍候'}
-    $a=New-Object Windows.Media.Animation.DoubleAnimation 0,360,([Windows.Duration]::new([timespan]::FromSeconds(0.85)))
-    $a.RepeatBehavior=[Windows.Media.Animation.RepeatBehavior]::Forever
-    $ui.Controls.ConnectionSpinner.BeginAnimation([Windows.Media.RotateTransform]::AngleProperty,$a)
+    $ui.Controls.ConnectionSpinner.BeginAnimation([Windows.Media.RotateTransform]::AngleProperty,$null)
+    if(Test-DynamicManagerMotionEnabled){
+      $a=New-Object Windows.Media.Animation.DoubleAnimation 0,360,([Windows.Duration]::new([timespan]::FromSeconds(0.85)))
+      $a.RepeatBehavior=[Windows.Media.Animation.RepeatBehavior]::Forever
+      $ui.Controls.ConnectionSpinner.BeginAnimation([Windows.Media.RotateTransform]::AngleProperty,$a)
+    }
   }else{
     $ui.Controls.ConnectionSpinner.BeginAnimation([Windows.Media.RotateTransform]::AngleProperty,$null)
     $ui.Controls.ConnectionLoading.Visibility='Collapsed'
@@ -839,6 +854,9 @@ function Show-DynamicManagerConfirmation {
   param([string]$Title,[string]$Message,[scriptblock]$Action,[scriptblock]$CancelAction,[string]$AcceptText='确认',[switch]$NoticeOnly)
   $ui=$script:SkinManager
   if($ui.Busy){return}
+  if($ui.Window -is [Windows.Window] -and $ui.Controls.ConfirmationOverlay.Visibility -ne 'Visible'){
+    $ui.ConfirmationPreviousFocus=[Windows.Input.FocusManager]::GetFocusedElement($ui.Window)
+  }
   $ui.Controls.ConfirmCancelButton.Content='取消'
   $ui.Controls.ConfirmCancelButton.Visibility='Visible'
   $ui.Controls.ConfirmationCancelColumn.Width=[Windows.GridLength]::new(1,[Windows.GridUnitType]::Star)
@@ -854,6 +872,13 @@ function Show-DynamicManagerConfirmation {
   $ui.Controls.ConfirmationTitle.Text=$Title;$ui.Controls.ConfirmationMessage.Text=$Message
   $ui.Controls.ConfirmAcceptButton.Content=$AcceptText;$ui.Controls.ConfirmationOverlay.Visibility='Visible'
   $ui.Controls.ConfirmationScroll.ScrollToTop()
+  [Windows.Input.KeyboardNavigation]::SetTabNavigation($ui.Controls.ConfirmationOverlay,'Cycle')
+  [Windows.Input.KeyboardNavigation]::SetControlTabNavigation($ui.Controls.ConfirmationOverlay,'Cycle')
+  [Windows.Input.KeyboardNavigation]::SetDirectionalNavigation($ui.Controls.ConfirmationOverlay,'Cycle')
+  if($ui.Window -is [Windows.Window]){
+    $focus=$ui.Controls.ConfirmCancelButton;if($NoticeOnly){$focus=$ui.Controls.ConfirmAcceptButton}
+    [Windows.Input.FocusManager]::SetFocusedElement($ui.Window,$focus)
+  }
 }
 function Show-DynamicSteamConversionConfirmation {
   param($Pending,[string]$ImportReport)
@@ -873,18 +898,20 @@ function Show-DynamicSteamConversionConfirmation {
 
 function Show-DynamicImportResult {
   param([string]$Report)
-  $ui=$script:SkinManager
-  Show-DynamicManagerConfirmation -Title '壁纸导入结果' -Message $Report -Action {} -AcceptText '知道了'
-  $ui.Controls.ConfirmCancelButton.Visibility='Collapsed'
-  $ui.Controls.ConfirmationCancelColumn.Width=[Windows.GridLength]::new(0)
-  $ui.Controls.ConfirmationGapColumn.Width=[Windows.GridLength]::new(0)
-  $ui.Controls.ConfirmationMessage.TextAlignment='Left'
+  Show-DynamicManagerConfirmation -Title '壁纸导入结果' -Message $Report -Action {} -AcceptText '知道了' -NoticeOnly
 }
 function Complete-DynamicManagerConfirmation {
   param([bool]$Accepted)
   $ui=$script:SkinManager
+  if($ui.Controls.ConfirmationOverlay.Visibility -ne 'Visible'){return}
   $action=$ui.ConfirmationCancel;if($Accepted){$action=$ui.ConfirmationAction}
   $ui.ConfirmationAction=$null;$ui.ConfirmationCancel=$null;$ui.Controls.ConfirmationOverlay.Visibility='Collapsed'
+  $previousFocus=$ui.ConfirmationPreviousFocus;$ui.ConfirmationPreviousFocus=$null
+  if($ui.Window -is [Windows.Window]){
+    if($previousFocus -and $previousFocus.IsEnabled -and $previousFocus.Visibility -eq 'Visible'){
+      [Windows.Input.FocusManager]::SetFocusedElement($ui.Window,$previousFocus)
+    }else{[Windows.Input.FocusManager]::SetFocusedElement($ui.Window,$null)}
+  }
   if($action){& $action}
 }
 function Show-DynamicManagerToast {
@@ -1039,9 +1066,11 @@ function Set-DynamicEngineSearchState {
   $ui.Controls.EngineRefreshButton.Visibility=if(@($ui.EngineRoots).Count){'Visible'}else{'Collapsed'}
   if($Searching){
     $ui.Controls.EngineSearchStatus.Text='正在定位本地壁纸目录…'
-    $animation=[Windows.Media.Animation.DoubleAnimation]::new(0,360,[Windows.Duration]::new([timespan]::FromMilliseconds(900)))
-    $animation.RepeatBehavior=[Windows.Media.Animation.RepeatBehavior]::Forever
-    $rotation.BeginAnimation([Windows.Media.RotateTransform]::AngleProperty,$animation)
+    if(Test-DynamicManagerMotionEnabled){
+      $animation=[Windows.Media.Animation.DoubleAnimation]::new(0,360,[Windows.Duration]::new([timespan]::FromMilliseconds(900)))
+      $animation.RepeatBehavior=[Windows.Media.Animation.RepeatBehavior]::Forever
+      $rotation.BeginAnimation([Windows.Media.RotateTransform]::AngleProperty,$animation)
+    }
   }elseif($Roots.Count){
     $ui.EngineRoots=@($Roots);$ui.Controls.EngineSearchStatus.Text=($Roots -join '；');$ui.Controls.EngineRefreshButton.Visibility='Visible'
   }else{

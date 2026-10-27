@@ -1,9 +1,11 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
 . (Join-Path $repo 'scripts/skin-manager.ps1')
 . (Join-Path $repo 'scripts/update-ui.ps1')
 Add-Type -AssemblyName PresentationFramework
 function Update-DynamicManagerButtons {}
+function Save-DynamicManagerOpacity {}
+function Stop-DynamicManagerPreview {}
 function Assert($value,$message){if(-not $value){throw $message}}
 $stage=Join-Path ([IO.Path]::GetTempPath()) ('handoff-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($stage)|Out-Null
@@ -24,9 +26,11 @@ try{
     $worker=[PowerShell]::Create();$space=[RunspaceFactory]::CreateRunspace();$space.Open();$worker.Runspace=$space
     $null=$worker.AddScript('param($stage) [pscustomobject]@{Stage=$stage}').AddArgument($stage)
     $async=$worker.BeginInvoke();$null=$async.AsyncWaitHandle.WaitOne(5000)
-    $script:SkinManager=@{Window=$window;Busy=$true;UpdateClosing=$false;UpdateOperation='Download';UpdateManual=$true;InstallRoot=$stage;AvailableUpdate=@{version='1.2.1'};UpdateWorker=$worker;UpdateRunspace=$space;UpdateAsync=$async;UpdateTimer=[Windows.Threading.DispatcherTimer]::new();UpdateQueue=[Collections.Concurrent.ConcurrentQueue[string]]::new();Controls=@{UpdateText=[Windows.Controls.TextBlock]::new();StatusText=[Windows.Controls.TextBlock]::new();UpdateProgress=[Windows.Controls.ProgressBar]::new();WorkProgress=[Windows.Controls.ProgressBar]::new()}}
+    $script:SkinManager=@{Window=$window;Busy=$false;UpdateClosing=$false;UpdateOperation='Download';UpdateManual=$true;InstallRoot=$stage;AvailableUpdate=@{version='1.2.1'};UpdateWorker=$worker;UpdateRunspace=$space;UpdateAsync=$async;UpdateTimer=[Windows.Threading.DispatcherTimer]::new();UpdateQueue=[Collections.Concurrent.ConcurrentQueue[string]]::new();Controls=@{UpdateText=[Windows.Controls.TextBlock]::new();StatusText=[Windows.Controls.TextBlock]::new();UpdateProgress=[Windows.Controls.ProgressBar]::new();WorkProgress=[Windows.Controls.ProgressBar]::new();InstallUpdateButton=[Windows.Controls.Button]::new()}}
     Register-DynamicManagerClosingGuard $window
     Complete-DynamicUpdateWork
+    Assert (-not $script:closed -and $script:SkinManager.ReadyUpdateStage -eq $stage) 'Download must leave the manager open until explicit install'
+    Start-DynamicUpdateHandoff $stage
     if($script:mode -eq 'success'){Assert $script:closed 'Ready helper must close manager through the real guard'}
     else{
       Assert (-not $script:closed) ('Failed helper must retain manager: '+$script:mode)

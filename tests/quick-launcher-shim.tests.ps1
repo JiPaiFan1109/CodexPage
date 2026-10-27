@@ -13,7 +13,7 @@ try{
   $exe=Join-Path $launcherDir 'CodexDynamicSkinLauncher.exe'
   & $compiler /nologo /target:winexe /optimize+ /reference:System.Web.Extensions.dll ("/out:$exe") (Join-Path $scriptsDir 'quick-launcher.cs')
   if($LASTEXITCODE-ne0){throw 'FAIL: lightweight launcher did not compile'}
-  Start-Process -FilePath $exe -Wait
+  Start-Process -FilePath $exe -WindowStyle Hidden -Wait
   $deadline=(Get-Date).AddSeconds(5)
   while(-not(Test-Path -LiteralPath $marker) -and (Get-Date)-lt$deadline){Start-Sleep -Milliseconds 100}
   if(-not(Test-Path -LiteralPath $marker)){throw 'FAIL: compiled launcher bypassed launch-dream-skin.ps1'}

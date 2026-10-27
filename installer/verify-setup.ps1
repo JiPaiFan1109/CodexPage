@@ -26,8 +26,10 @@ try{
   # The installed files must be the bytes in the audited production payload.
   foreach($item in Get-ChildItem $installed -Recurse -File|Where-Object Name -NotLike 'unins*'){
     $relative=$item.FullName.Substring($installed.Length+1)
+    if($relative -eq '.update-gate'){continue}
     if((Get-FileHash $item.FullName).Hash -ne (Get-FileHash (Join-Path $PackagePath $relative)).Hash){throw "Installed file differs: $relative"}
   }
+  Assert-DynamicInstalledUpdate $installed $version
   # Exercise the actual installed EXE and its hidden PowerShell child, not just the XAML loader.
   if(-not $SkipManagerLaunch){
   $manager=$null;$child=$null

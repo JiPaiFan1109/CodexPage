@@ -123,6 +123,18 @@ test('attachment failure revokes newly created Blob and clears state', async t =
   assert.deepEqual(f.revoked, ['blob:fixture-1']);
   assert.equal(f.state.videoUpload, undefined); assert.equal(f.state.videoBlobUrl, undefined);
 });
+
+test('attachment refusal preserves previous media and rejects the upload', async t => {
+  const { bytes, config } = fixture(); mockFetch(t, bytes); const f = sessionFixture();
+  f.state.videoBlobUrl = 'blob:previous';
+  f.state.videoBlobKey = 'previous-key';
+  f.state.attachVideoBlob = () => false;
+  await assert.rejects(installVideoBlob(f.session, config), /cancel|refus/i);
+  assert.deepEqual(f.revoked, ['blob:fixture-1']);
+  assert.equal(f.state.videoBlobUrl, 'blob:previous');
+  assert.equal(f.state.videoBlobKey, 'previous-key');
+  assert.equal(f.state.videoUpload, undefined);
+});
 test('navigation during transfer never attaches to replacement runtime', async t => {
   const { bytes, config } = fixture(); mockFetch(t, bytes); const f = sessionFixture();
   const evaluate = f.session.evaluate;

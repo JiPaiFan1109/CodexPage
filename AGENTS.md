@@ -1,6 +1,8 @@
-# 2.1.0 发布检查
+# 当前开发与授权边界（2026-10-27 核实）
 
-当前源码为 2.1.0，用户已授权本次检查、构建和发布。旧版记录仅为历史；发布状态以工作区 PROJECT_STATE.md 最新条目为准。默认开发入口不变，不覆盖生产安装、不擅自重启 Codex。
+当前 VERSION 与 package.json 为 3.0.0，包含媒体、更新与全面审查修复，固定 Node 24.22.1。用户于 2026-10-27 明确要求发布 3.0.0 到 GitHub；发行状态以 GitHub Release 和 docs/RELEASE_STATUS.md 为准；本地工作区另见 ../PROJECT_STATE.md、../docs/workspace/VERSIONS.md。本机安装仍为 2.1.0。
+
+本次已授权 3.0.0 构建、隔离候选包验收、GitHub 源码与发行附件发布；不覆盖生产安装、不重启 Codex、不修改生产壁纸库。以下 UI 规范继续有效，带旧日期的版本描述与授权仅为历史。
 
 # UI refinement workflow
 

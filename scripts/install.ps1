@@ -53,7 +53,15 @@ function New-DynamicSkinManagerLauncher {
   $compiler=@("$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\csc.exe","$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\csc.exe")|Where-Object{Test-Path -LiteralPath $_ -PathType Leaf}|Select-Object -First 1
   if(-not $compiler){throw 'Microsoft .NET Framework C# compiler is required to build the manager.'}
   $output=Join-Path $StageRoot 'CodexSkinManager.exe'
-  & $compiler /nologo /target:winexe /platform:x64 /optimize+ /reference:System.Windows.Forms.dll ("/win32icon:"+(Join-Path $StageRoot 'appearance/skin-manager.ico')) ("/out:$output") (Join-Path $StageRoot 'scripts/manager-launcher.cs')
+  $version=[IO.File]::ReadAllText((Join-Path $StageRoot 'VERSION')).Trim()
+  if($version -notmatch '^\d+\.\d+\.\d+$'){throw 'Invalid application version'}
+  $generated=Join-Path $StageRoot ('manager-version-'+[guid]::NewGuid().ToString('N')+'.cs')
+  $source=[IO.File]::ReadAllText((Join-Path $StageRoot 'scripts/manager-launcher.cs'))
+  $source=[regex]::Replace($source,'Assembly(File)?Version\("[^"]+"\)',('Assembly$1Version("'+$version+'.0")'))
+  [IO.File]::WriteAllText($generated,$source,[Text.UTF8Encoding]::new($true))
+  try{
+  & $compiler /nologo /target:winexe /platform:x64 /optimize+ /reference:System.Windows.Forms.dll ("/win32icon:"+(Join-Path $StageRoot 'appearance/skin-manager.ico')) ("/out:$output") $generated
+  }finally{Remove-Item -LiteralPath $generated -Force}
   if($LASTEXITCODE -ne 0 -or -not(Test-Path -LiteralPath $output)){throw 'Manager compilation failed.'}
   return $output
 }
@@ -129,7 +137,17 @@ function Install-DynamicSkin {
   $backup = Join-Path $root "backups/install-$token"
   New-Item -ItemType Directory -Path $stage -Force | Out-Null
   $activated = @(); $saved = @(); $changedLinks = @(); $savedLinks = @()
+  $updateGate=$null
   try {
+    $updateGate=[IO.File]::Open((Join-Path $root '.update-gate'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+    if(Test-Path (Join-Path $root 'VERSION')){
+      . (Join-Path $source 'scripts/app-update.ps1')
+      $old=[IO.File]::ReadAllText((Join-Path $root 'VERSION')).Trim();$new=[IO.File]::ReadAllText((Join-Path $source 'VERSION')).Trim()
+      if(Test-DynamicNewVersion $old $new){throw '不支持覆盖安装旧版本，请使用当前版本或更新版本。'}
+      . (Join-Path $source 'scripts/check-upgrade.ps1')
+      $reason=Invoke-DynamicUpgradePreparation $root
+      if($reason){throw $reason}
+    }
     Copy-Item -LiteralPath (Join-Path $source 'engine') -Destination $stage -Recurse
     Copy-Item -LiteralPath (Join-Path $source 'scripts') -Destination $stage -Recurse
     if(Test-Path -LiteralPath (Join-Path $source 'appearance/skin-manager.ico')){
@@ -213,6 +231,7 @@ function Install-DynamicSkin {
     foreach ($name in $saved) { Move-Item -LiteralPath (Join-Path $backup $name) -Destination $root }
     throw
   } finally {
+    if($updateGate){$updateGate.Dispose()}
     # The exact staging child is generated above, and never accepts caller input.
     if (Test-Path -LiteralPath $stage) { Assert-DynamicSkinTree $stage; Remove-Item -LiteralPath $stage -Recurse -Force }
   }

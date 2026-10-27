@@ -28,7 +28,11 @@ function Show-DynamicUpdateNotice {
   }
   $ui.Controls.UpdateBanner.Visibility='Visible'
   $panel=$ui.Window.FindName('SettingsPanel')
-  if($panel){$panel.Visibility='Visible'}
+  if($panel -and $ui.UpdateManual){$panel.Visibility='Visible'}
+  if(-not $ui.UpdateManual -and $ui.NotifiedUpdateVersion -ne $ui.AvailableUpdate.version){
+    $ui.NotifiedUpdateVersion=$ui.AvailableUpdate.version
+    Show-DynamicManagerToast ('发现新版本 '+$ui.AvailableUpdate.version+'，可在设置中下载。') Info
+  }
 }
 
 function Start-DynamicUpdateWork {
@@ -39,8 +43,8 @@ function Start-DynamicUpdateWork {
   if($Operation -eq 'Download'){
     Save-DynamicManagerOpacity
     if($ui.PendingOpacity){Show-DynamicManagerToast '请先保存清晰度设置，再更新。' Error;return}
-    $ui.Busy=$true;Stop-DynamicManagerPreview
-    $ui.Controls.WorkProgress.Visibility='Visible'
+    $ui.UpdateCancellation=[hashtable]::Synchronized(@{Cancel=$false;Request=$null})
+    $ui.Controls.InstallUpdateButton.Content='取消下载'
   }
   $ui.UpdateOperation=$Operation;$ui.UpdateManual=[bool]$Manual
   $ui.Controls.UpdateText.Text='正在检查更新…'
@@ -48,17 +52,17 @@ function Start-DynamicUpdateWork {
   $queue=New-Object 'System.Collections.Concurrent.ConcurrentQueue[string]'
   $worker=[PowerShell]::Create();$runspace=[RunspaceFactory]::CreateRunspace();$runspace.Open();$worker.Runspace=$runspace
   $body={
-    param($ModuleRoot,$InstallRoot,$StateRoot,$Operation,$Manual,$Manifest,$Queue)
+    param($ModuleRoot,$InstallRoot,$StateRoot,$Operation,$Manual,$Manifest,$Queue,$Cancellation)
     $ErrorActionPreference='Stop'
     . (Join-Path $ModuleRoot 'app-update.ps1')
     if($Operation -eq 'Check'){
       $update=Get-DynamicAppUpdate $InstallRoot $StateRoot -Manual:$Manual
       return [pscustomobject]@{Manifest=$update;Stage=$null}
     }
-    $stage=Save-DynamicAppUpdate $InstallRoot $Manifest {param($message)$Queue.Enqueue([string]$message)}
+    $stage=Save-DynamicAppUpdate $InstallRoot $Manifest {param($message)$Queue.Enqueue([string]$message)} $Cancellation
     return [pscustomobject]@{Manifest=$Manifest;Stage=$stage}
   }
-  $null=$worker.AddScript($body.ToString()).AddArgument($ui.ModuleRoot).AddArgument($ui.InstallRoot).AddArgument($ui.StateRoot).AddArgument($Operation).AddArgument([bool]$Manual).AddArgument($ui.AvailableUpdate).AddArgument($queue)
+  $null=$worker.AddScript($body.ToString()).AddArgument($ui.ModuleRoot).AddArgument($ui.InstallRoot).AddArgument($ui.StateRoot).AddArgument($Operation).AddArgument([bool]$Manual).AddArgument($ui.AvailableUpdate).AddArgument($queue).AddArgument($ui.UpdateCancellation)
   $ui.UpdateWorker=$worker;$ui.UpdateRunspace=$runspace;$ui.UpdateQueue=$queue;$ui.UpdateAsync=$worker.BeginInvoke()
   Update-DynamicManagerButtons;$ui.UpdateTimer.Start()
 }
@@ -73,10 +77,10 @@ function Complete-DynamicUpdateWork {
     if($ui.UpdateWorker.HadErrors){throw $ui.UpdateWorker.Streams.Error[0].Exception}
     $result=$results|Select-Object -Last 1
     if(-not $result){throw '更新检查未返回结果。'}
-    if($ui.UpdateOperation -eq 'Download'){$stage=$result.Stage}
+    if($ui.UpdateOperation -eq 'Download'){if(-not $ui.UpdateCancellation -or -not $ui.UpdateCancellation.Cancel){$stage=$result.Stage}}
     else{
-      if($result.Manifest){$ui.AvailableUpdate=$result.Manifest}
-      elseif($ui.UpdateManual){$ui.AvailableUpdate=$null}
+      if($result.Manifest){if($ui.AvailableUpdate -and $ui.AvailableUpdate.version -ne $result.Manifest.version){$ui.ReadyUpdateStage=$null;$ui.Controls.InstallUpdateButton.Content='下载更新'};$ui.AvailableUpdate=$result.Manifest}
+      elseif($ui.UpdateManual){$ui.AvailableUpdate=$null;$ui.ReadyUpdateStage=$null}
       if($ui.AvailableUpdate){
         Show-DynamicUpdateNotice
       }elseif($ui.UpdateManual){$ui.Controls.UpdateBanner.Visibility='Collapsed';$ui.Controls.UpdateText.Text='当前已是最新稳定版（'+$ui.AppVersion+'）。'}
@@ -87,10 +91,22 @@ function Complete-DynamicUpdateWork {
     else{$ui.Controls.UpdateText.Text='版本 '+$ui.AppVersion+' · 暂时无法检查更新，可稍后手动重试。'}
   }finally{
     $ui.UpdateWorker.Dispose();$ui.UpdateRunspace.Dispose();$ui.UpdateWorker=$null;$ui.UpdateRunspace=$null;$ui.UpdateAsync=$null
-    if($ui.UpdateOperation -eq 'Download'){$ui.Busy=$false;$ui.Controls.WorkProgress.Visibility='Collapsed';$ui.Controls.UpdateProgress.Visibility='Collapsed'}
+    if($ui.UpdateOperation -eq 'Download'){$ui.UpdateCancellation=$null;$ui.Controls.UpdateProgress.Visibility='Collapsed';$ui.Controls.InstallUpdateButton.Content='下载更新'}
     Update-DynamicManagerButtons
   }
   if($stage){
+    $ui.ReadyUpdateStage=$stage;$ui.Controls.InstallUpdateButton.Content='立即安装'
+    $ui.Controls.UpdateText.Text='更新已下载并校验，点击立即安装后才会关闭管理器。'
+  }
+}
+
+function Start-DynamicUpdateHandoff {
+  param([string]$Stage)
+  $ui=$script:SkinManager
+  if($ui.Busy -or $ui.UpdateWorker -or -not $Stage){return}
+  Save-DynamicManagerOpacity
+  if($ui.PendingOpacity){Show-DynamicManagerToast '请先保存清晰度设置，再安装。' Error;return}
+  Stop-DynamicManagerPreview
     try{
       $ui.Busy=$true;Update-DynamicManagerButtons
       Set-DynamicUpdateProgress '正在启动安装程序…'
@@ -118,7 +134,6 @@ function Complete-DynamicUpdateWork {
       $ui.UpdateClosing=$true
       $ui.Window.Close()
     }catch{$ui.UpdateClosing=$false;$ui.Busy=$false;$ui.Controls.UpdateProgress.Visibility='Collapsed';$ui.Controls.UpdateText.Text='无法启动升级，请重试：'+$_.Exception.Message;Update-DynamicManagerButtons}
-  }
 }
 
 function Initialize-DynamicUpdateUI {
@@ -133,24 +148,30 @@ function Initialize-DynamicUpdateUI {
   $ui.Controls.SkipUpdateButton.Add_Click({
     try{
       $ui=$script:SkinManager;$state=Read-DynamicUpdateState $ui.StateRoot;$state.SkippedVersion=$ui.AvailableUpdate.version
-      Save-DynamicUpdateState $ui.StateRoot $state;$ui.AvailableUpdate=$null;$ui.Controls.UpdateBanner.Visibility='Collapsed';$ui.Controls.UpdateText.Text='已跳过此版本，可手动检查更新。'
+      Save-DynamicUpdateState $ui.StateRoot $state;$ui.AvailableUpdate=$null;$ui.ReadyUpdateStage=$null;$ui.Controls.InstallUpdateButton.Content='下载更新';$ui.Controls.UpdateBanner.Visibility='Collapsed';$ui.Controls.UpdateText.Text='已跳过此版本，可手动检查更新。'
     }catch{$script:SkinManager.Controls.UpdateText.Text='无法保存跳过设置，请重试。'}
   })
   $ui.Controls.InstallUpdateButton.Add_Click({
     $ui=$script:SkinManager
-    Start-DynamicUpdateWork Download
+    if($ui.UpdateWorker -and $ui.UpdateOperation -eq 'Download'){
+      $ui.UpdateCancellation.Cancel=$true
+      $request=$ui.UpdateCancellation.Request
+      if($request){$request.Abort()}
+      $ui.Controls.InstallUpdateButton.IsEnabled=$false;$ui.Controls.UpdateText.Text='正在取消下载…'
+    }elseif($ui.ReadyUpdateStage){Start-DynamicUpdateHandoff $ui.ReadyUpdateStage}
+    else{Start-DynamicUpdateWork Download}
   })
   # Wait for the initial library refresh; automatic checking has its own worker and does not block editing.
   $startup=New-Object Windows.Threading.DispatcherTimer;$startup.Interval=[timespan]::FromSeconds(1)
-  $startup.Add_Tick({$ui=$script:SkinManager;if(-not $ui.Busy){$ui.UpdateStartupTimer.Stop();Start-DynamicUpdateWork Check}});$ui.UpdateStartupTimer=$startup
-  if(-not $ui.PrepareOnly){$startup.Start()}
+  $startup.Add_Tick({$ui=$script:SkinManager;$ui.UpdateStartupTimer.Interval=[timespan]::FromMinutes(1);if(-not $ui.Busy -and -not $ui.UpdateWorker -and -not $ui.ReadyUpdateStage -and (Test-DynamicUpdateDue (Read-DynamicUpdateState $ui.StateRoot))){Start-DynamicUpdateWork Check}});$ui.UpdateStartupTimer=$startup
+  if(-not $ui.PrepareOnly){$startup.Start();Remove-DynamicStaleUpdateStages $ui.InstallRoot}
   $resultPath=Join-Path $ui.InstallRoot 'update-result.json'
   if(Test-Path -LiteralPath $resultPath){
     try{
       if((Get-Item $resultPath).Length -lt 16KB){$result=[IO.File]::ReadAllText($resultPath)|ConvertFrom-Json;$ui.Controls.UpdateText.Text=[string]$result.Message}
       Remove-Item -LiteralPath $resultPath -Force
       # Keep the installation result visible for this launch; manual checks are still available.
-      $startup.Stop()
+      $startup.Interval=[timespan]::FromMinutes(5)
     }catch{}
   }
 }

@@ -45,10 +45,11 @@ Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤12
 
 ## 重要更新
 
-> **2.3.1 升级须知：此次更新请前往 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.3.1) 下载 `CodexPage-Setup.exe`，先退出 CodexPage，再运行安装包覆盖升级。暂勿点击旧版中的「立即更新」；无需卸载，壁纸库和设置保留。**
+> **3.0.0 升级须知：此次更新请前往 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.0.0) 下载 `CodexPage-Setup.exe`，先退出 CodexPage，再运行安装包覆盖升级。暂勿点击旧版中的「立即更新」；无需卸载，壁纸库和设置保留。**
 
 | 日期（北京时间） | 版本 | 更新内容 |
 | --- | --- | --- |
+| 2026-10-27 | [3.0.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.0.0) | 更新流程与安装校验加固，修复媒体异常和资源残留，改善键盘焦点与减少动画支持，升级 Node 24.22.1 |
 | 2026-10-25 | [2.3.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.3.1) | 先导入兼容壁纸，再确认转换或下载转换器；跳过保留已导入内容 |
 | 2026-10-25 | [2.3.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.3.0) | 扩展 Wallpaper Engine 媒体导入与预览，按需下载转换组件，改善宿主恢复及重启确认 |
 | 2026-10-24 | [2.2.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.2.1) | 修正 CodexPage 下载命名与发行附件，保留旧版更新兼容 |
@@ -95,7 +96,7 @@ Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤12
 
 ### 升级、卸载与常见问题
 
-- **升级至 2.3.1**：请从 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.3.1) 下载安装包，退出 CodexPage 后覆盖安装，暂勿使用旧版「立即更新」。无需卸载，壁纸库与设置保留；完成后重新应用壁纸即可恢复换肤连接。CodexPage 打开时每天最多自动检查一次，支持稍后和跳过此版本；应用未运行时不会推送通知。
+- **升级至 3.0.0**：请从 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.0.0) 下载安装包，退出 CodexPage 后覆盖安装，暂勿使用旧版「立即更新」。无需卸载，壁纸库与设置保留；完成后重新应用壁纸即可恢复换肤连接。CodexPage 打开时每天最多自动检查一次，支持稍后和跳过此版本；应用未运行时不会推送通知。
 - **卸载**：从 Windows「已安装的应用」卸载。卸载前会执行外观恢复；取消或失败时停止卸载。壁纸库默认保留。
 - **未找到 Codex**：确认当前 Windows 用户已安装官方 Store 版客户端，再点击左下角连接图标重试。
 - **从官方入口打开后没有皮肤**：回到 CodexPage 重新应用壁纸，按提示处理正在运行的会话。
@@ -109,7 +110,7 @@ Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤12
 - 安装时可选择有写入权限的目录，默认 `%LOCALAPPDATA%\CodexDynamicSkin`，无需管理员权限；壁纸库位于所选目录中的 `wallpaper-library`。重装默认沿用原目录，自动更新写回当前目录；更换目录不会自动迁移旧壁纸库。
 - 通过本机注册的官方 Codex 安装信息完成检测，并由本地引擎启动和应用背景。绿色连接状态表示已核验真实调试会话；找到安装但未建立连接时仍可通过应用壁纸启动连接。
 - 默认安装、启动和恢复流程不改写全局 `%USERPROFILE%\.codex\config.toml`。兼容旧状态的恢复保护逻辑仍保留。
-- 安装包包含固定版本 Node.js 24.19.0 x64 及其许可证，构建时核对 SHA-256 和 OpenJS Foundation 签名。本项目 EXE 尚无项目代码签名证书；上游 Node.js 签名不代表安装程序已签名，不要求关闭 Windows 安全保护。
+- 3.0.0 发行包固定使用 Node.js 24.22.1 x64 及其许可证，构建时核对 SHA-256 和 OpenJS Foundation 签名。本项目 EXE 尚无项目代码签名证书；上游 Node.js 签名不代表安装程序已签名，不要求关闭 Windows 安全保护。
 - 视频由 Windows 自带媒体组件转换为静音 H.264 MP4，保持比例，最高 1920 × 1080、30 fps。
 - 仍提供 [Release ZIP](https://github.com/JiPaiFan1109/CodexPage/releases)：完整解压后运行 `Install.cmd`。GitHub 自动生成的源码 ZIP 不含运行环境。
 - 程序运行和视频播放会占用内存及 CPU/GPU；不承诺所有 Codex 版本兼容或完全没有性能开销。
