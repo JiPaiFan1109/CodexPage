@@ -39,7 +39,7 @@ jobs:
         shell: powershell
         run: |
           $failed = @()
-          foreach ($test in @('start-cancellation.tests.ps1','start-watcher-health.tests.ps1','ux-cancellation.tests.ps1','upgrade-preflight.tests.ps1','upgrade-helper-cleanup.tests.ps1','media-restore.tests.ps1','restore-result.tests.ps1','wallpaper-actions.tests.ps1','skin-manager.tests.ps1','manager-error.tests.ps1','uninstall-app.tests.ps1','no-config-mutation.ps1','distribution-cleanup.tests.ps1','app-update.tests.ps1','update-flow.tests.ps1','update-ui.tests.ps1','multi-instance-root.tests.ps1','manager-library-first.tests.ps1','codex-connect-worker.tests.ps1','upgrade-duplicate-monitor.tests.ps1','upgrade-duplicate-live.tests.ps1','update-setup-diagnostics.tests.ps1')) {
+          foreach ($test in @('start-cancellation.tests.ps1','launcher-diagnostics.tests.ps1','start-watcher-health.tests.ps1','ux-cancellation.tests.ps1','upgrade-preflight.tests.ps1','upgrade-helper-cleanup.tests.ps1','media-restore.tests.ps1','restore-result.tests.ps1','wallpaper-actions.tests.ps1','skin-manager.tests.ps1','manager-error.tests.ps1','uninstall-app.tests.ps1','no-config-mutation.ps1','distribution-cleanup.tests.ps1','app-update.tests.ps1','update-flow.tests.ps1','update-ui.tests.ps1','multi-instance-root.tests.ps1','manager-library-first.tests.ps1','codex-connect-worker.tests.ps1','upgrade-duplicate-monitor.tests.ps1','upgrade-duplicate-live.tests.ps1','update-setup-diagnostics.tests.ps1')) {
             & powershell.exe -NoProfile -STA -ExecutionPolicy RemoteSigned -File (Join-Path tests $test)
             if ($LASTEXITCODE -ne 0) { $failed += $test }
           }

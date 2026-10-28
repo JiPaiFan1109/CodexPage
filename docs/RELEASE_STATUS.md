@@ -1,3 +1,7 @@
+## 3.1.0 验证进行中（2026-10-28）
+
+用户明确授权修复、全面检查并发布3.1.0。current/VERSION与package.json=3.1.0；候选源码已推送codex/reliability-3.1.0，尚未公开3.1.0。最终包在工作区.local-evidence/release-3.1.0/final；安装包SHA256 ff295bcd36ef7ed19c059f225ac15b48a5db970bc133d242bafab2ffb2ee2892，28,921,601字节；更新签名和75项包清单/60项安装清单通过。实际公开结果以后续状态为准。此前3.0.0记录保留。
+
 # 3.0.0 发布索引（2026-10-27）
 
 源码版本为 3.0.0，发行入口为 [v3.0.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.0.0)；公开状态以 GitHub 为准。功能和升级方式见 [发布说明](releases/v3.0.0.md)，审查证据见 [全面审查](comprehensive-audit-2026-10-27.md) 和 [补查记录](audit-followup-2026-10-27.md)。报告中的旧版、未发布和测试数量均为当时阶段记录。
