@@ -44,9 +44,9 @@ function Start-DynamicManagerStartup {
   if($ui.StartupStarted -or $ui.Busy){return}
   # ContentRendered can fire again. Never repeat a cancelled connection prompt.
   $ui.StartupStarted=$true
-  if($ui.PrepareOnly){Start-DynamicManagerWork Refresh;return}
-  # Open checks fresh identity in the worker and reuses a healthy connection.
-  Start-DynamicManagerWork Open
+  $ui.StartupConnectionPending=$true
+  # Show the saved collection before host discovery or a restart confirmation.
+  Start-DynamicManagerWork LibraryLoad
 }
 
 function Start-DynamicCodexConnectionWork {
@@ -410,6 +410,7 @@ function Update-DynamicManagerList {
   if($selection.Count){$ui.Controls.WallpaperList.SelectedItem=$selection[0]}else{$ui.Controls.WallpaperList.SelectedIndex=-1}
   $ui.Controls.EmptyState.Visibility='Collapsed'
   if(-not $views.Count){$ui.Controls.EmptyState.Visibility='Visible';$ui.Controls.EmptyTitle.Text='你的壁纸收藏，从这里开始';if($ui.Items.Count){$ui.Controls.EmptyTitle.Text='此分类还没有壁纸'}}
+  $hint=$ui.Window.FindName('EmptyHint');if($hint){$hint.Text='导入图片或视频，选中后悬停预览。'}
   foreach($name in @('All','Image','Video')){
     if(-not $ui.Controls[($name+'Filter')]){continue}
     $ui.Controls[($name+'Filter')].BorderBrush=[Windows.Media.Brushes]::Transparent
@@ -433,6 +434,11 @@ function Start-DynamicManagerWork {
   $ui.Busy=$true;$ui.Controls.WorkProgress.Visibility='Visible';$ui.Controls.StatusText.Text='正在处理…'
   $ui.Controls.StatusText.Visibility='Visible'
   $ui.PendingOperation=$Operation
+  if($Operation -eq 'LibraryLoad'){
+    $count=$ui.Window.FindName('GalleryCount');if($count){$count.Text='加载中'}
+    $ui.Controls.EmptyState.Visibility='Visible';$ui.Controls.EmptyTitle.Text='正在读取壁纸库…'
+    $hint=$ui.Window.FindName('EmptyHint');if($hint){$hint.Text='读取完成后会显示已保存的壁纸'}
+  }
   if($Operation -in @('Refresh','Open')){Set-DynamicConnectionChecking $true}
   if($Operation -in @('EngineLocate','EngineImport','EngineRefresh','EngineConvert')){Set-DynamicEngineSearchState -Searching $true}
   Update-DynamicManagerButtons
@@ -450,7 +456,7 @@ function Start-DynamicManagerWork {
     if($PrepareOnly -and $Operation -in @('Apply','Open','Restore')){throw '预览模式不能更改真实 Codex。'}
     # Detection is read-only, including in preview mode. Apply/open/restore remain blocked there.
     $connection=$PreviousConnection
-    if(-not $connection -or $Operation -in @('Refresh','Apply','Restore')){$connection=Get-DynamicCodexConnection -StateRoot $StateRoot}
+    if($Operation -ne 'LibraryLoad' -and (-not $connection -or $Operation -in @('Refresh','Apply','Restore'))){$connection=Get-DynamicCodexConnection -StateRoot $StateRoot}
     if($Operation -eq 'Apply' -and -not $connection.Available){throw $connection.Message}
     $selected=$null;$message='壁纸库已加载。';$engineReport=$null;$engineRoots=$null;$conversionPrompt=$null;$cancelled=$false;$connectionError=$null
     try { switch($Operation){
@@ -498,6 +504,7 @@ function Start-DynamicManagerWork {
         if($restored -eq $false){$message='已取消恢复。';$cancelled=$true}
       }
       'Refresh' { }
+      'LibraryLoad' { }
       'LibrarySync' { }
       default {throw '未知管理操作。'}
     }}catch{
@@ -519,7 +526,7 @@ function Complete-DynamicManagerWork {
   $message=$null
   while($ui.Queue.TryDequeue([ref]$message)){$ui.Controls.StatusText.Text=$message}
   if(-not $ui.Async.IsCompleted){return}
-  $ui.Timer.Stop();$importReport=$null;$conversionPrompt=$null;$connectionFailure=$null
+  $ui.Timer.Stop();$importReport=$null;$conversionPrompt=$null;$connectionFailure=$null;$startupNext=$null
   try {
     $results=$ui.Worker.EndInvoke($ui.Async)
     if($ui.Worker.HadErrors){throw $ui.Worker.Streams.Error[0].Exception}
@@ -545,7 +552,17 @@ function Complete-DynamicManagerWork {
       if($ui.Connection.Connected){Show-DynamicManagerToast ('连接成功 · Codex '+$ui.Connection.Version) Success}else{Show-DynamicManagerToast '连接失败，请重试' Error}
     }
     if($ui.PendingOperation -eq 'Refresh'){$ui.HasCheckedConnection=$true}
+    if($ui.PendingOperation -eq 'LibraryLoad' -and $ui.StartupConnectionPending){
+      $ui.StartupConnectionPending=$false
+      $startupNext=if($ui.PrepareOnly){'Refresh'}else{'Open'}
+    }
   }catch{
+    if($ui.PendingOperation -eq 'LibraryLoad'){
+      $ui.StartupConnectionPending=$false
+      $count=$ui.Window.FindName('GalleryCount');if($count){$count.Text='未加载'}
+      $ui.Controls.EmptyState.Visibility='Visible';$ui.Controls.EmptyTitle.Text='壁纸库读取失败，请重新打开管理中心'
+      $hint=$ui.Window.FindName('EmptyHint');if($hint){$hint.Text='已保存的文件仍保留，请查看下方错误详情'}
+    }
     if($ui.PendingOperation -in @('EngineLocate','EngineImport','EngineRefresh','EngineConvert')){Set-DynamicEngineSearchState}
     $errorMessage=Get-DynamicManagerErrorMessage $_.Exception
     $ui.Controls.StatusText.Text='操作未完成：'+$errorMessage
@@ -558,6 +575,7 @@ function Complete-DynamicManagerWork {
   if($conversionPrompt){Show-DynamicSteamConversionConfirmation $conversionPrompt $importReport}
   elseif($null -ne $importReport){Show-DynamicImportResult $importReport}
   if($connectionFailure){Show-DynamicManagerConfirmation -Title 'Codex 连接未完成' -Message $connectionFailure -Action {} -AcceptText '知道了' -NoticeOnly}
+  if($startupNext){Start-DynamicManagerWork $startupNext}
 }
 
 function New-DynamicRenameWindow {
@@ -616,8 +634,8 @@ function Show-DynamicSkinManager {
   . (Join-Path $PSScriptRoot 'update-ui.ps1')
   Initialize-DynamicUpdateUI
   if(-not $PrepareOnly -and (Test-Path -LiteralPath (Join-Path $StateRoot 'state.json'))){
-    . (Join-Path $InstallRoot 'engine/scripts/multi-instance.ps1')
-    Start-DreamSkinInstanceMonitor -StateRoot $StateRoot
+    . (Join-Path $InstallRoot 'engine/scripts/multi-instance.ps1') -StateRoot $script:SkinManager.StateRoot
+    Start-DreamSkinInstanceMonitor -StateRoot $script:SkinManager.StateRoot
   }
   $controls.ConfirmAcceptButton.Add_Click({Complete-DynamicManagerConfirmation $true})
   $controls.ConfirmCancelButton.Add_Click({Complete-DynamicManagerConfirmation $false})

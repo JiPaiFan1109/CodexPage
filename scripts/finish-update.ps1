@@ -40,7 +40,7 @@ function Invoke-DynamicUpdateInstall {
       }
       $exitCode=$process.ExitCode
     }finally{$process.Dispose()}
-    if($exitCode -ne 0){throw ((Get-DynamicSetupFailureMessage $exitCode)+' 安装日志：'+(Join-Path $Stage 'install.log'))}
+    if($exitCode -ne 0){throw ((Get-DynamicSetupFailureMessage -Code $exitCode -LogPath (Join-Path $Stage 'install.log'))+' 安装日志：'+(Join-Path $Stage 'install.log'))}
     if($Report){& $Report '正在确认安装结果…'}
     Assert-DynamicInstalledUpdate $Root $TargetVersion
   }finally{$lock.Dispose()}

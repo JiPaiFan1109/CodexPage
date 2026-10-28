@@ -45,10 +45,11 @@ Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤12
 
 ## 重要更新
 
-> **3.0.0 升级须知：此次更新请前往 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.0.0) 下载 `CodexPage-Setup.exe`，先退出 CodexPage，再运行安装包覆盖升级。暂勿点击旧版中的「立即更新」；无需卸载，壁纸库和设置保留。**
+> **3.1.0 升级须知：此次更新请前往 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0) 下载 `CodexPage-Setup.exe`，先退出 CodexPage，再运行安装包覆盖升级。暂勿点击旧版中的「立即更新」；无需卸载，壁纸库和设置保留。**
 
 | 日期（北京时间） | 版本 | 更新内容 |
 | --- | --- | --- |
+| 2026-10-28 | [3.1.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0) | 修复后台目录污染与重复后台升级阻塞，先加载壁纸库再连接 |
 | 2026-10-27 | [3.0.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.0.0) | 更新流程与安装校验加固，修复媒体异常和资源残留，改善键盘焦点与减少动画支持，升级 Node 24.22.1 |
 | 2026-10-25 | [2.3.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.3.1) | 先导入兼容壁纸，再确认转换或下载转换器；跳过保留已导入内容 |
 | 2026-10-25 | [2.3.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.3.0) | 扩展 Wallpaper Engine 媒体导入与预览，按需下载转换组件，改善宿主恢复及重启确认 |
@@ -96,7 +97,7 @@ Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤12
 
 ### 升级、卸载与常见问题
 
-- **升级至 3.0.0**：请从 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.0.0) 下载安装包，退出 CodexPage 后覆盖安装，暂勿使用旧版「立即更新」。无需卸载，壁纸库与设置保留；完成后重新应用壁纸即可恢复换肤连接。CodexPage 打开时每天最多自动检查一次，支持稍后和跳过此版本；应用未运行时不会推送通知。
+- **升级至 3.1.0**：请从 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0) 下载安装包，退出 CodexPage 后覆盖安装，暂勿使用旧版「立即更新」。无需卸载，壁纸库与设置保留；完成后重新应用壁纸即可恢复换肤连接。CodexPage 打开时每天最多自动检查一次，支持稍后和跳过此版本；应用未运行时不会推送通知。
 - **卸载**：从 Windows「已安装的应用」卸载。卸载前会执行外观恢复；取消或失败时停止卸载。壁纸库默认保留。
 - **未找到 Codex**：确认当前 Windows 用户已安装官方 Store 版客户端，再点击左下角连接图标重试。
 - **从官方入口打开后没有皮肤**：回到 CodexPage 重新应用壁纸，按提示处理正在运行的会话。

@@ -11,6 +11,7 @@ function Get-DynamicUpgradeBlockReason {
     foreach($process in $processes){
       if([string]$process.ExecutablePath -ieq $runtime){return '安装运行环境仍被使用，请关闭相关程序后重试；无法确认归属的进程不会被自动终止。'}
       if([string]$process.ExecutablePath -ieq (Join-Path $root 'CodexSkinManager.exe')){return '请先关闭 CodexPage，再重试安装。'}
+      if($process.CommandLine -and ([string]$process.CommandLine).Replace('/','\').IndexOf(($root+'\engine\scripts\multi-instance.ps1'),[StringComparison]::OrdinalIgnoreCase) -ge 0){return '安装后台检查后又出现了多窗口守护，请关闭 CodexPage 后重试。未替换安装文件。'}
       if($process.CommandLine -and ([string]$process.CommandLine).IndexOf(($root+'\scripts\manage-background.ps1'),[StringComparison]::OrdinalIgnoreCase) -ge 0){return '请先关闭 CodexPage，再重试安装。'}
     }
   }catch{return '无法检查换肤后台是否已经退出，本次安装不会替换文件。请稍后重试。'}
@@ -54,27 +55,46 @@ function Invoke-DynamicUpgradePreparation {
         $status=[IO.File]::ReadAllText($statusPath)|ConvertFrom-Json
       }
       $shells=@((Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'),(Join-Path $env:WINDIR 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'))
-      if($monitorProcesses.Count -ne 1){return ($blocked+' 存在多个多窗口后台。')}
-      if($status -and $status.PSObject.Properties.Name -contains 'Monitor'){
+      if($status -and $status.PSObject.Properties.Name -contains 'Monitor' -and
+         @($monitorProcesses|Where-Object {[int]$_.ProcessId -eq [int]$status.Monitor.Id}).Count -gt 0){
         $monitor=$status.Monitor
         if(-not $monitor -or $shells -inotcontains [string]$monitor.Executable -or
            [string]$monitor.Script -ine $monitorPath -or [string]$monitor.StateRoot -ine $root -or
-           [int]$monitor.Id -ne [int]$monitorProcesses[0].ProcessId){return ($blocked+' 多窗口后台身份不一致。')}
-        $records+=@{Id=[int]$monitor.Id;Started=$monitor.StartedAt;Script=$monitorPath;SavedScript=$monitorPath;Executable=[string]$monitor.Executable;IsMonitor=$true;Flags=@('-StateRoot',$root)}
+           @($monitorProcesses|Where-Object {[int]$_.ProcessId -eq [int]$monitor.Id}).Count -ne 1){return ($blocked+' 多窗口后台身份不一致。')}
+        $records+=@{Id=[int]$monitor.Id;Started=$monitor.StartedAt;Script=$monitorPath;SavedScript=$monitorPath;Executable=[string]$monitor.Executable;IsMonitor=$true;StateRoot=$root;Flags=@('-StateRoot',$root)}
         foreach($worker in @($status.Workers)){
           $records+=@{Id=[int]$worker.Id;Started=$worker.StartedAt;Script=(Join-Path $root 'engine/scripts/injector.mjs');SavedScript=(Join-Path $root 'engine/scripts/injector.mjs');Executable=$runtime;Flags=@('--watch');ParentId=[int]$monitor.Id}
         }
-      }else{
+      }elseif(-not $status -or $status.PSObject.Properties.Name -notcontains 'Monitor'){
         # Older builds did not persist identity metadata. Verify live native
         # creation times and the exact installed script/arguments instead.
         $monitor=$monitorProcesses[0]
+        if($monitorProcesses.Count -ne 1){return ($blocked+' 多窗口后台缺少唯一身份记录。')}
         if($shells -inotcontains [string]$monitor.ExecutablePath -or -not $monitor.CreationDate){return ($blocked+' 无法核实旧版后台身份。')}
-        $records+=@{Id=[int]$monitor.ProcessId;Started=$monitor.CreationDate;Script=$monitorPath;SavedScript=$monitorPath;Executable=[string]$monitor.ExecutablePath;IsMonitor=$true;NativeTimestamp=$true;Flags=@('-StateRoot',$root)}
+        $records+=@{Id=[int]$monitor.ProcessId;Started=$monitor.CreationDate;Script=$monitorPath;SavedScript=$monitorPath;Executable=[string]$monitor.ExecutablePath;IsMonitor=$true;StateRoot=$root;NativeTimestamp=$true;Flags=@('-StateRoot',$root)}
         foreach($worker in @($nodes|Where-Object {[int]$_.ParentProcessId -eq [int]$monitor.ProcessId})){
           if(@($records|Where-Object {[int]$_.Id -eq [int]$worker.ProcessId}).Count){continue}
           if(-not $worker.CreationDate -or [datetime]$worker.CreationDate -lt [datetime]$monitor.CreationDate){return ($blocked+' 旧版后台父子进程时间不一致。')}
           $records+=@{Id=[int]$worker.ProcessId;Started=$worker.CreationDate;Script=(Join-Path $root 'engine/scripts/injector.mjs');SavedScript=(Join-Path $root 'engine/scripts/injector.mjs');Executable=$runtime;NativeTimestamp=$true;Flags=@('--watch','--theme-dir',(Join-Path $root 'active-theme'),'--pause-file',(Join-Path $root 'paused'));ParentId=[int]$monitor.ProcessId}
         }
+      }
+      # Older managers dot-sourced a parameterized script without binding StateRoot.
+      # Its extra monitor ran against the install parent. Only a recent, idle receipt
+      # from that exact installed script is eligible; other roots remain protected.
+      foreach($extra in @($monitorProcesses|Where-Object {$candidate=$_;@($records|Where-Object {[int]$_.Id -eq [int]$candidate.ProcessId}).Count -eq 0})){
+        $legacyRoot=Split-Path $root -Parent
+        $legacyPath=Join-Path $legacyRoot 'multi-instance-status.json'
+        if(-not(Test-Path -LiteralPath $legacyPath -PathType Leaf) -or (Get-Item -LiteralPath $legacyPath).Length -gt 64KB){return ($blocked+' 重复后台缺少闲置身份记录。')}
+        $legacy=[IO.File]::ReadAllText($legacyPath)|ConvertFrom-Json -ErrorAction Stop
+        $saved=$legacy.Monitor
+        $age=([datetime]::UtcNow-[datetime]::Parse([string]$legacy.UpdatedAt).ToUniversalTime()).TotalSeconds
+        if(-not $saved -or $legacy.Enabled -isnot [bool] -or $legacy.Enabled -or $age -lt -5 -or $age -gt 30 -or
+           $legacy.VerifiedConnections -ne 0 -or $legacy.AdditionalWatchers -ne 0 -or @($legacy.Workers).Count -ne 0 -or
+           [int]$saved.Id -ne [int]$extra.ProcessId -or [string]$saved.Script -ine $monitorPath -or
+           [string]$saved.StateRoot -ine $legacyRoot -or $shells -inotcontains [string]$saved.Executable -or
+           (Test-Path -LiteralPath (Join-Path $legacyRoot 'state.json')) -or (Test-Path -LiteralPath (Join-Path $legacyRoot 'recovery-intent.json')) -or
+           @($processes|Where-Object {[int]$_.ParentProcessId -eq [int]$extra.ProcessId}).Count -ne 0){return ($blocked+' 重复后台不满足旧版闲置恢复条件。')}
+        $records+=@{Id=[int]$saved.Id;Started=$saved.StartedAt;Script=$monitorPath;SavedScript=$monitorPath;Executable=[string]$saved.Executable;IsMonitor=$true;StateRoot=$legacyRoot;Flags=@('-StateRoot',$legacyRoot)}
       }
     }
     # Validate every runtime occupant before stopping any process. A filename
@@ -92,7 +112,7 @@ function Invoke-DynamicUpgradePreparation {
       $commandLine=([string]$process.CommandLine).Replace('/','\')
       if($record.IsMonitor){$prefix='\s+-NoProfile\s+(?:-WindowStyle\s+Hidden\s+)?-ExecutionPolicy\s+Bypass\s+-File\s+'}
       if($commandLine -notmatch ('(?i)^\s*'+$exePattern+$prefix+$scriptPattern+'(?=\s|$)')){return ($blocked+' 后台脚本启动位置不一致。')}
-      if($record.IsMonitor -and $commandLine -notmatch ('(?i)^\s*'+$exePattern+$prefix+$scriptPattern+'\s+-StateRoot\s+(?:"'+[regex]::Escape($root)+'"|'+[regex]::Escape($root)+')\s*$')){return ($blocked+' 多窗口后台启动参数不一致。')}
+      if($record.IsMonitor -and $commandLine -notmatch ('(?i)^\s*'+$exePattern+$prefix+$scriptPattern+'\s+-StateRoot\s+(?:"'+[regex]::Escape($record.StateRoot)+'"|'+[regex]::Escape($record.StateRoot)+')\s*$')){return ($blocked+' 多窗口后台启动参数不一致。')}
       foreach($flag in $record.Flags){
         if($commandLine -notmatch ('(?i)(?:^|[\s"])'+[regex]::Escape($flag)+'(?=$|[\s"])')){return ($blocked+' 后台参数不完整。')}
       }

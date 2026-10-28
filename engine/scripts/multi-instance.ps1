@@ -1,8 +1,35 @@
 ﻿[CmdletBinding()]
-param([string]$StateRoot=(Split-Path (Split-Path $PSScriptRoot -Parent) -Parent))
+param([Alias('StateRoot')][string]$MonitorStateRoot)
+
+function Get-DreamSkinInstanceMonitorMutexName {
+  param([string]$StateRoot)
+  $sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+  $normalized=[IO.Path]::GetFullPath($StateRoot).TrimEnd('\').ToLowerInvariant()
+  $sha=[Security.Cryptography.SHA256]::Create()
+  try{$rootKey=[BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($normalized))).Replace('-','').Substring(0,16)}finally{$sha.Dispose()}
+  return "Local\CodexDynamicSkin.$sid.InstanceMonitor.$rootKey"
+}
+
+function Assert-DreamSkinInstanceMonitorRoot {
+  param([string]$StateRoot)
+  if(-not (Test-DreamSkinPathEqual $StateRoot (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent))){
+    throw 'The instance monitor state root must match its installation directory.'
+  }
+}
 
 function Start-DreamSkinInstanceMonitor {
   param([string]$StateRoot)
+  Assert-DreamSkinInstanceMonitorRoot $StateRoot
+  # Reopening the manager should reuse the existing supervisor, including paths
+  # with a trailing separator. The child also owns this mutex for race safety.
+  $existing=$null
+  if([Threading.Mutex]::TryOpenExisting((Get-DreamSkinInstanceMonitorMutexName $StateRoot),[ref]$existing)){
+    $available=$false
+    try{
+      try{$available=$existing.WaitOne(0)}catch [Threading.AbandonedMutexException]{$available=$true}
+      if(-not $available){return}
+    }finally{if($available){$existing.ReleaseMutex()};$existing.Dispose()}
+  }
   $scriptPath=Join-Path $PSScriptRoot 'multi-instance.ps1'
   $args='-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File '+(ConvertTo-DreamSkinProcessArgument $scriptPath)+' -StateRoot '+(ConvertTo-DreamSkinProcessArgument $StateRoot)
   Start-Process (Join-Path $PSHOME 'powershell.exe') -ArgumentList $args -WindowStyle Hidden | Out-Null
@@ -117,10 +144,7 @@ function Test-DreamSkinUpdateRecoveryCurrent {
 
 function Invoke-DreamSkinInstanceMonitor {
   param([string]$StateRoot,[int]$MaxCycles=0,[int]$PollMilliseconds=2000)
-  $sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-  $sha=[Security.Cryptography.SHA256]::Create()
-  try{$rootKey=[BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes([IO.Path]::GetFullPath($StateRoot).ToLowerInvariant()))).Replace('-','').Substring(0,16)}finally{$sha.Dispose()}
-  $mutex=[Threading.Mutex]::new($false,"Local\CodexDynamicSkin.$sid.InstanceMonitor.$rootKey")
+  $mutex=[Threading.Mutex]::new($false,(Get-DreamSkinInstanceMonitorMutexName $StateRoot))
   $acquired=$false
   try{$acquired=$mutex.WaitOne(0)}catch [Threading.AbandonedMutexException]{$acquired=$true}
   if(-not $acquired){$mutex.Dispose();return}
@@ -239,5 +263,8 @@ function Invoke-DreamSkinInstanceMonitor {
 
 if($MyInvocation.InvocationName -ne '.') {
   . (Join-Path $PSScriptRoot 'common-windows.ps1')
-  Invoke-DreamSkinInstanceMonitor $StateRoot
+  # Keep CLI defaults out of the importing caller's scope.
+  if(-not $MonitorStateRoot){$MonitorStateRoot=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent}
+  Assert-DreamSkinInstanceMonitorRoot $MonitorStateRoot
+  Invoke-DreamSkinInstanceMonitor $MonitorStateRoot
 }

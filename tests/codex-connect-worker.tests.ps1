@@ -28,17 +28,28 @@ function Invoke-DynamicEngine {
   [IO.File]::WriteAllText((Join-Path $fixture 'skin-manager.ps1'),(". '"+(Join-Path $repo 'scripts/skin-manager.ps1').Replace("'","''")+"'"),[Text.UTF8Encoding]::new($true))
   [IO.File]::WriteAllText((Join-Path $fixture 'wallpaper-library.ps1'),@'
 function Get-DynamicWallpaperStatus {param($StateRoot);[pscustomobject]@{CurrentId=$null;Error=$null}}
-function Get-DynamicWallpaperItems {param($StateRoot);return @()}
+function Get-DynamicWallpaperItems {param($StateRoot);if([IO.File]::ReadAllText((Join-Path $StateRoot 'mode')) -eq 'library-failure'){throw 'fixture library read denied'};return @([pscustomobject]@{Id='saved-wallpaper'})}
 function Test-DynamicOperationCancelled {param($Exception);while($Exception){if($Exception -is [OperationCanceledException]){return $true};$Exception=$Exception.InnerException};return $false}
 '@)
   $window=New-DynamicSkinManagerWindow
   $controls=@{}
   foreach($match in [regex]::Matches([IO.File]::ReadAllText((Join-Path $repo 'scripts/skin-manager.xaml')),'x:Name="([^"]+)"')){$controls[$match.Groups[1].Value]=$window.FindName($match.Groups[1].Value)}
-  foreach($mode in @('cancel','failure','success','healthy','preview')){
+  foreach($mode in @('library-failure','cancel','failure','success','healthy','preview')){
     [IO.File]::WriteAllText((Join-Path $fixture 'mode'),$mode)
     $script:SkinManager=@{Window=$window;Controls=$controls;ModuleRoot=$fixture;InstallRoot=$fixture;StateRoot=$fixture;Busy=$false;PrepareOnly=$false;Selected=$null;Status=[pscustomobject]@{Error=$null;CurrentId=$null};Connection=[pscustomobject]@{Available=$true;Connected=$false};Timer=[Windows.Threading.DispatcherTimer]::new()}
     $script:SkinManager.PrepareOnly=$mode -eq 'preview'
     Start-DynamicManagerStartup
+    Assert ($script:SkinManager.PendingOperation -eq 'LibraryLoad') 'Startup must load the saved collection before connecting'
+    $loadDeadline=[datetime]::UtcNow.AddSeconds(15)
+    while(-not $script:SkinManager.Async.IsCompleted){if([datetime]::UtcNow -gt $loadDeadline){throw 'Library load timed out'};Start-Sleep -Milliseconds 30}
+    Complete-DynamicManagerWork
+    if($mode -eq 'library-failure'){
+      Assert (-not $script:SkinManager.Busy -and $null -eq $script:SkinManager.Worker -and $window.FindName('GalleryCount').Text -eq '未加载') 'Library failure must release work and must not report an empty collection'
+      Assert ($controls.EmptyTitle.Text -like '*读取失败*' -and -not $script:SkinManager.StartupConnectionPending) 'Library failure must retain readable error and stop automatic connection'
+      if($script:SkinManager.ToastTimer){$script:SkinManager.ToastTimer.Stop()}
+      continue
+    }
+    Assert ($script:SkinManager.Items.Count -eq 1 -and $script:SkinManager.Items[0].Id -eq 'saved-wallpaper') 'Connection began before saved wallpapers were displayed'
     $expectedOperation=if($mode -eq 'preview'){'Refresh'}else{'Open'}
     Assert ($script:SkinManager.PendingOperation -eq $expectedOperation -and $script:SkinManager.Busy) 'Startup did not enter connection work'
     Assert (-not $controls.OpenButton.IsEnabled -and $controls.ConnectionLoading.Visibility -eq 'Visible') 'Connecting must disable duplicate clicks and show loading'

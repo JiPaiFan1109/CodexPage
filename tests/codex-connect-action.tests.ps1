@@ -21,13 +21,13 @@ $startupHandler=$startupBinding.Arguments[0].ScriptBlock.GetScriptBlock()
 $script:SkinManager=@{Busy=$false;PrepareOnly=$false;Async=$null}
 $script:requested=$null
 & $startupHandler
-Assert ($script:requested -eq 'Open') 'Normal startup must connect automatically instead of only detecting'
+Assert ($script:requested -eq 'LibraryLoad' -and $script:SkinManager.StartupConnectionPending) 'Normal startup must load saved wallpapers before its one automatic connection attempt'
 $script:requested=$null
 & $startupHandler
 Assert ($null -eq $script:requested) 'Repeated ContentRendered events must not reconnect after completion or cancellation'
 $script:SkinManager=@{Busy=$false;PrepareOnly=$true;Async=$null}
 & $startupHandler
-Assert ($script:requested -eq 'Refresh') 'Preview startup must remain read-only'
+Assert ($script:requested -eq 'LibraryLoad') 'Preview startup must load the saved collection without starting Codex'
 $script:SkinManager=@{Busy=$false;PrepareOnly=$false;Connection=[pscustomobject]@{Available=$true;Connected=$false}}
 $script:requested=$null
 & $clickHandler

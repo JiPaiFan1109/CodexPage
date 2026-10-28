@@ -244,7 +244,7 @@ function Assert-DynamicUpdateNotCancelled {
 }
 
 function Get-DynamicSetupFailureMessage {
-  param([int]$Code)
+  param([int]$Code,[string]$LogPath)
   $reason=switch($Code){
     1 {'安装程序无法初始化，请重新下载安装包。'}
     2 {'安装已取消，尚未开始替换文件。'}
@@ -255,6 +255,20 @@ function Get-DynamicSetupFailureMessage {
     7 {'安装前检查未通过，请查看日志中的占用或身份检查原因。'}
     8 {'系统需要重启才能继续安装，请保存工作后自行重启。'}
     default {'安装程序未完成，请查看安装日志。'}
+  }
+  if($Code -eq 7 -and $LogPath){
+    $stream=$null
+    try{
+      # Read a bounded tail; setup diagnostics are data and never executable input.
+      $stream=[IO.File]::Open($LogPath,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite)
+      $length=[int][Math]::Min(65536,$stream.Length)
+      $null=$stream.Seek(-$length,[IO.SeekOrigin]::End)
+      $bytes=New-Object byte[] $length
+      $read=$stream.Read($bytes,0,$length)
+      $text=[Text.Encoding]::UTF8.GetString($bytes,0,$read)
+      $matches=[regex]::Matches($text,'(?m)^.*?PrepareToInstall failed:\s*([^\r\n]{1,1000})')
+      if($matches.Count){$reason=$matches[$matches.Count-1].Groups[1].Value.Trim()}
+    }catch{}finally{if($stream){$stream.Dispose()}}
   }
   return ('安装未完成（代码 '+$Code+'）。'+$reason)
 }
