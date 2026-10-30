@@ -11,9 +11,24 @@ Add-Type @'
 using System;
 using System.Text;
 using System.Runtime.InteropServices;
+[ComImport, Guid("00021401-0000-0000-C000-000000000046")]
+public class MenuShellLink {}
+[ComImport, Guid("000214F9-0000-0000-C000-000000000046"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+public interface IMenuShellLinkW {
+  void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path, int size, IntPtr data, uint flags);
+}
 public static class MenuTestPaths {
   [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
   public static extern uint GetLongPathName(string path, StringBuilder result, uint size);
+  public static string ReadTarget(string shortcut) {
+    object link = new MenuShellLink();
+    try {
+      ((System.Runtime.InteropServices.ComTypes.IPersistFile)link).Load(shortcut, 0);
+      var path = new StringBuilder(32768);
+      ((IMenuShellLinkW)link).GetPath(path, path.Capacity, IntPtr.Zero, 0);
+      return path.ToString();
+    } finally { Marshal.FinalReleaseComObject(link); }
+  }
 }
 '@
 function Get-LongPath([string]$Path){
@@ -34,7 +49,8 @@ function Assert-Menu {
   $shell=New-Object -ComObject WScript.Shell
   $link=$shell.CreateShortcut($linkPath)
   $expected=Join-Path $installed 'CodexSkinManager.exe'
-  if((Get-LongPath $link.TargetPath) -ine (Get-LongPath $expected) -or $link.Arguments){throw ('Wrong shortcut target/arguments. Actual: '+$link.TargetPath+' Expected: '+$expected+' Arguments: '+$link.Arguments)}
+  $target=[MenuTestPaths]::ReadTarget($linkPath)
+  if((Get-LongPath $target) -ine (Get-LongPath $expected) -or $link.Arguments){throw ('Wrong shortcut target/arguments. Actual: '+$target+' Expected: '+$expected+' Arguments: '+$link.Arguments)}
   foreach($name in $oldLinks){if(Test-Path -LiteralPath (Join-Path $programs $name)){throw ('Old menu entry remains: '+$name)}}
   if(@(Get-ChildItem -LiteralPath $programs -Recurse -Filter '*.lnk').Count -ne 2){throw 'Expected one product entry plus unrelated Codex shortcut'}
   if([IO.File]::ReadAllText((Join-Path $programs 'Codex.lnk')) -ne 'unrelated official entry'){throw 'Unrelated shortcut changed'}
