@@ -4,6 +4,14 @@
 #ifndef AppVersion
   #error AppVersion is required
 #endif
+#ifdef TestProgramsRoot
+  #ifndef TestInstallRoot
+    #error TestProgramsRoot requires an isolated TestInstallRoot
+  #endif
+  #define ProgramsRoot TestProgramsRoot
+#else
+  #define ProgramsRoot "{userprograms}"
+#endif
 
 [Setup]
 #ifdef TestInstallRoot
@@ -60,12 +68,20 @@ Source: "{#SourceRoot}\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignorev
 Source: "{#SourceRoot}\installed-files.json"; DestDir: "{app}"; Flags: ignoreversion
 
 [InstallDelete]
+#if !defined(TestInstallRoot) || defined(TestProgramsRoot)
+Type: files; Name: "{#ProgramsRoot}\Codex Dream Skin.lnk"
+Type: files; Name: "{#ProgramsRoot}\Codex Dream Skin - Tray.lnk"
+Type: files; Name: "{#ProgramsRoot}\CodexPage\CodexPage.lnk"
+Type: files; Name: "{#ProgramsRoot}\CodexPage\打开换肤版 Codex.lnk"
+Type: files; Name: "{#ProgramsRoot}\CodexPage\卸载.lnk"
+Type: dirifempty; Name: "{#ProgramsRoot}\CodexPage"
+Type: files; Name: "{#ProgramsRoot}\Codex 换肤管理中心\Codex 换肤管理中心.lnk"
+Type: files; Name: "{#ProgramsRoot}\Codex 换肤管理中心\打开换肤版 Codex.lnk"
+Type: files; Name: "{#ProgramsRoot}\Codex 换肤管理中心\卸载.lnk"
+Type: dirifempty; Name: "{#ProgramsRoot}\Codex 换肤管理中心"
+#endif
 #ifndef TestInstallRoot
 Type: files; Name: "{userdesktop}\Codex 换肤管理中心.lnk"
-Type: files; Name: "{userprograms}\Codex 换肤管理中心\Codex 换肤管理中心.lnk"
-Type: files; Name: "{userprograms}\Codex 换肤管理中心\打开换肤版 Codex.lnk"
-Type: files; Name: "{userprograms}\Codex 换肤管理中心\卸载.lnk"
-Type: dirifempty; Name: "{userprograms}\Codex 换肤管理中心"
 #endif
 Type: files; Name: "{app}\engine\assets\dream-skin.css"
 Type: files; Name: "{app}\engine\assets\theme-package-validator.mjs"
@@ -77,10 +93,10 @@ Type: files; Name: "{app}\engine\scripts\install-dream-skin.ps1"
 Type: files; Name: "{app}\engine\scripts\verify-dream-skin.ps1"
 
 [Icons]
+#if !defined(TestInstallRoot) || defined(TestProgramsRoot)
+Name: "{#ProgramsRoot}\CodexPage"; Filename: "{app}\CodexSkinManager.exe"; AppUserModelID: "CodexDynamicSkin.Manager"
+#endif
 #ifndef TestInstallRoot
-Name: "{userprograms}\CodexPage\CodexPage"; Filename: "{app}\CodexSkinManager.exe"; AppUserModelID: "CodexDynamicSkin.Manager"
-Name: "{userprograms}\CodexPage\打开换肤版 Codex"; Filename: "{app}\engine\launcher\CodexDynamicSkinLauncher.exe"; IconFilename: "{app}\CodexSkinManager.exe"
-Name: "{userprograms}\CodexPage\卸载"; Filename: "{uninstallexe}"
 Name: "{userdesktop}\CodexPage"; Filename: "{app}\CodexSkinManager.exe"; AppUserModelID: "CodexDynamicSkin.Manager"; Tasks: desktopicon
 #endif
 

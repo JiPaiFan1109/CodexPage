@@ -67,6 +67,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Setup package checks failed' }
           & powershell.exe -NoProfile -STA -ExecutionPolicy RemoteSigned -File installer/verify-setup.ps1 -PackagePath (Join-Path (Get-Location) 'dist/application/app-package')
           if ($LASTEXITCODE -ne 0) { throw 'Real setup lifecycle checks failed' }
+          & powershell.exe -NoProfile -STA -ExecutionPolicy RemoteSigned -File tests/packaging-names.tests.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Start menu packaging contract failed' }
+          & powershell.exe -NoProfile -STA -ExecutionPolicy RemoteSigned -File installer/verify-start-menu.ps1 -PackagePath (Join-Path (Get-Location) 'dist/application/app-package') -IsccPath (Join-Path (Get-Location) '.tools/inno/compiler/ISCC.exe')
+          if ($LASTEXITCODE -ne 0) { throw 'Real Start menu lifecycle checks failed' }
       - name: Preserve the verified installer and checksums
         uses: actions/upload-artifact@v4
         with:

@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
 $release=[IO.File]::ReadAllText((Join-Path $repo 'scripts/build-release.ps1'))
 $app=[IO.File]::ReadAllText((Join-Path $repo 'scripts/build-app.ps1'))
@@ -11,6 +11,15 @@ Assert ($app -match "\$legacySetupName='Codex-Skin-Manager-Setup\.exe'") 'App bu
 Assert ($app -match 'Copy-Item -LiteralPath \$generatedSetup -Destination \$canonicalSetup') 'Canonical setup must alias the compiled installer.'
 Assert ($app -match 'Copy-Item -LiteralPath \$generatedSetup -Destination \$setup') 'Legacy setup must alias the compiled installer.'
 $installer=[IO.File]::ReadAllText((Join-Path $repo 'installer/windows.iss'))
+$icons=($installer -split '\[Icons\]')[1] -split '\[Run\]' | Select-Object -First 1
+$menuIcons=@($icons -split '\r?\n' | Where-Object {$_ -match '^Name: "\{#ProgramsRoot\}'})
+Assert ($menuIcons.Count -eq 1 -and $menuIcons[0].StartsWith('Name: "{#ProgramsRoot}\CodexPage"; Filename: "{app}\CodexSkinManager.exe"')) 'Start menu must expose only the direct CodexPage manager entry.'
+$cleanup=($installer -split '\[InstallDelete\]')[1] -split '\[Icons\]' | Select-Object -First 1
+foreach($old in @('Codex Dream Skin.lnk','Codex Dream Skin - Tray.lnk','CodexPage\CodexPage.lnk','CodexPage\打开换肤版 Codex.lnk','CodexPage\卸载.lnk')){
+  Assert ($cleanup.Contains('Type: files; Name: "{#ProgramsRoot}\'+$old+'"')) ('Missing legacy menu cleanup: '+$old)
+}
+Assert ($cleanup.Contains('Type: dirifempty; Name: "{#ProgramsRoot}\CodexPage"')) 'Only remove the old menu folder when empty.'
+Assert (-not $cleanup.Contains('filesandordirs')) 'Menu migration must not recursively delete user files.'
 Assert ($installer -match '(?m)^OutputBaseFilename=CodexPage-Setup\s*$') 'Compiler must emit the canonical installer name.'
 Assert ($app -match 'Write-Output \$canonicalSetup\b') 'Build output must return the canonical installer path.'
 foreach($readme in @('README.md','README.en.md')){
