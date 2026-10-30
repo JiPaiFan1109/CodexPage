@@ -7,8 +7,25 @@ $installed=Join-Path $root '中文安装目录'
 $programs=Join-Path $root 'Programs'
 $oldLinks=@('Codex Dream Skin.lnk','Codex Dream Skin - Tray.lnk','CodexPage\CodexPage.lnk','CodexPage\打开换肤版 Codex.lnk','CodexPage\卸载.lnk','Codex 换肤管理中心\Codex 换肤管理中心.lnk','Codex 换肤管理中心\打开换肤版 Codex.lnk','Codex 换肤管理中心\卸载.lnk')
 New-Item -ItemType Directory -Path $programs -Force|Out-Null
+Add-Type @'
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+public static class MenuTestPaths {
+  [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+  public static extern uint GetLongPathName(string path, StringBuilder result, uint size);
+}
+'@
+function Get-LongPath([string]$Path){
+  $buffer=New-Object Text.StringBuilder 32768
+  $length=[MenuTestPaths]::GetLongPathName($Path,$buffer,32768)
+  if($length -eq 0 -or $length -ge 32768){throw ('Cannot resolve existing path: '+$Path)}
+  $buffer.ToString()
+}
 function Run-Setup([string]$Path){
-  $p=Start-Process -FilePath $Path -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -WindowStyle Hidden -PassThru
+  $arguments=@('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART')
+  if([IO.Path]::GetFileName($Path) -eq 'CodexPage-Setup.exe'){$arguments+=('/DIR="'+$installed+'"')}
+  $p=Start-Process -FilePath $Path -ArgumentList $arguments -WindowStyle Hidden -PassThru
   try{if(-not $p.WaitForExit(120000)){throw 'Menu setup timed out'};if($p.ExitCode -ne 0){throw ('Menu setup exit '+$p.ExitCode)}}finally{$p.Dispose()}
 }
 function Assert-Menu {
@@ -16,7 +33,8 @@ function Assert-Menu {
   if(-not(Test-Path -LiteralPath $linkPath -PathType Leaf)){throw 'Missing direct CodexPage shortcut'}
   $shell=New-Object -ComObject WScript.Shell
   $link=$shell.CreateShortcut($linkPath)
-  if($link.TargetPath -ine (Join-Path $installed 'CodexSkinManager.exe') -or $link.Arguments){throw 'Wrong shortcut target/arguments'}
+  $expected=Join-Path $installed 'CodexSkinManager.exe'
+  if((Get-LongPath $link.TargetPath) -ine (Get-LongPath $expected) -or $link.Arguments){throw ('Wrong shortcut target/arguments. Actual: '+$link.TargetPath+' Expected: '+$expected+' Arguments: '+$link.Arguments)}
   foreach($name in $oldLinks){if(Test-Path -LiteralPath (Join-Path $programs $name)){throw ('Old menu entry remains: '+$name)}}
   if(@(Get-ChildItem -LiteralPath $programs -Recurse -Filter '*.lnk').Count -ne 2){throw 'Expected one product entry plus unrelated Codex shortcut'}
   if([IO.File]::ReadAllText((Join-Path $programs 'Codex.lnk')) -ne 'unrelated official entry'){throw 'Unrelated shortcut changed'}
