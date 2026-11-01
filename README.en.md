@@ -1,5 +1,6 @@
-﻿> 3.2.0 improves background recovery and failure handling while preserving wallpaper data. See the [release notes](docs/releases/v3.2.0.md).
+> 3.2.0 improves background recovery and failure handling while preserving wallpaper data. See the [release notes](docs/releases/v3.2.0.md).
 
+<p align="center">
   <img src="appearance/codexpage-wordmark.png" width="480" alt="CodexPage">
 </p>
 <p align="center">Give Codex an image or animated background. Import, preview, and switch wallpapers in one window.</p>
@@ -15,7 +16,7 @@
 
 A community tool, **not an official OpenAI product or affiliated with OpenAI**. Install the official Microsoft Store edition of Codex first. The application interface is currently in Chinese.
 
-Steam imports process compatible files first and ask before converting the remaining items. The first video, animation or AVIF conversion downloads and verifies FFmpeg from BtbN upstream (about 80 MB), then reuses a local cache (about 192 MiB). FFmpeg binaries are not bundled. Scene and web wallpapers support preview images or animations only, not full interactive scenes.
+Steam imports process compatible files first and ask before converting the remaining items. The first video, animation or AVIF conversion downloads and verifies FFmpeg from BtbN upstream and then reuses a local cache; download and cache sizes depend on the pinned tool version. FFmpeg binaries are not bundled. Scene and web wallpapers support preview images or animations only, not full interactive scenes.
 
 ## Interface and features
 
