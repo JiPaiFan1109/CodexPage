@@ -32,7 +32,8 @@ try {
   Update-DynamicManagerNavigation -Animate $false
   Assert ($controls.ImportButton.Visibility -eq 'Visible') 'Local import is missing in Wallpaper view'
   Set-DynamicEngineSearchState -Searching $true
-  Assert ($controls.EngineSearchSpinner.Visibility -eq 'Visible' -and $controls.EngineSearchRotation.HasAnimatedProperties) 'Search spinner must animate'
+  Assert ($controls.EngineSearchSpinner.Visibility -eq 'Visible') 'Search must retain a visible loading indicator'
+  Assert ($controls.EngineSearchRotation.HasAnimatedProperties -eq (Test-DynamicManagerMotionEnabled)) 'Search animation must respect the Windows motion preference'
   Set-DynamicEngineSearchState -Roots @('D:\Steam\steamapps\workshop\content\431960')
   Assert ($controls.EngineSearchSpinner.Visibility -eq 'Collapsed' -and $controls.EngineSearchStatus.Text -like 'D:\Steam*') 'Found path must replace spinner'
   Assert ($controls.EngineFolderButton.Visibility -eq 'Collapsed' -and $controls.EngineRefreshButton.Visibility -eq 'Visible') 'Located path must hide folder picker and offer refresh'

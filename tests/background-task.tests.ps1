@@ -36,7 +36,9 @@ while($true){Start-Sleep -Seconds 1}
   Disable-DreamSkinBackgroundTask $root
   $missing=$false;try{$null=$folder.GetTask($name)}catch{$missing=$true}
   Assert $missing 'Disable must remove the owned task'
-  Start-Sleep -Seconds 1
+  # Task Scheduler stop is asynchronous, especially on hosted Windows.
+  $deadline=[datetime]::UtcNow.AddSeconds(15)
+  while((Get-Process -Id $next -ErrorAction SilentlyContinue) -and [datetime]::UtcNow -lt $deadline){Start-Sleep -Milliseconds 100}
   Assert (-not (Get-Process -Id $next -ErrorAction SilentlyContinue)) 'Disable must stop the task process'
   $null=Enable-DreamSkinBackgroundTask $root
   $definition=$folder.GetTask($name).Definition;$definition.RegistrationInfo.Source='unrelated fixture'

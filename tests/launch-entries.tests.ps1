@@ -8,10 +8,9 @@ try{
   foreach($directory in @($desktop,$menu,(Split-Path $launcher))){[IO.Directory]::CreateDirectory($directory)|Out-Null}
   [IO.File]::WriteAllText($launcher,'fixture')
   $install=[pscustomobject]@{Executable='C:\VerifiedCodex\ChatGPT.exe';PackageFamilyName='OpenAI.Codex_fixture'}
-  $shell=New-Object -ComObject WScript.Shell
   $plain=Join-Path $menu 'Codex.lnk';$custom=Join-Path $menu 'Custom Codex.lnk';$other=Join-Path $menu 'ChatGPT.lnk';$package=Join-Path $menu 'Package Codex.lnk'
   foreach($path in @($plain,$custom,$other,$package)){
-    $link=$shell.CreateShortcut($path);$link.TargetPath=$install.Executable
+    $link=(New-DreamSkinUnicodeShortcut $path);$link.TargetPath=$install.Executable
     if($path -eq $custom){$link.Arguments='--user-data-dir=C:\other-profile'}
     if($path -eq $other){$link.TargetPath='C:\OtherChatGPT\ChatGPT.exe'}
     if($path -eq $package){$link.TargetPath=Join-Path $env:WINDIR 'explorer.exe';$link.Arguments='shell:AppsFolder\OpenAI.Codex_fixture!App'}
@@ -20,9 +19,9 @@ try{
   $original=(Get-FileHash $plain).Hash;$customHash=(Get-FileHash $custom).Hash;$otherHash=(Get-FileHash $other).Hash
   $entries=@(Set-DreamSkinLaunchEntries $root @($desktop,$menu) @($install) $desktop)
   Assert ($entries.Count -eq 3) 'Must route plain/package links and create desktop entry'
-  Assert ($shell.CreateShortcut($plain).TargetPath -ieq $launcher) 'Plain launch must use wallpaper launcher'
+  Assert ((New-DreamSkinUnicodeShortcut $plain).TargetPath -ieq $launcher) 'Plain launch must use wallpaper launcher'
   Assert ((Get-FileHash $custom).Hash -ceq $customHash -and (Get-FileHash $other).Hash -ceq $otherHash) 'Custom profiles and other applications must stay unchanged'
-  $link=$shell.CreateShortcut($package);$link.Description='User edited';$link.Save();$edited=(Get-FileHash $package).Hash
+  $link=(New-DreamSkinUnicodeShortcut $package);$link.Description='User edited';$link.Save();$edited=(Get-FileHash $package).Hash
   $again=@(Set-DreamSkinLaunchEntries $root @($desktop,$menu) @($install) $desktop)
   Assert ($again.Count -eq 3 -and (Get-FileHash $package).Hash -ceq $edited) 'Repeated setup must retain backups and user changes'
   Restore-DreamSkinLaunchEntries $root
