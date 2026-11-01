@@ -18,7 +18,8 @@ try {
   Assert (-not (Get-DreamSkinUpdateRecoveryCandidate $state @($install) @($process))) 'CDP launch must recover without restart prompt'
   $process.CommandLine='ChatGPT.exe'
   $install.Version='1.0'
-  Assert (-not (Get-DreamSkinUpdateRecoveryCandidate $state @($install) @($process))) 'Same version is not an update'
+  $ordinary=Get-DreamSkinUpdateRecoveryCandidate $state @($install) @($process)
+  Assert ($ordinary -and -not $ordinary.HostUpdated) 'Same-version ordinary launch must offer recovery without claiming an update'
   $install.Version='2.0';$install.PackageFamilyName='Other_test'
   Assert (-not (Get-DreamSkinUpdateRecoveryCandidate $state @($install) @($process))) 'Wrong package family must be rejected'
   $install.PackageFamilyName=$state.codexPackageFamilyName

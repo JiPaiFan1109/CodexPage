@@ -11,7 +11,8 @@ param(
     }
   ),
   [string]$DesktopPath = [Environment]::GetFolderPath('Desktop'),
-  [switch]$SkipShortcuts
+  [switch]$SkipShortcuts,
+  [switch]$SkipBackgroundTask
 )
 $ErrorActionPreference = 'Stop'
 
@@ -121,7 +122,7 @@ function Copy-DynamicSkinLegacyStateToStage {
 
 function Install-DynamicSkin {
   [CmdletBinding()]
-  param([string]$SourceRoot, [string]$InstallRoot, [string]$DesktopPath, [switch]$SkipShortcuts, [string]$NodeRuntimePath)
+  param([string]$SourceRoot, [string]$InstallRoot, [string]$DesktopPath, [switch]$SkipShortcuts, [string]$NodeRuntimePath, [switch]$SkipBackgroundTask)
   $source = [IO.Path]::GetFullPath($SourceRoot)
   $root = [IO.Path]::GetFullPath($InstallRoot).TrimEnd('\')
   if ($root -eq [IO.Path]::GetPathRoot($root).TrimEnd('\') -or $root -ieq $source -or $source.StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase) -or $root.StartsWith($source.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe installation root.' }
@@ -235,9 +236,13 @@ function Install-DynamicSkin {
     # The exact staging child is generated above, and never accepts caller input.
     if (Test-Path -LiteralPath $stage) { Assert-DynamicSkinTree $stage; Remove-Item -LiteralPath $stage -Recurse -Force }
   }
+  $backgroundModule=Join-Path $root 'engine/scripts/background-task.ps1'
+  if(-not $SkipBackgroundTask -and (Test-Path -LiteralPath $backgroundModule)){
+    try{. $backgroundModule;$null=Enable-DreamSkinBackgroundTask $root -Start}catch{Write-Warning ('Background registration failed: '+$_.Exception.Message)}
+  }
   Write-Output "Installed CodexPage at $root. Backup: $backup"
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
-  Install-DynamicSkin -SourceRoot (Split-Path $PSScriptRoot -Parent) -InstallRoot $InstallRoot -DesktopPath $DesktopPath -SkipShortcuts:$SkipShortcuts
+  Install-DynamicSkin -SourceRoot (Split-Path $PSScriptRoot -Parent) -InstallRoot $InstallRoot -DesktopPath $DesktopPath -SkipShortcuts:$SkipShortcuts -SkipBackgroundTask:$SkipBackgroundTask
 }

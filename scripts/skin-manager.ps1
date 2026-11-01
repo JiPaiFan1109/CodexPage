@@ -235,7 +235,19 @@ namespace DynamicSkin {
 
 function Register-DynamicManagerClosingGuard {
   param([Windows.Window]$Window)
-  $Window.Add_Closing({param($sender,$eventArgs);if($script:SkinManager.Busy -and -not $script:SkinManager.UpdateClosing){$eventArgs.Cancel=$true;$script:SkinManager.Controls.StatusText.Text='任务仍在进行，请等待完成后再关闭窗口。'}})
+  $Window.Add_Closing({
+    param($sender,$eventArgs)
+    $ui=$script:SkinManager
+    if($ui.Busy -and -not $ui.UpdateClosing){$eventArgs.Cancel=$true;$ui.Controls.StatusText.Text='任务仍在进行，请等待完成后再关闭窗口。';return}
+    if(-not (Test-DynamicManagerDraftSaved)){
+      $eventArgs.Cancel=$true
+      Show-DynamicManagerConfirmation -Title '调整尚未保存' -Message '清晰度保存失败。返回后可重试关闭来保存，或放弃本次调整并关闭；原有壁纸和已保存设置会保留。' -AcceptText '放弃调整并关闭' -Action {
+        $script:SkinManager.PendingOpacity=$null
+        $script:SkinManager.Window.Close()
+      }
+      $ui.Controls.ConfirmCancelButton.Content='返回重试'
+    }
+  })
 }
 
 function Format-DynamicWallpaperSize {
@@ -248,6 +260,7 @@ function Format-DynamicWallpaperSize {
 function Read-DynamicManagerBitmap {
   param([string]$Path,[int]$DecodeWidth=640)
   if(-not $Path){return $null}
+  $stream=$null
   try {
     # The manager can render its bundled assets before the engine helper module
     # has been loaded (notably in the standalone UI and diagnostics runner).
@@ -264,18 +277,20 @@ function Read-DynamicManagerBitmap {
       $key=$file.FullName+'|'+$file.Length+'|'+$file.LastWriteTimeUtc.Ticks+'|'+$DecodeWidth
       if($cache.ContainsKey($key)){return $cache[$key]}
     }
+    # Own the stream so failed WIC decoding cannot retain a lock until collection.
+    $stream=[IO.File]::OpenRead([IO.Path]::GetFullPath($Path))
     if([IO.Path]::GetExtension($Path) -ieq '.ico'){
-      $decoder=[Windows.Media.Imaging.BitmapDecoder]::Create([uri][IO.Path]::GetFullPath($Path),[Windows.Media.Imaging.BitmapCreateOptions]::PreservePixelFormat,[Windows.Media.Imaging.BitmapCacheOption]::OnLoad)
+      $decoder=[Windows.Media.Imaging.BitmapDecoder]::Create($stream,[Windows.Media.Imaging.BitmapCreateOptions]::PreservePixelFormat,[Windows.Media.Imaging.BitmapCacheOption]::OnLoad)
       $frame=$decoder.Frames|Sort-Object PixelWidth -Descending|Select-Object -First 1
       $frame.Freeze();return $frame
     }
     $bitmap=New-Object Windows.Media.Imaging.BitmapImage
     $bitmap.BeginInit();$bitmap.CacheOption=[Windows.Media.Imaging.BitmapCacheOption]::OnLoad
-    $bitmap.UriSource=[uri][IO.Path]::GetFullPath($Path);$bitmap.DecodePixelWidth=$DecodeWidth
+    $bitmap.StreamSource=$stream;$bitmap.DecodePixelWidth=$DecodeWidth
     $bitmap.EndInit();$bitmap.Freeze()
     if($cache -ne $null){if($cache.Count -ge 64){$cache.Clear()};$cache[$key]=$bitmap}
     return $bitmap
-  }catch{return $null}
+  }catch{return $null}finally{if($stream){$stream.Dispose()}}
 }
 
 function Stop-DynamicManagerPreview {
@@ -301,12 +316,18 @@ function Update-DynamicManagerButtons {
 }
 
 function Update-DynamicManagerSelection {
-  Save-DynamicManagerOpacity
   $ui=$script:SkinManager
+  if($ui.RestoringSelection){return}
+  if(-not (Test-DynamicManagerDraftSaved)){
+    $ui.RestoringSelection=$true
+    try{$ui.Controls.WallpaperList.SelectedItem=@($ui.Controls.WallpaperList.Items|Where-Object Id -eq $ui.PendingOpacity.Id|Select-Object -First 1)[0]}
+    finally{$ui.RestoringSelection=$false}
+    return
+  }
   Stop-DynamicManagerPreview
   $ui.Controls.PreviewPlaceholder.Visibility='Collapsed'
   $ui.Controls.OpacityPanel.Visibility='Collapsed';$ui.Controls.PreviewImage.Opacity=1;$ui.Controls.PreviewShade.Opacity=0.6
-  $ui.Controls.PreviewImage.Source=$null;$ui.Controls.PreviewNotice.Text=''
+  $ui.Controls.PreviewImage.Source=$null;$ui.Controls.PreviewNotice.Text='';$ui.Controls.PreviewNotice.Visibility='Collapsed'
   $view=$ui.Controls.WallpaperList.SelectedItem
   $ui.Selected=$null
   if($view){$ui.Selected=$view.Item}
@@ -357,6 +378,7 @@ function Switch-DynamicManagerFilter {
   param([ValidateSet('Image','Video')][string]$Filter)
   $ui=$script:SkinManager
   if($ui.Busy){return}
+  if(-not (Test-DynamicManagerDraftSaved)){return}
   $ui.Filter=if($ui.Filter -eq $Filter){'All'}else{$Filter}
   Update-DynamicManagerList
 }
@@ -371,6 +393,7 @@ function Get-DynamicWallpaperPage {
 function Update-DynamicManagerList {
   param([string]$SelectedId)
   $ui=$script:SkinManager
+  if(-not (Test-DynamicManagerDraftSaved)){return}
   $requestedId=$SelectedId
   if(-not $SelectedId -and $ui.Selected){$SelectedId=$ui.Selected.Id}
   $source='Local';if($ui.Source){$source=$ui.Source}
@@ -430,6 +453,7 @@ function Start-DynamicManagerWork {
   param([string]$Operation,[string]$Argument,[string]$Name)
   $ui=$script:SkinManager
   if($ui.Busy){return}
+  if(-not (Test-DynamicManagerDraftSaved)){return}
   Stop-DynamicManagerPreview
   $ui.Busy=$true;$ui.Controls.WorkProgress.Visibility='Visible';$ui.Controls.StatusText.Text='正在处理…'
   $ui.Controls.StatusText.Visibility='Visible'
@@ -725,7 +749,16 @@ function Save-DynamicManagerOpacity {
     foreach($item in $ui.Items){if($item.Id -eq $pending.Id){$item|Add-Member -NotePropertyName PreviewLevel -NotePropertyValue $saved.PreviewLevel -Force}}
     $ui.PendingOpacity=$null
     $ui.Controls.PreviewNotice.Text='已保存'
-  }catch{$ui.Controls.PreviewNotice.Text='透明度保存失败，请重试：'+$_.Exception.Message}
+    $ui.Controls.PreviewNotice.Visibility='Collapsed'
+  }catch{
+    $ui.Controls.PreviewNotice.Text='清晰度保存失败，调整已保留。请检查文件或权限后重试关闭预览：'+$_.Exception.Message
+    $ui.Controls.PreviewNotice.Visibility='Visible'
+  }
+}
+
+function Test-DynamicManagerDraftSaved {
+  Save-DynamicManagerOpacity
+  return (-not $script:SkinManager -or -not $script:SkinManager.PendingOpacity)
 }
 
 function Show-DynamicCodexPreview {
@@ -739,7 +772,7 @@ function Show-DynamicCodexPreview {
   }
 }
 function Close-DynamicCodexPreview {
-  Save-DynamicManagerOpacity
+  if(-not (Test-DynamicManagerDraftSaved)){return}
   Stop-DynamicManagerPreview
   $script:SkinManager.Controls.PreviewOverlay.Visibility='Collapsed'
 }
@@ -790,6 +823,7 @@ function Set-DynamicManagerSource {
   param([ValidateSet('Local','WallpaperEngine')][string]$Source)
   $ui=$script:SkinManager
   if($ui.Busy -or $ui.Source -eq $Source){return}
+  if(-not (Test-DynamicManagerDraftSaved)){return}
   Close-DynamicCodexPreview
   $region=$ui.Window.FindName('GalleryRegion')
   $outgoing=$ui.Window.FindName('GalleryOutgoing')
@@ -905,7 +939,7 @@ function Show-DynamicSteamConversionConfirmation {
   $title='转换剩余壁纸？';$accept='转换并导入'
   if($Pending.NeedsDownload){
     $title='下载转换器并继续？';$accept='下载并转换'
-    $message+=' 需要从上游下载约 80 MB 的转换器，缓存约 192 MiB，下载后可重复使用。'
+    $message+=' 需要下载并校验转换器，下载体积和解压占用取决于实际获取的版本；下载后可重复使用。'
   }
   $message+=' 跳过不会影响已经导入的壁纸。'
   $projects=ConvertTo-Json -InputObject @($Pending.Projects) -Compress

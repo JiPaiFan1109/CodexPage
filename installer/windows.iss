@@ -177,9 +177,21 @@ begin
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
+var
+  MonitorExitCode: Integer;
 begin
   if (CurStep = ssPostInstall) and UpdateGateHeld then begin
     CloseHandle(UpdateGate);
     UpdateGateHeld := False;
   end;
+#ifndef TestInstallRoot
+  if CurStep = ssPostInstall then begin
+    if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+      '-NoProfile -WindowStyle Hidden -ExecutionPolicy RemoteSigned -File "' + ExpandConstant('{app}\engine\scripts\background-task.ps1') + '" -Action Enable',
+      '', SW_HIDE, ewWaitUntilTerminated, MonitorExitCode) then
+      Log('Could not register background monitor; the manager will retry.')
+    else if MonitorExitCode <> 0 then
+      Log('Background monitor registration failed; the manager will retry.');
+  end;
+#endif
 end;

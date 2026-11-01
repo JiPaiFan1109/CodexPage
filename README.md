@@ -1,4 +1,5 @@
-<p align="center">
+﻿> 3.2.0 改善后台恢复与异常处理，升级保留壁纸库和设置。见 [发布说明](docs/releases/v3.2.0.md)。
+
   <img src="appearance/codexpage-wordmark.png" width="480" alt="CodexPage">
 </p>
 <p align="center">为你的 Codex 换上喜欢的图片或动态背景。导入、预览、切换，在一个窗口里完成。</p>
@@ -45,7 +46,7 @@ Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤12
 
 ## 重要更新
 
-> **3.1.0 升级须知：此次更新请前往 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0) 下载 `CodexPage-Setup.exe`，先退出 CodexPage，再运行安装包覆盖升级。暂勿点击旧版中的「立即更新」；无需卸载，壁纸库和设置保留。**
+> **3.2.0 升级须知：此次更新请前往 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.2.0) 下载 `CodexPage-Setup.exe`，先退出 CodexPage，再运行安装包覆盖升级。无需卸载，壁纸库和设置保留。**
 
 | 日期（北京时间） | 版本 | 更新内容 |
 | --- | --- | --- |
@@ -97,7 +98,7 @@ Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤12
 
 ### 升级、卸载与常见问题
 
-- **升级至 3.1.0**：请从 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0) 下载安装包，退出 CodexPage 后覆盖安装，暂勿使用旧版「立即更新」。无需卸载，壁纸库与设置保留；完成后重新应用壁纸即可恢复换肤连接。CodexPage 打开时每天最多自动检查一次，支持稍后和跳过此版本；应用未运行时不会推送通知。
+- **升级至 3.2.0**：请从 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.2.0) 下载安装包，退出 CodexPage 后覆盖安装。无需卸载，壁纸库与设置保留；完成后重新应用壁纸即可恢复换肤连接。CodexPage 打开时每天最多自动检查一次，支持稍后和跳过此版本；应用未运行时不会推送通知。
 - **卸载**：从 Windows「已安装的应用」卸载。卸载前会执行外观恢复；取消或失败时停止卸载。壁纸库默认保留。
 - **未找到 Codex**：确认当前 Windows 用户已安装官方 Store 版客户端，再点击左下角连接图标重试。
 - **从官方入口打开后没有皮肤**：回到 CodexPage 重新应用壁纸，按提示处理正在运行的会话。

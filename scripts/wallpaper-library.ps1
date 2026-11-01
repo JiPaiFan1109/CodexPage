@@ -101,11 +101,15 @@ function Read-DynamicWallpaperItem {
     $item.IsAvailable=$true
   } catch { $item.Error=$_.Exception.Message }
   # Only count immediate, non-reparse files. Never follow untrusted subdirectories.
-  if(Test-Path -LiteralPath $Directory -PathType Container){
-    foreach($file in Get-ChildItem -LiteralPath $Directory -File -Force){
-      if(($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0){$item.DiskSize += $file.Length}
+  # Disk accounting is optional: a denied/deleted directory must not abort the gallery.
+  try{
+    Assert-DreamSkinNoReparseComponents -Path $Directory
+    if(Test-Path -LiteralPath $Directory -PathType Container){
+      foreach($file in Get-ChildItem -LiteralPath $Directory -File -Force -ErrorAction Stop){
+        if(($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0){$item.DiskSize += $file.Length}
+      }
     }
-  }
+  }catch{$item.DiskSize=0L}
   return $item
 }
 

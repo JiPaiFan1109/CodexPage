@@ -1,24 +1,28 @@
-param([string]$RenderDirectory)
+﻿param([string]$RenderDirectory)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '../scripts/skin-manager.ps1')
 function Assert($ok,$message){if(-not $ok){throw $message}}
 $window=New-DynamicSkinManagerWindow
 try{
   $controls=@{}
-  foreach($name in @('ImportButton','ApplyButton','ConfirmCancelButton','ConfirmAcceptButton','ConfirmationCancelColumn','ConfirmationGapColumn','ConfirmationMessage','ConfirmationTitle','ConfirmationOverlay','ConfirmationScroll')){$controls[$name]=$window.FindName($name)}
+  foreach($name in @('ImportButton','ApplyButton','ConfirmCancelButton','ConfirmAcceptButton','ConfirmationCancelColumn','ConfirmationGapColumn','ConfirmationMessage','ConfirmationTitle','ConfirmationOverlay','ConfirmationScroll','PreviewOverlay','SelectedName','PreviewNotice')){$controls[$name]=$window.FindName($name)}
   $script:SkinManager=@{Window=$window;Busy=$false;Controls=$controls}
-  Show-DynamicManagerConfirmation 'Long confirmation title for layout validation' ('Long media filename and error details. '*80) {}
+  $controls.PreviewOverlay.Visibility='Visible'
+  $controls.PreviewNotice.Text='清晰度保存失败，调整已保留。请检查文件或权限后重试关闭预览';$controls.PreviewNotice.Visibility='Visible'
+  Show-DynamicManagerConfirmation '从图库删除这张壁纸？' ('很长的中文文件名和错误详情。原始源文件保留，可取消并返回图库。'*80) {}
   $surface=$window.Content
   foreach($scale in @(1.0,1.25,1.5,2.0)){
     [Windows.Media.VisualTreeHelper]::SetRootDpi($surface,[Windows.DpiScale]::new($scale,$scale))
     foreach($size in @(@(1440,840),@(900,525))){
       $surface.Measure([Windows.Size]::new($size[0],$size[1]));$surface.Arrange([Windows.Rect]::new(0,0,$size[0],$size[1]));$surface.UpdateLayout()
       Assert ([Math]::Abs([Windows.Media.VisualTreeHelper]::GetDpi($controls.ConfirmAcceptButton).DpiScaleX-$scale) -lt 0.001) 'Simulated DPI did not reach controls'
-      foreach($name in @('ImportButton','ApplyButton','ConfirmCancelButton','ConfirmAcceptButton','ConfirmationScroll')){
+      foreach($name in @('ImportButton','ApplyButton','ConfirmCancelButton','ConfirmAcceptButton','ConfirmationScroll','PreviewOverlay','PreviewNotice')){
         $control=$controls[$name]
         $bounds=$control.TransformToAncestor($surface).TransformBounds([Windows.Rect]::new(0,0,$control.ActualWidth,$control.ActualHeight))
         Assert ($bounds.Width -gt 0 -and $bounds.Height -gt 0 -and $bounds.Left -ge -1 -and $bounds.Top -ge -1 -and $bounds.Right -le $size[0]+1 -and $bounds.Bottom -le $size[1]+1) "Clipped action at scale ${scale}: $name"
       }
+      Assert ($controls.ConfirmAcceptButton.ActualHeight -ge 36 -and $controls.ApplyButton.ActualHeight -ge 36) 'Controls shrank below readable hit area'
+      Assert ($controls.ConfirmAcceptButton.FontSize -ge 14 -and $controls.PreviewNotice.FontSize -ge 13) 'Text hierarchy is too small'
       Assert ($controls.ConfirmationScroll.ScrollableHeight -gt 0) 'Long text must remain scrollable'
       $controls.ConfirmationScroll.ScrollToEnd();$surface.UpdateLayout()
       Assert ($controls.ConfirmationScroll.VerticalOffset -gt 0) 'Long text cannot scroll to the end'

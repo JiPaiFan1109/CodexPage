@@ -1,6 +1,7 @@
 ﻿$ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
 . "$repo/scripts/skin-manager.ps1"
+function Test-DynamicManagerMotionEnabled {return $false}
 function Assert($c,$m){if(-not $c){throw $m}}
 $w=New-DynamicSkinManagerWindow
 try{
@@ -21,11 +22,14 @@ try{
  Complete-DynamicManagerConfirmation $true
  Complete-DynamicManagerConfirmation $true
  Assert ($script:applied -eq 1) 'Confirmation did not execute exactly once'
+ [Windows.Input.FocusManager]::SetFocusedElement($w,$controls.ImportButton)
  Show-DynamicImportResult "Imported 2; skipped 1"
- Assert ($controls.ConfirmCancelButton.Visibility -eq 'Collapsed' -and $controls.ConfirmAcceptButton.Content -eq '知道了') 'Import result must be acknowledgement only'
- Assert ($null -eq $w.FindName('EngineReport')) 'Import results still occupy gallery'
+ Assert ($controls.ConfirmationOverlay.Visibility -eq 'Visible' -and $controls.ConfirmationMessage.Text -eq 'Imported 2; skipped 1') 'Import result must display all details'
+ Assert ($controls.ConfirmCancelButton.Visibility -eq 'Collapsed') 'Import result must be acknowledgement only'
+ Assert ([Windows.Input.FocusManager]::GetFocusedElement($w) -eq $controls.ConfirmAcceptButton -and [Windows.Input.KeyboardNavigation]::GetTabNavigation($controls.ConfirmationOverlay) -eq 'Cycle') 'Import result focus escapes panel'
  Complete-DynamicManagerConfirmation $true
- Assert ($controls.ConfirmationOverlay.Visibility -eq 'Collapsed') 'Import acknowledgement did not dismiss result'
+ Assert ([Windows.Input.FocusManager]::GetFocusedElement($w) -eq $controls.ImportButton) 'Import result loses return focus'
+ Assert ($controls.ConfirmationOverlay.Visibility -eq 'Collapsed') 'Import details did not dismiss'
  Show-DynamicManagerConfirmation 'Apply?' 'Confirm first' {}
  Assert ($controls.ConfirmCancelButton.Visibility -eq 'Visible') 'Import result broke later confirmation buttons'
  Complete-DynamicManagerConfirmation $false

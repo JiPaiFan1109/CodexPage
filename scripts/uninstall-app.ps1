@@ -21,6 +21,13 @@ if($MyInvocation.InvocationName -ne '.'){
   try {
     . (Join-Path $PSScriptRoot 'media.ps1')
     $null=Invoke-DynamicUninstallRestore -InstallRoot (Split-Path $PSScriptRoot -Parent) -Silent:$Silent
+    $taskModule=Join-Path (Split-Path $PSScriptRoot -Parent) 'engine/scripts/background-task.ps1'
+    if(Test-Path -LiteralPath $taskModule){. $taskModule;Disable-DreamSkinBackgroundTask (Split-Path $PSScriptRoot -Parent)}
+    $entriesModule=Join-Path (Split-Path $PSScriptRoot -Parent) 'engine/scripts/launch-entries.ps1'
+    if(Test-Path -LiteralPath $entriesModule){
+      . (Join-Path (Split-Path $PSScriptRoot -Parent) 'engine/scripts/common-windows.ps1')
+      . $entriesModule;Restore-DreamSkinLaunchEntries (Split-Path $PSScriptRoot -Parent)
+    }
     exit 0
   }catch{
     $cause=$_.Exception

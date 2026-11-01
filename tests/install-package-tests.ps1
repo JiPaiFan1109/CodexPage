@@ -26,7 +26,7 @@ try {
   $unpacked = Join-Path $temp '中文解压目录'
   Expand-Archive -LiteralPath $zipPath -DestinationPath $unpacked
   $installed = Join-Path $temp '中文安装目录'
-  & powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File (Join-Path $unpacked 'scripts/install.ps1') -InstallRoot $installed -SkipShortcuts
+  & powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File (Join-Path $unpacked 'scripts/install.ps1') -InstallRoot $installed -SkipShortcuts -SkipBackgroundTask
   if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $installed 'scripts/media.ps1')) -or
     -not (Test-Path (Join-Path $installed 'engine/launcher/CodexDynamicSkinLauncher.exe'))) { throw 'Extracted package failed to install on PowerShell 5 with Chinese paths.' }
   foreach ($line in Get-Content (Join-Path $unpacked 'SHA256SUMS.txt')) {

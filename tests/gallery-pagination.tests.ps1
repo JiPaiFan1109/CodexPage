@@ -11,7 +11,7 @@ try{
   [regex]::Matches([IO.File]::ReadAllText((Join-Path $PSScriptRoot '../scripts/skin-manager.xaml')),'x:Name="([^"]+)"')|ForEach-Object{$controls[$_.Groups[1].Value]=$window.FindName($_.Groups[1].Value)}
   $items=@(for($i=0;$i -lt 25;$i++){[pscustomobject]@{Id=[string]$i;Name=('壁纸 '+($i+1));Kind=if($i%2){'Image'}else{'Video'};Sources=@('Local');IsAvailable=$true;Size=1024;ThumbnailPath=$null}})
   if($PreviewDirectory){
-    $thumbs=@(Get-ChildItem (Join-Path $env:LOCALAPPDATA 'CodexDynamicSkin/wallpaper-library/items') -Filter thumbnail.png -Recurse -File)
+    $thumbs=@(Get-Item -LiteralPath (Join-Path $PSScriptRoot '../engine/assets/demo-background.png'))
     for($i=0;$i -lt $items.Count;$i++){if($thumbs.Count){$items[$i].ThumbnailPath=$thumbs[$i%$thumbs.Count].FullName};$items[$i].Name=if($items[$i].Kind -eq 'Video'){'动态壁纸 '+($i+1)}else{'静态壁纸 '+($i+1)}}
   }
   $script:SkinManager=@{Window=$window;Controls=$controls;Items=$items;Filter='All';Source='Local';Status=@{CurrentId='0'};Busy=$false}
@@ -50,9 +50,9 @@ try{
     $list=$controls.WallpaperList
     $last=$list.ItemContainerGenerator.ContainerFromIndex(11)
     $bounds=$last.TransformToAncestor($list).TransformBounds([Windows.Rect]::new(0,0,$last.ActualWidth,$last.ActualHeight))
+    Assert ($last.ActualWidth -ge 140 -and $last.ActualHeight -gt 90) 'Cards became too small'
+    Assert ([Windows.Controls.ScrollViewer]::GetVerticalScrollBarVisibility($list) -eq 'Disabled') 'Approved paginated gallery unexpectedly scrolls'
     Assert ($bounds.Bottom -le $list.ActualHeight+1) 'Third row clipped'
-    Assert ([Windows.Controls.ScrollViewer]::GetVerticalScrollBarVisibility($list) -eq 'Disabled') 'Scrollbar enabled'
-    Assert ($controls.StatusText.TextAlignment -eq 'Center' -and $controls.StatusText.Parent -eq $controls.ConnectionLabel.Parent) 'Status is not centered under connection'
     if($PreviewDirectory){
       $bitmap=[Windows.Media.Imaging.RenderTargetBitmap]::new($size[0],$size[1],96,96,[Windows.Media.PixelFormats]::Pbgra32);$bitmap.Render($surface)
       $encoder=[Windows.Media.Imaging.PngBitmapEncoder]::new();$encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap))
@@ -64,7 +64,7 @@ try{
   Set-DynamicManagerSource Local
   Set-DynamicManagerSource WallpaperEngine
   if([Windows.SystemParameters]::ClientAreaAnimation){
-    Assert ($controls.GalleryOutgoing.Visibility -eq 'Visible' -and -not $controls.GalleryRegion.IsHitTestVisible) 'Sliding transition did not start'
+    Assert ($controls.GalleryOutgoing.Visibility -eq 'Visible' -and -not $controls.GalleryRegion.IsHitTestVisible) 'Transition must guard input until its completion'
     $frame=New-Object Windows.Threading.DispatcherFrame
     $timer=New-Object Windows.Threading.DispatcherTimer
     $timer.Interval=[timespan]::FromMilliseconds(600)

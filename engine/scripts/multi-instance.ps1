@@ -20,6 +20,14 @@ function Assert-DreamSkinInstanceMonitorRoot {
 function Start-DreamSkinInstanceMonitor {
   param([string]$StateRoot)
   Assert-DreamSkinInstanceMonitorRoot $StateRoot
+  $taskModule=Join-Path $PSScriptRoot 'background-task.ps1'
+  if((Test-Path -LiteralPath $taskModule) -and (Test-Path -LiteralPath (Join-Path $StateRoot 'installed-files.json'))){
+    try{
+      . $taskModule
+      $null=Enable-DreamSkinBackgroundTask $StateRoot -Start
+      return
+    }catch{Write-Warning ('Windows monitor registration failed; using session-only fallback: '+$_.Exception.Message)}
+  }
   # Reopening the manager should reuse the existing supervisor, including paths
   # with a trailing separator. The child also owns this mutex for race safety.
   $existing=$null
@@ -45,7 +53,7 @@ function Write-DreamSkinInstanceStatus {
     }
   }finally{$self.Dispose()}
   $Status|Add-Member -NotePropertyName Workers -NotePropertyValue @($Workers.Values|ForEach-Object {
-    @{Id=$_.Process.Id;StartedAt=(Get-DreamSkinProcessStartedAt $_.Process.Id)}
+      @{Id=$_.Process.Id;StartedAt=(Get-DreamSkinProcessStartedAt $_.Process.Id);Port=$_.Endpoint.Port;BrowserId=$_.Endpoint.BrowserId}
   })
   Write-DreamSkinUtf8FileAtomically -Path (Join-Path $StateRoot 'multi-instance-status.json') -Content ($Status|ConvertTo-Json -Depth 5)
 }
@@ -97,11 +105,11 @@ function Get-DreamSkinUpdateRecoveryCandidate {
   $process=$main[0]
   if(-not $process.CreationDate -or $process.CommandLine -match '--remote-debugging-port'){return $null}
   $install=@($Installs|Where-Object {Test-DreamSkinPathEqual $_.Executable $process.ExecutablePath})[0]
-  if($install.PackageFamilyName -cne $State.codexPackageFamilyName -or -not $install.Version -or $install.Version -eq $State.codexVersion){return $null}
+  if($install.PackageFamilyName -cne $State.codexPackageFamilyName -or -not $install.Version){return $null}
   $identity="$($process.ProcessId)|$($process.CreationDate)|$($install.Executable)"
   $sha=[Security.Cryptography.SHA256]::Create()
   try{$key=[BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($identity))).Replace('-','').ToLowerInvariant()}finally{$sha.Dispose()}
-  return [pscustomobject]@{Key=$key;Version=$install.Version;ProcessId=$process.ProcessId}
+  return [pscustomobject]@{Key=$key;Version=$install.Version;ProcessId=$process.ProcessId;HostUpdated=($install.Version -ne $State.codexVersion)}
 }
 
 function Request-DreamSkinUpdateRecovery {
@@ -142,8 +150,24 @@ function Test-DreamSkinUpdateRecoveryCurrent {
   return $candidate -and $candidate.Key -ceq $Key
 }
 
+function Remove-DreamSkinOrphanWatchers {
+  param([string]$StateRoot)
+  $path=Join-Path $StateRoot 'multi-instance-status.json'
+  if(-not (Test-Path -LiteralPath $path)){return}
+  $status=(Read-DreamSkinUtf8File $path)|ConvertFrom-Json
+  foreach($orphan in @($status.Workers)){
+    if(-not $orphan.StartedAt -or -not $orphan.Port -or -not $orphan.BrowserId){continue}
+    try{
+      $null=Stop-DreamSkinRecordedInjector -State ([pscustomobject]@{
+        injectorPid=$orphan.Id;injectorStartedAt=$orphan.StartedAt;port=$orphan.Port;browserId=$orphan.BrowserId
+        nodePath=(Join-Path $StateRoot 'engine/runtime/node/node.exe');injectorPath=(Join-Path $PSScriptRoot 'injector.mjs')
+      })
+    }catch{Write-Warning ('Unverified orphan was preserved: '+$_.Exception.Message)}
+  }
+}
+
 function Invoke-DreamSkinInstanceMonitor {
-  param([string]$StateRoot,[int]$MaxCycles=0,[int]$PollMilliseconds=2000)
+  param([string]$StateRoot,[int]$MaxCycles=0,[int]$PollMilliseconds=5000)
   $mutex=[Threading.Mutex]::new($false,(Get-DreamSkinInstanceMonitorMutexName $StateRoot))
   $acquired=$false
   try{$acquired=$mutex.WaitOne(0)}catch [Threading.AbandonedMutexException]{$acquired=$true}
@@ -152,6 +176,7 @@ function Invoke-DreamSkinInstanceMonitor {
   $lastVideoAvailable=$null;$videoRetryAt=[datetime]::MinValue
   $recoveryObservation=@{};$unknownInstallRetry=[datetime]::MinValue
   $logDir=Join-Path $StateRoot 'logs/multi-instance';[IO.Directory]::CreateDirectory($logDir)|Out-Null
+  $cleanupPending=$true
   try{
     $cycle=0
     while($MaxCycles -eq 0 -or $cycle -lt $MaxCycles){
@@ -159,6 +184,7 @@ function Invoke-DreamSkinInstanceMonitor {
       $operation=$null
       try{
         try{$operation=Enter-DreamSkinOperationLock}catch{Start-Sleep -Seconds 2;continue}
+        if($cleanupPending){Remove-DreamSkinOrphanWatchers $StateRoot;$cleanupPending=$false}
         $state=Read-DreamSkinState -Path (Join-Path $StateRoot 'state.json')
         if(-not $state){$state=Read-DreamSkinRecoveryIntent -StateRoot $StateRoot}
         if(-not $state){
@@ -244,7 +270,7 @@ function Invoke-DreamSkinInstanceMonitor {
           $unavailable=@(Get-DreamSkinCodexMainProcesses $registeredProcesses|Where-Object {$_.CommandLine -notmatch '--remote-debugging-port(?:=|\s+)\d+'}|ForEach-Object {$_.ProcessId})
           $updateCandidate=Get-DreamSkinUpdateRecoveryCandidate $state $installs $processes
           $recoveryState=if($unavailable.Count -gt 0){'connection-required'}elseif($endpoints.Count -eq 0){'waiting-for-codex'}else{'monitoring'}
-          $status=[pscustomobject]@{UpdatedAt=[datetime]::UtcNow.ToString('o');Enabled=$true;RecoveryState=$recoveryState;HostUpdateDetected=[bool]$updateCandidate;VideoFallback=[bool]($state.videoPid -and -not $videoAvailable -and $endpoints.Count -gt 0);VerifiedConnections=$endpoints.Count;AdditionalWatchers=$workers.Count;Ports=@($endpoints|ForEach-Object {$_.Port});ProcessesWithoutConnection=$unavailable}
+          $status=[pscustomobject]@{UpdatedAt=[datetime]::UtcNow.ToString('o');Enabled=$true;RecoveryState=$recoveryState;HostUpdateDetected=[bool]($updateCandidate -and $updateCandidate.HostUpdated);VideoFallback=[bool]($state.videoPid -and -not $videoAvailable -and $endpoints.Count -gt 0);VerifiedConnections=$endpoints.Count;AdditionalWatchers=$workers.Count;Ports=@($endpoints|ForEach-Object {$_.Port});ProcessesWithoutConnection=$unavailable}
           Write-DreamSkinInstanceStatus $status $workers $StateRoot
           Request-DreamSkinUpdateRecovery -Candidate $updateCandidate -StateRoot $StateRoot -Observation $recoveryObservation
           $lastError=$null
@@ -253,7 +279,9 @@ function Invoke-DreamSkinInstanceMonitor {
         $message=$_.Exception.Message
         if($message -ne $lastError){[IO.File]::AppendAllText((Join-Path $logDir 'monitor-error.log'),[datetime]::UtcNow.ToString('o')+' '+$message+[Environment]::NewLine);$lastError=$message}
       }finally{if($operation){Exit-DreamSkinOperationLock $operation}}
-      Start-Sleep -Milliseconds $PollMilliseconds
+      $delay=$PollMilliseconds
+      if($PollMilliseconds -gt 0 -and (-not $state -or $endpoints.Count -eq 0)){$delay=[Math]::Max($delay,15000)}
+      Start-Sleep -Milliseconds $delay
     }
   }finally{
     foreach($key in @($workers.Keys)){Stop-DreamSkinInstanceWorker $workers[$key]}
@@ -262,9 +290,14 @@ function Invoke-DreamSkinInstanceMonitor {
 }
 
 if($MyInvocation.InvocationName -ne '.') {
+  # Scheduled retries must not resurrect a monitor while setup owns the files.
+  $entryRoot=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+  try{$entryGate=[IO.File]::Open((Join-Path $entryRoot '.update-gate'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::ReadWrite)}catch{exit 0}
+  try{
   . (Join-Path $PSScriptRoot 'common-windows.ps1')
   # Keep CLI defaults out of the importing caller's scope.
   if(-not $MonitorStateRoot){$MonitorStateRoot=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent}
   Assert-DreamSkinInstanceMonitorRoot $MonitorStateRoot
+  }finally{$entryGate.Dispose()}
   Invoke-DreamSkinInstanceMonitor $MonitorStateRoot
 }

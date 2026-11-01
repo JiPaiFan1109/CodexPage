@@ -1,4 +1,4 @@
-# Third-party notices
+﻿# Third-party notices
 
 ## Codex Dream Skin
 

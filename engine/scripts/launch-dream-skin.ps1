@@ -123,8 +123,14 @@ function Invoke-DynamicQuickLauncher {
     if([CodexDynamicSkin.QuickPackageLauncher]::Launch($aumid,$args)-le0){throw 'Window activation failed'}
     $monitor=Join-Path $ScriptRoot 'multi-instance.ps1'
     if(Test-Path -LiteralPath $monitor){
-      $monitorArgs='-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "'+$monitor+'" -StateRoot "'+$stateRoot+'"'
-      Start-Process (Join-Path $PSHOME 'powershell.exe') -ArgumentList $monitorArgs -WindowStyle Hidden|Out-Null
+      $taskModule=Join-Path $ScriptRoot 'background-task.ps1'
+      if(Test-Path -LiteralPath $taskModule){
+        . $taskModule
+        $null=Enable-DreamSkinBackgroundTask $stateRoot -Start
+      }else{
+        $monitorArgs='-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "'+$monitor+'" -StateRoot "'+$stateRoot+'"'
+        Start-Process (Join-Path $PSHOME 'powershell.exe') -ArgumentList $monitorArgs -WindowStyle Hidden|Out-Null
+      }
     }
     return $true
   }catch{

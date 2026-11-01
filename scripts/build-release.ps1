@@ -40,7 +40,7 @@ try {
     'engine/assets/renderer-inject.js','engine/assets/earth-background.css',
     'engine/scripts/video-windows.ps1','engine/scripts/video-server.mjs','engine/scripts/video-blob.mjs','engine/scripts/video-cache.mjs',
     'engine/scripts/launch-dream-skin.ps1','engine/scripts/loopback-http.ps1',
-    'engine/scripts/existing-session.ps1','engine/scripts/multi-instance.ps1',
+    'engine/scripts/existing-session.ps1','engine/scripts/multi-instance.ps1','engine/scripts/background-task.ps1','engine/scripts/launch-entries.ps1',
     'engine/scripts/quick-launcher.cs',
     'engine/scripts/validate-safe-css-file.mjs','engine/scripts/theme-windows.ps1','engine/scripts/start-dream-skin.ps1',
     'engine/scripts/restore-dream-skin.ps1','engine/scripts/localization-windows.ps1','engine/scripts/injector.mjs',

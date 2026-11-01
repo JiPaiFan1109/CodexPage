@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][string]$NodeRuntimePath)
+﻿param([Parameter(Mandatory)][string]$NodeRuntimePath)
 $ErrorActionPreference='Stop'
 $repo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 . (Join-Path $repo 'scripts/install.ps1')
@@ -10,7 +10,7 @@ try{
   [IO.File]::WriteAllBytes((Join-Path $item 'wallpaper.mp4'),[byte[]]@(1,2,3,4,5))
   $before=@(Get-ChildItem -LiteralPath $item -File|Sort-Object Name|ForEach-Object {(Get-FileHash -LiteralPath $_.FullName).Hash}) -join ','
   for($attempt=0;$attempt -lt 2;$attempt++){
-    Install-DynamicSkin -SourceRoot $repo -InstallRoot $root -NodeRuntimePath $NodeRuntimePath -SkipShortcuts
+    Install-DynamicSkin -SourceRoot $repo -InstallRoot $root -NodeRuntimePath $NodeRuntimePath -SkipShortcuts -SkipBackgroundTask
     $after=@(Get-ChildItem -LiteralPath $item -File|Sort-Object Name|ForEach-Object {(Get-FileHash -LiteralPath $_.FullName).Hash}) -join ','
     if($after -ne $before){throw 'Upgrade changed user wallpapers'}
     foreach($file in @('skin-manager.ps1','skin-manager.xaml','wallpaper-library.ps1','wallpaper-preview.ps1')){

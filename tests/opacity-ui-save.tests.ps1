@@ -10,7 +10,8 @@ try{
   $source=Join-Path $state 'source.png';$bitmap=[Drawing.Bitmap]::new(8,8)
   try{$bitmap.Save($source,[Drawing.Imaging.ImageFormat]::Png)}finally{$bitmap.Dispose()}
   $entry=(Import-DynamicWallpaper $source Image $state).Item
-  $notice=[pscustomobject]@{Text=''}
+  Add-Type -AssemblyName PresentationFramework
+  $notice=[Windows.Controls.TextBlock]::new()
   $script:SkinManager=@{StateRoot=$state;Items=@();PendingOpacity=@{Id=$entry.Id;Value=73};Controls=@{PreviewNotice=$notice}}
   Save-DynamicManagerOpacity
   if($script:SkinManager.PendingOpacity){throw $notice.Text}

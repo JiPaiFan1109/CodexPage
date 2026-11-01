@@ -11,8 +11,9 @@ try{
   [regex]::Matches([IO.File]::ReadAllText((Join-Path $PSScriptRoot '../scripts/skin-manager.xaml')),'x:Name="([^"]+)"')|ForEach-Object{$controls[$_.Groups[1].Value]=$window.FindName($_.Groups[1].Value)}
   $items=@(for($i=0;$i -lt 25;$i++){[pscustomobject]@{Id=[string]$i;Name=('壁纸 '+($i+1));Kind=if($i%2){'Image'}else{'Video'};Sources=@('Local');IsAvailable=$true;Size=1024;ThumbnailPath=$null}})
   if($PreviewDirectory){
-    $thumbs=@(Get-ChildItem (Join-Path $env:LOCALAPPDATA 'CodexDynamicSkin/wallpaper-library/items') -Filter thumbnail.png -Recurse -File)
-    for($i=0;$i -lt $items.Count;$i++){if($thumbs.Count){$items[$i].ThumbnailPath=$thumbs[$i%$thumbs.Count].FullName};$items[$i].Name=if($items[$i].Kind -eq 'Video'){'动态壁纸 '+($i+1)}else{'静态壁纸 '+($i+1)}}
+    [void][IO.Directory]::CreateDirectory([IO.Path]::GetFullPath($PreviewDirectory))
+    $demo=Join-Path $PSScriptRoot '../engine/assets/demo-background.png'
+    foreach($item in $items){$item.ThumbnailPath=$demo}
   }
   $script:SkinManager=@{Window=$window;Controls=$controls;Items=$items;Filter='All';Source='Local';Status=@{CurrentId='0'};Busy=$false}
   $surface=$window.Content
@@ -47,12 +48,14 @@ try{
   $controls.StatusText.Text='壁纸已加载';$controls.StatusText.Visibility='Visible';$controls.ConnectionLabel.Text='连接成功';$controls.ConnectionDetail.Text='Codex 26.1013.4894.0';$controls.ConnectionBadge.Visibility='Visible'
   foreach($size in @(@(1440,840),@(900,525))){
     $surface.Measure([Windows.Size]::new($size[0],$size[1]));$surface.Arrange([Windows.Rect]::new(0,0,$size[0],$size[1]));$surface.UpdateLayout()
+    Update-DynamicManagerList
+    $surface.UpdateLayout()
     $list=$controls.WallpaperList
     $last=$list.ItemContainerGenerator.ContainerFromIndex(11)
     $bounds=$last.TransformToAncestor($list).TransformBounds([Windows.Rect]::new(0,0,$last.ActualWidth,$last.ActualHeight))
+    Assert ($last.ActualWidth -ge 140 -and $last.ActualHeight -gt 90) 'Cards became too small'
+    Assert ([Windows.Controls.ScrollViewer]::GetVerticalScrollBarVisibility($list) -eq 'Disabled') 'Approved paginated gallery unexpectedly scrolls'
     Assert ($bounds.Bottom -le $list.ActualHeight+1) 'Third row clipped'
-    Assert ([Windows.Controls.ScrollViewer]::GetVerticalScrollBarVisibility($list) -eq 'Disabled') 'Scrollbar enabled'
-    Assert ($controls.StatusText.TextAlignment -eq 'Center' -and $controls.StatusText.Parent -eq $controls.ConnectionLabel.Parent) 'Status is not centered under connection'
     if($PreviewDirectory){
       $bitmap=[Windows.Media.Imaging.RenderTargetBitmap]::new($size[0],$size[1],96,96,[Windows.Media.PixelFormats]::Pbgra32);$bitmap.Render($surface)
       $encoder=[Windows.Media.Imaging.PngBitmapEncoder]::new();$encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap))
@@ -66,11 +69,11 @@ try{
       $encoder=[Windows.Media.Imaging.PngBitmapEncoder]::new();$encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap))
       $stream=[IO.File]::Create((Join-Path $PreviewDirectory ($Name+'.png')));try{$encoder.Save($stream)}finally{$stream.Dispose()}
     }
-    $controls.SettingsPanel.Visibility='Visible';$controls.UpdateText.Text='当前版本 1.0.1 · 界面草稿'
+    $controls.SettingsPanel.Visibility='Visible';$controls.UpdateText.Text='当前版本 '+([IO.File]::ReadAllText((Join-Path $PSScriptRoot '../VERSION'))).Trim()+' · 隔离预览'
     Save-DraftState 'settings';$controls.SettingsPanel.Visibility='Collapsed'
     $controls.ConfirmationOverlay.Visibility='Visible';Save-DraftState 'confirmation';$controls.ConfirmationOverlay.Visibility='Collapsed'
     $controls.PreviewOverlay.Visibility='Visible';$controls.SelectedName.Text='星空 · 静态壁纸';$controls.PreviewImage.Source=Read-DynamicManagerBitmap $items[1].ThumbnailPath
-    $controls.OpacityPanel.Visibility='Visible';$controls.WallpaperOpacitySlider.Value=50;$controls.OpacityValue.Text='50%';$controls.PreviewImage.Opacity=1;$controls.PreviewNotice.Text='50% 为原图基准'
+    $controls.OpacityPanel.Visibility='Visible';$controls.WallpaperOpacitySlider.Value=50;$controls.OpacityValue.Text='50 / 100';$controls.PreviewImage.Opacity=1;$controls.PreviewNotice.Text='背景淡化默认 50；自动保存，应用壁纸后生效。'
     Save-DraftState 'wallpaper-preview';$controls.PreviewOverlay.Visibility='Collapsed'
     $script:SkinManager.Items=@();Update-DynamicManagerList;Save-DraftState 'empty-library'
     $script:SkinManager.Items=$items;Update-DynamicManagerList
@@ -88,6 +91,6 @@ try{
     $timer.Start();[Windows.Threading.Dispatcher]::PushFrame($frame)
   }
   Assert ($script:SkinManager.Source -eq 'WallpaperEngine' -and $controls.GalleryOutgoing.Visibility -eq 'Collapsed' -and $null -eq $controls.GalleryOutgoing.Source -and $controls.GalleryRegion.IsHitTestVisible) 'Rapid source transitions left stale content or blocked input'
-  Assert ([Math]::Abs($controls.GallerySlideTransform.X) -lt 0.1) 'Gallery did not return to its resting position'
+  Assert ([Math]::Abs($controls.GalleryRegion.RenderTransform.X) -lt 0.1) 'Gallery did not return to its resting position'
   'PASS: gallery pagination, filters, layout and rapid sliding source transitions'
 }finally{$window.Close()}

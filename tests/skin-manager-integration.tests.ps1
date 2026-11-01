@@ -4,6 +4,9 @@ $repo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 . (Join-Path $repo 'scripts/media.ps1');Initialize-DynamicMedia -InstallRoot $repo
 . (Join-Path $repo 'scripts/wallpaper-library.ps1')
 . (Join-Path $repo 'scripts/skin-manager.ps1')
+# This scenario checks worker results and media ownership. Interrupted animation
+# timing is exercised separately by frontend-experience.tests.ps1.
+function Test-DynamicManagerMotionEnabled {return $false}
 function Assert($Condition,$Message){if(-not $Condition){throw $Message}}
 function Get-VisualImages($Visual){
   for($i=0;$i -lt [Windows.Media.VisualTreeHelper]::GetChildrenCount($Visual);$i++){
@@ -91,7 +94,7 @@ try{
             }
             6 {
               Assert ($ui.Source -eq 'WallpaperEngine' -and $ui.Controls.WallpaperList.Items.Count -eq 1) 'Engine import did not display engine gallery'
-              Assert ($ui.Controls.ConfirmationOverlay.Visibility -eq 'Visible' -and $ui.Controls.ConfirmAcceptButton.Content -eq '知道了') 'Batch import did not show acknowledgement'
+              Assert ($ui.Controls.ConfirmationOverlay.Visibility -eq 'Visible' -and $ui.Controls.ConfirmAcceptButton.Content -eq '知道了') 'Batch import did not show categorized report'
               Complete-DynamicManagerConfirmation $true
               Assert ($ui.Controls.ConfirmationOverlay.Visibility -eq 'Collapsed') 'Batch report did not close after acknowledgement'
               Assert ($ui.Controls.EnginePanel.Visibility -eq 'Collapsed' -and $ui.Controls.EngineNavLabel.Visibility -eq 'Visible') 'Engine landing obscures imported wallpapers'

@@ -1,3 +1,26 @@
+﻿## 2026-11-02 3.2.0 发行验证进行中
+
+用户已明确授权检查、打包和发布 3.2.0；不安装生产环境、不重启生产 Codex、不修改真实壁纸库。current/VERSION 与 package.json 已提升至 3.2.0，尚不代表公开发布成功。独立发行副本和证据位于 .local-evidence/release-3.2.0/，公开结果待签名、隔离生命周期和 CI 验证。以下带日期记录是历史。
+
+## 3.1.1 已公开发布（2026-10-30）
+
+用户授权检查后发布3.1.1已完成。发布页 https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.1 ，Release ID 428793097，非草稿、稳定版、公开 latest=v3.1.1；main与标签均为 e1ccd28871691eb182d7f3c5bcbf19258edcd0f6。十附件大小/SHA256一致，实际公开下载安装包与RSA签名复验通过，旧客户端签名、旧发现地址和旧安装包URL兼容通过。
+
+仅开始菜单改为一个直接CodexPage入口，安装/升级清理已知Dream Skin及旧子菜单，空目录才删除；用户媒体/主题/备份及官方Codex入口保留。当前用户开始菜单之外或自行改名入口不自动清理。以公开3.1.0为源码基线，排除已撤回界面实验。current VERSION/package.json=3.1.1，发布相关文件已同步；current其他历史未发布改动仍保留，不可直接全量打包。真实发行源码见.local-evidence/release-3.1.1/repository。
+
+最终包仅.local-evidence/release-3.1.1/final/，安装包28,919,497字节，SHA256 b3c44bdc43ccd6faa92a75d8703a07506fdf0fd704bb95aaf0310f5c3def5145。52项Node、112项Windows、151项脚本解析通过；75项包清单、60项安装清单/ZIP与源码核对通过；真实隔离菜单新装/迁移/重复安装/卸载、中文目录安装、签名更新、占用拒绝、取消/失败卸载及3.1.0覆盖升级/库保留通过。
+
+最终发行提交CI 41028415739成功，包含真实管理器启动和菜单生命周期。前两次CI暴露测试读取中文快捷方式路径失败，最终使用IShellLinkW Unicode接口及路径规范化修正，仅测试变更，发行包不变。独立审查代理因额度未运行，已自行复核差异；不宣称完成独立审查。证据public-verified.json、ci-success-jobs.json、full-results.json、lifecycle-results.json、menu-unicode.log。未覆盖本机生产安装、未清理真实开始菜单、未重启Codex或修改真实壁纸库。真实开始菜单渲染/缓存刷新、GPU/跨屏等未实测。以下旧记录为历史。
+## 3.1.0 已公开发布（2026-10-28）
+
+发布页：https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0 ，Release ID 426298671，非草稿、稳定版、公开 latest=v3.1.0。main 与 v3.1.0 的发行提交为 ede8be95b50f94b7b375567e1279804fe0c16d37。十附件大小和SHA256与本地最终包一致，实际公开下载安装包与签名复验通过，旧发现地址及旧客户端签名兼容通过。
+
+最终包只使用 `../.local-evidence/release-3.1.0/final/`；安装包28,921,601字节，SHA256 `ff295bcd36ef7ed19c059f225ac15b48a5db970bc133d242bafab2ffb2ee2892`。中断构建与candidate目录不得作为发行包。current/VERSION和package.json=3.1.0，固定Node24.22.1；公开包文件与源码/ZIP及75项包清单、60项安装清单一致。
+
+本轮修复dot-source状态目录污染、错根/重复后台导致代码7、重复后台启动、安装最终占用复查竞态、连接前图库未加载和通用安装失败原因。112个Windows脚本、52项Node测试、151个PowerShell文件解析通过；真实中文目录安装/签名更新/占用拒绝/取消和失败卸载/正常卸载/库保留、3.0.0→3.1.0与原2.1.0双后台→3.1.0覆盖升级通过。最终main CI成功，证据在同证据目录ci-status.json及public-verified.json。
+
+本机生产VERSION仍2.1.0，生产后台观察为已有验证连接；此次没有覆盖生产安装、重启生产Codex或修改生产壁纸库。Codex自身更新或普通入口启动缺少调试端口时，仍可能需要确认重启才能恢复壁纸。真实GPU前后对照、物理跨屏/辅助技术、断电/满盘未实测。详见docs/releases/v3.1.0-validation.md。以下进行中及旧版本描述均为历史记录。
+
 ## 3.1.0 验证进行中（2026-10-28）
 
 用户明确授权修复、全面检查并发布3.1.0。current/VERSION与package.json=3.1.0；候选源码已推送codex/reliability-3.1.0，尚未公开3.1.0。最终包在工作区.local-evidence/release-3.1.0/final；安装包SHA256 ff295bcd36ef7ed19c059f225ac15b48a5db970bc133d242bafab2ffb2ee2892，28,921,601字节；更新签名和75项包清单/60项安装清单通过。实际公开结果以后续状态为准。此前3.0.0记录保留。

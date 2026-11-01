@@ -113,7 +113,7 @@ try {
   if($UpdateRecoveryKey){
     # Consent is requested outside the operation lock: an ignored prompt must not block restore/apply.
     $recoveryLanguage=Resolve-DreamSkinLanguage -StateRoot $StateRoot
-    $recoveryMessage=if($recoveryLanguage -eq 'en'){'The app updated and its wallpaper connection was lost. Your wallpaper is saved. Restarting interrupts current work. Choose Not now to keep working and reconnect later from CodexPage.'}else{'应用更新后，壁纸连接已断开，原壁纸设置仍已保存。重启会中断当前操作，请先保存工作。选择“暂不重启”可继续工作，稍后从 CodexPage 重新连接。'}
+    $recoveryMessage=if($recoveryLanguage -eq 'en'){'Codex started without a wallpaper connection. Your wallpaper is saved. Restart once to restore it. Restarting interrupts current work; choose Not now to keep working and reconnect later from CodexPage.'}else{'本次 Codex 启动未建立壁纸连接，原壁纸仍已保存。重启一次即可重新连接；重启会中断当前操作，请先保存工作。选择“暂不重启”可继续工作，稍后从 CodexPage 恢复壁纸。'}
     $accepted=Confirm-DreamSkinRestart -Message $recoveryMessage -TimeoutSeconds 60
     $receiptPath=Join-Path $StateRoot 'update-recovery-notice.json'
     $receipt=Read-DreamSkinUtf8File $receiptPath|ConvertFrom-Json

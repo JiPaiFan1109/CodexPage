@@ -10,7 +10,7 @@ try{
   function global:Start-DynamicManagerWork {param($Operation,$Argument);$global:DeferredOperation=$Operation;$global:DeferredArgument=$Argument}
   $pending=[pscustomobject]@{Projects=@('one','two');NeedsDownload=$true;Imported=1;Existing=0}
   Show-DynamicSteamConversionConfirmation $pending 'Imported one'
-  Assert ($controls.ConfirmationMessage.Text -match '80 MB') 'Download cost missing'
+  Assert ($controls.ConfirmationMessage.Text -match '下载体积和解压占用取决于实际获取的版本' ) 'Variable download size is not disclosed'
   if($RenderDirectory){
     [void][IO.Directory]::CreateDirectory([IO.Path]::GetFullPath($RenderDirectory))
     foreach($size in @(@(1440,840),@(900,525))){
@@ -23,7 +23,7 @@ try{
   Assert (-not $global:DeferredOperation) 'Skip started conversion'
   $pending.NeedsDownload=$false
   Show-DynamicSteamConversionConfirmation $pending 'Imported one'
-  Assert ($controls.ConfirmationMessage.Text -notmatch '80 MB') 'Cached converter requests download'
+  Assert ($controls.ConfirmationMessage.Text -notmatch '需要下载并校验转换器') 'Cached converter requests download'
   Complete-DynamicManagerConfirmation $true
   Assert ($global:DeferredOperation -eq 'EngineConvert' -and (ConvertFrom-Json $global:DeferredArgument).Count -eq 2) 'Consent did not pass pending subset'
   'PASS skip does not convert, existing tools omit download, consent starts exact pending subset'

@@ -5,7 +5,7 @@ $window=New-DynamicSkinManagerWindow
 try{
   Assert ($null -ne $window.FindName('EngineImportButton')) 'Wallpaper Engine import view missing'
 
-  foreach($size in @(@(1440,900),@(1080,720))){
+  foreach($size in @(@(1440,840),@(900,525))){
     $window.Width=$size[0];$window.Height=$size[1]
     $window.Content.Measure([Windows.Size]::new($size[0],$size[1]));$window.Content.Arrange([Windows.Rect]::new(0,0,$size[0],$size[1]));$window.Content.UpdateLayout()
     foreach($name in @('ImportButton','ApplyButton','LocalNavButton','EngineNavButton','WallpaperList')){

@@ -12,14 +12,14 @@ try {
   Set-Content "$rollbackRoot/engine/old.txt" 'recover me'
   Set-Content "$temp/blocked-desktop" 'not a directory'
   $failed = $false
-  try { Install-DynamicSkin -SourceRoot $repo -InstallRoot $rollbackRoot -DesktopPath "$temp/blocked-desktop" -NodeRuntimePath $NodeRuntimePath } catch { $failed = $true }
+  try { Install-DynamicSkin -SkipBackgroundTask -SourceRoot $repo -InstallRoot $rollbackRoot -DesktopPath "$temp/blocked-desktop" -NodeRuntimePath $NodeRuntimePath } catch { $failed = $true }
   if (-not $failed -or -not (Test-Path "$rollbackRoot/engine/old.txt")) { throw 'Shortcut failure did not roll back the old engine.' }
   $partialDesktop = New-Item "$temp/partial-desktop" -ItemType Directory
   Set-Content "$partialDesktop/CodexPage.lnk" 'original manager shortcut'
   $locked = [IO.File]::Open("$partialDesktop/CodexPage.lnk", 'Open', 'ReadWrite', 'None')
   $failed = $false
   try {
-    try { Install-DynamicSkin -SourceRoot $repo -InstallRoot $rollbackRoot -DesktopPath $partialDesktop -NodeRuntimePath $NodeRuntimePath } catch { $failed = $true }
+    try { Install-DynamicSkin -SkipBackgroundTask -SourceRoot $repo -InstallRoot $rollbackRoot -DesktopPath $partialDesktop -NodeRuntimePath $NodeRuntimePath } catch { $failed = $true }
   } finally { $locked.Dispose() }
   if (-not $failed -or -not (Test-Path "$rollbackRoot/engine/old.txt") -or (Test-Path "$partialDesktop/Codex.lnk")) { throw 'Partial shortcut failure did not restore engine and remove the newly created shortcut.' }
   if ((Get-Content "$partialDesktop/CodexPage.lnk" -Raw).Trim() -ne 'original manager shortcut') { throw 'Failed shortcut transaction overwrote original shortcut.' }
@@ -33,7 +33,7 @@ try {
   New-Item "$root/appearance" -ItemType Directory -Force|Out-Null
   $customIconStream=[IO.File]::Create("$root/appearance/skin-manager.ico")
   try{[Drawing.SystemIcons]::Information.Save($customIconStream)}finally{$customIconStream.Dispose()}
-  Install-DynamicSkin -SourceRoot $repo -InstallRoot $root -DesktopPath $desktop -NodeRuntimePath $NodeRuntimePath
+  Install-DynamicSkin -SkipBackgroundTask -SourceRoot $repo -InstallRoot $root -DesktopPath $desktop -NodeRuntimePath $NodeRuntimePath
   $shell = New-Object -ComObject WScript.Shell
   $link = $shell.CreateShortcut("$desktop/Codex.lnk")
   if ($link.TargetPath -notlike '*engine\launcher\CodexDynamicSkinLauncher.exe' -or $link.Arguments) { throw 'Wrong launch shortcut.' }
@@ -47,14 +47,14 @@ try {
   if (-not (Get-ChildItem "$root/backups" -Recurse -Filter old.txt)) { throw 'Old engine not recoverable.' }
   Set-Content "$temp/fake.exe" 'untrusted'
   $rejected = $false
-  try { Install-DynamicSkin -SourceRoot $repo -InstallRoot "$temp/rejected" -SkipShortcuts -NodeRuntimePath "$temp/fake.exe" } catch { $rejected = $true }
+  try { Install-DynamicSkin -SkipBackgroundTask -SourceRoot $repo -InstallRoot "$temp/rejected" -SkipShortcuts -NodeRuntimePath "$temp/fake.exe" } catch { $rejected = $true }
   if (-not $rejected -or (Test-Path "$temp/rejected/engine")) { throw 'Untrusted runtime accepted or active engine mutated.' }
   $nestedRejected = $false
   $nestedRoot = Join-Path $repo ('engine/nested-test-' + [guid]::NewGuid().ToString('N'))
-  try { Install-DynamicSkin -SourceRoot $repo -InstallRoot $nestedRoot -SkipShortcuts -NodeRuntimePath $NodeRuntimePath } catch { $nestedRejected = $true }
+  try { Install-DynamicSkin -SkipBackgroundTask -SourceRoot $repo -InstallRoot $nestedRoot -SkipShortcuts -NodeRuntimePath $NodeRuntimePath } catch { $nestedRejected = $true }
   if (-not $nestedRejected -or (Test-Path $nestedRoot)) { throw 'Nested source install must be rejected before creating files.' }
   $customRejected = $false
-  try { Install-DynamicSkin -SourceRoot $repo -InstallRoot "$temp/custom" -DesktopPath ([Environment]::GetFolderPath('Desktop')) -NodeRuntimePath "$temp/fake.exe" } catch {
+  try { Install-DynamicSkin -SkipBackgroundTask -SourceRoot $repo -InstallRoot "$temp/custom" -DesktopPath ([Environment]::GetFolderPath('Desktop')) -NodeRuntimePath "$temp/fake.exe" } catch {
     $customRejected = $_.Exception.Message -notlike 'Custom installation roots*'
   }
   if (-not $customRejected -or (Test-Path "$temp/custom/engine")) { throw 'Custom root must validate safely before creating the engine.' }

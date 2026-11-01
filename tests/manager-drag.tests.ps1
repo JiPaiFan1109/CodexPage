@@ -9,7 +9,7 @@ try{
  Assert (Test-DynamicLongDrag 400 10 0) 'Long movement not recognized'
  Assert (Test-DynamicWindowDrag Window 10 3 0) 'Blank region still requires a long hold'
  Assert (-not(Test-DynamicWindowDrag Control 20 10 0)) 'Button click became a window drag'
- Assert (Test-DynamicWindowDrag Control 200 4 0) 'Button region drag is too slow'
+ Assert (Test-DynamicWindowDrag Control 200 4 0) 'Approved delayed control-region window drag was lost'
  Assert (-not(Test-DynamicWindowDrag Card 200 10 0)) 'Card hold protection was lost'
  $w.Left=100;$w.Top=200
  $gesture=@{Left=100;Top=200;ScreenPoint=[Windows.Point]::new(300,400)}
