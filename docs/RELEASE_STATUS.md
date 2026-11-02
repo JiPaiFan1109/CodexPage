@@ -1,4 +1,16 @@
-﻿## 2026-11-02 3.2.0 发行验证进行中
+﻿## 2026-11-02 3.2.0 已公开发布
+
+用户本轮要求“检查后打包发布为 3.2.0”已完成。公开稳定版与 latest 为 [v3.2.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.2.0)，Release ID 431027263。发行标签提交为 `29933757dc1497b73cd92535a8197ea7b607570a`；main 后续可包含本次发布完成文档，不修改已发布标签或附件。
+
+开发入口 `current/` 的 VERSION/package.json=3.2.0。实际发行源码为 `.local-evidence/release-3.2.0/repository/`，唯一公开最终产物为该发行目录下 `final/`；candidate-initial、final-reviewed、final-reviewed-v2 均为未公开候选，不能混用。安装包 28,922,458 字节，SHA256 `8a6d6a110123f999a4ff87de58fa5ce3813af6e17dce30864e2efad894c0beae`。十附件大小/SHA256 与 GitHub digest 一致，公开下载安装包与旧客户端 RSA 签名、旧发现地址及旧安装 URL 复验通过。
+
+116 项本机 Windows 脚本最终检查、52 项 Node、161 项脚本解析通过。最终提交 CI [41340051555](https://github.com/JiPaiFan1109/CodexPage/actions/runs/41340051555) 成功，包含英文系统中文快捷方式、任务恢复、实际管理器启动、导入/预览/重命名/删除及更新回归。最终包 77 项包清单、62 项安装清单/ZIP 与源码一致；隔离开始菜单、新装、签名更新、占用拒绝、取消/失败/正常卸载，以及公开 3.1.1→3.2.0 覆盖升级和库保留通过。此前候选另验 3.1.0→3.2.0。
+
+本次纳入后台任务恢复、启动入口保护、草稿保存失败恢复、图库容错和预览句柄释放，并修复英文 Windows 上 Unicode 快捷方式读写。保留旧客户端协议、旧安装包别名、原数据格式及必要迁移逻辑。首次本机回归有缺少 FFmpeg 测试依赖和并发锁等待失败；补齐依赖及隔离复验通过，原始失败记录保留，并发失败原因未确认。早期 CI 的系统能力/动画断言已修正，不把可选视频缩略图缺失等同于播放失败。
+
+本机生产安装仍按此前只读证据为 3.1.0 加 local-reliability-patch.json；本轮未安装生产、未重启生产 Codex、未修改真实壁纸库。真实 GPU/多屏/辅助技术、断电/满盘未实测；安装 EXE 尚无项目 Authenticode 签名。原始证据见上述发行目录的 final-checks.json、final-lifecycle-results.json、payload-verified.json、public-verified.json。以下带日期内容是历史记录，不覆盖本段状态和授权。
+
+## 2026-11-02 3.2.0 发行验证进行中
 
 用户已明确授权检查、打包和发布 3.2.0；不安装生产环境、不重启生产 Codex、不修改真实壁纸库。current/VERSION 与 package.json 已提升至 3.2.0，尚不代表公开发布成功。独立发行副本和证据位于 .local-evidence/release-3.2.0/，公开结果待签名、隔离生命周期和 CI 验证。以下带日期记录是历史。
 
