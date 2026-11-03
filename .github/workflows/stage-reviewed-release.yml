@@ -1,0 +1,83 @@
+name: Stage reviewed release draft
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Windows UX regression review run
+        required: true
+      tag:
+        description: Existing release tag
+        required: true
+permissions:
+  actions: read
+  contents: write
+jobs:
+  stage:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - name: Verify reviewed source and draft
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          $ErrorActionPreference='Stop'
+          $sha=(git rev-parse HEAD).Trim()
+          $run=gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:RUN_ID" | ConvertFrom-Json
+          if($LASTEXITCODE -ne 0 -or $run.name -ne 'Windows UX regression review' -or $run.head_sha -ne $sha -or $run.conclusion -ne 'success'){throw 'Reviewed run does not match release source'}
+          $version=[IO.File]::ReadAllText((Join-Path $PWD 'VERSION')).Trim()
+          if($env:RELEASE_TAG -cne ('v'+$version)){throw 'Release tag/version mismatch'}
+          $release=gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:RELEASE_TAG" | ConvertFrom-Json
+          if($LASTEXITCODE -ne 0 -or -not $release.draft){throw 'Only an existing unpublished draft may be staged'}
+          if($release.target_commitish -ne $sha){throw 'Draft source mismatch'}
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-ux-reviewed-application
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: reviewed
+      - name: Verify and sign reviewed package
+        shell: powershell
+        env:
+          UPDATE_SIGNING_KEY_XML: ${{ secrets.UPDATE_SIGNING_KEY_XML }}
+        run: |
+          $ErrorActionPreference='Stop'
+          $version=[IO.File]::ReadAllText((Join-Path $PWD 'VERSION')).Trim()
+          foreach($checksum in Get-ChildItem reviewed -Filter '*.sha256'){
+            $line=[IO.File]::ReadAllText($checksum.FullName).Trim();$parts=$line -split '  ',2
+            $file=Join-Path $checksum.DirectoryName $parts[1]
+            if((Get-FileHash $file).Hash -ine $parts[0]){throw 'Reviewed artifact checksum mismatch'}
+          }
+          .\scripts\sign-update.ps1 -OutputDirectory reviewed -NotesPath "docs/releases/v$version-app-notes.txt"
+          .\scripts\get-release-assets.ps1 -OutputDirectory reviewed -Version $version
+          Expand-Archive -LiteralPath "reviewed/CodexPage-$version-windows-x64.zip" -DestinationPath reviewed/package
+          foreach($line in [IO.File]::ReadAllLines((Join-Path $PWD 'reviewed/package/SHA256SUMS.txt'))){
+            $parts=$line -split '  ',2
+            if((Get-FileHash (Join-Path $PWD ('reviewed/package/'+$parts[1]))).Hash -ine $parts[0]){throw 'Reviewed ZIP inventory mismatch'}
+          }
+      - name: Stage all assets without publishing
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          $ErrorActionPreference='Stop'
+          $release=gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:RELEASE_TAG" | ConvertFrom-Json
+          if($LASTEXITCODE -ne 0 -or -not $release.draft){throw 'Refusing to modify public release'}
+          $version=[IO.File]::ReadAllText((Join-Path $PWD 'VERSION')).Trim()
+          $names=@(.\scripts\get-release-assets.ps1 -OutputDirectory reviewed -Version $version)
+          foreach($name in $names){
+            gh release upload $env:RELEASE_TAG (Join-Path 'reviewed' $name) --repo $env:GITHUB_REPOSITORY --clobber
+            if($LASTEXITCODE -ne 0){throw "Draft upload failed: $name"}
+          }
+          $release=gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:RELEASE_TAG" | ConvertFrom-Json
+          if(-not $release.draft -or @($release.assets).Count -ne 10){throw 'Draft inventory/state mismatch'}
+          foreach($name in $names){
+            $file=Join-Path 'reviewed' $name;$asset=$release.assets|Where-Object name -eq $name
+            if($asset.state -ne 'uploaded' -or $asset.size -ne (Get-Item $file).Length -or $asset.digest -cne ('sha256:'+(Get-FileHash $file).Hash.ToLowerInvariant())){throw "Draft digest mismatch: $name"}
+          }
+          'PASS: reviewed, signed assets staged; release remains draft'
