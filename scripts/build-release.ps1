@@ -1,10 +1,11 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
   [string]$NodeRuntimePath,
   [string]$OutputDirectory
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
+& (Join-Path $PSScriptRoot 'check-release-docs.ps1') -RepositoryRoot $repo | Write-Host
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $repo 'dist' }
 . (Join-Path $PSScriptRoot 'install.ps1')
 $pin = Get-Content (Join-Path $PSScriptRoot 'node-runtime.json') -Raw | ConvertFrom-Json

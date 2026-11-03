@@ -10,9 +10,9 @@ README 中的地球动态背景来自 Steam 创意工坊作品 **Planet Earth fr
 2. 自行购买并安装 **Wallpaper Engine**，然后启动它。
 3. 在 Wallpaper Engine 的创意工坊搜索 **Planet Earth from outer space Ⅱ 4K60fps**，核对作品标题与工坊 ID `2846226552` 后订阅，等待下载完成。
 4. 在 Wallpaper Engine 中找到已下载的作品，通过该作品的菜单打开资源所在文件夹，查找其中的 `.mp4` 视频文件。界面菜单名称可能随语言与版本变化。
-5. 打开桌面 **Codex Background Manager**，选择该视频并应用。程序会使用 Windows 内置转换器生成适合背景播放的静音 H.264 MP4，尺寸限制在 1920 × 1080 内、30 fps，并保留画面比例。
+5. 打开 **CodexPage**，点击 **导入壁纸** 选择该视频，再选中并点击 **应用壁纸**。此 4K 视频需要转码，首次转换会下载并校验 FFmpeg；由 FFmpeg 解码、Windows Media Foundation 编码为静音 H.264 MP4，最高 1920 × 1080、30 fps，并保留画面比例。
 
-导入原文件上限为 2 GiB，转换输出上限为 128 MiB。若视频过长，请自行缩短后重试；若 Windows 无法解码，请先导出为 H.264 MP4。实际播放不保留原片的 4K60fps 规格。
+导入原文件上限为 2 GiB，转换输出上限为 128 MiB。若视频过长，请自行缩短后重试；若转换失败，请先导出为 H.264 MP4。实际播放不保留原片的 4K60fps 规格。
 
 原始地球视频不在本仓库或 Release ZIP 中分发。本项目的 MIT 许可证不授予壁纸素材再分发权；演示截图和短录屏也不表示已获得原片再分发授权。请遵守作者、Steam 和 Wallpaper Engine 的相关条款。作品可用性可能变化，本项目不将其称为免费或公有领域素材。
 
@@ -24,9 +24,9 @@ README 中的地球动态背景来自 Steam 创意工坊作品 **Planet Earth fr
 2. Purchase, install, and launch **Wallpaper Engine** yourself.
 3. Search its Workshop for **Planet Earth from outer space Ⅱ 4K60fps**. Check the title and item ID `2846226552`, subscribe, and wait for the download.
 4. Find the downloaded wallpaper in Wallpaper Engine and use its menu to open the resource folder. Locate the `.mp4` file. Menu wording can vary by language and version.
-5. Open the desktop **Codex Background Manager**, select that video, and apply it. Windows MediaTranscoder prepares a silent H.264 MP4, preserving aspect ratio within 1920 × 1080 at 30 fps.
+5. Open **CodexPage**, select **导入壁纸** (Import wallpaper), then select the video and click **应用壁纸** (Apply). This 4K source requires conversion. The first conversion downloads and verifies FFmpeg, which decodes the video and uses Windows Media Foundation to encode a silent H.264 MP4 within 1920 × 1080 at 30 fps, preserving aspect ratio.
 
-Inputs are limited to 2 GiB and converted outputs to 128 MiB. Shorten overly long videos before importing. If Windows cannot decode the source, export an H.264 MP4 and retry. Playback does not preserve the source wallpaper's 4K60fps specification.
+Inputs are limited to 2 GiB and converted outputs to 128 MiB. Shorten overly long videos before importing. If conversion fails, export an H.264 MP4 and retry. Playback does not preserve the source wallpaper's 4K60fps specification.
 
 The original video is not distributed with this repository or its Release ZIP. The project's MIT license and inclusion of demonstration screenshots or short recordings do not grant permission to redistribute that wallpaper. Respect the creator's and platforms' terms; availability may change. This project does not claim that the wallpaper is free or public domain.
 

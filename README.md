@@ -14,8 +14,6 @@
 
 本项目是社区开发的独立工具，**非 OpenAI 官方产品，与 OpenAI 无隶属关系**。使用前请安装官方版 Codex。
 
-Steam 导入先处理兼容文件，仅在存在待转换项目时询问是否继续。首次转换视频、动图或 AVIF 时需要联网从 BtbN 上游下载并校验 FFmpeg，之后复用本地缓存（下载和缓存大小取决于固定的工具版本）。安装包不含 FFmpeg。场景和网页壁纸仅支持预览图或预览动画，不支持完整互动场景。
-
 ## 界面与功能
 
 <p align="center">
@@ -29,8 +27,6 @@ CodexPage 2.0.0 界面示意图：以 3 行 × 4 列展示 12 张示例壁纸，
 - **壁纸收藏库**：卡片浏览、静态/动态分类、大图预览、视频静音播放；支持重命名和删除。
 - **自动识别 Codex**：打开 CodexPage 即可检测本机客户端，点击「应用壁纸」或「打开 Codex」进入换肤流程。
 - **保留收藏，随时恢复**：本地导入会保存副本，移动原文件不影响收藏；Steam 引用源文件删除后会从列表消失，下次打开 Codex 回到初始外观；升级保留壁纸库，可恢复 Codex 原始外观。
-
-Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤128 MiB），不转码，也不写入持久视频缓存；其他支持的视频自动转换为静音 H.264 缓存，仍关联 Steam 原文件。Steam 盘离线同样视为源文件不可用，重新连接后可刷新列表。旧版 Steam 专用副本会在刷新且核对原文件一致后转为引用，正在使用的副本暂缓清理。
 
 <details>
 <summary>查看 Codex 动态背景效果</summary>
@@ -76,6 +72,19 @@ Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤12
 
 默认背景为项目生成的 **Night Sky** 图片。演示中的地球背景请按[素材获取说明](docs/earth-background.md)自行获取。
 
+<details>
+<summary>导入细节与限制</summary>
+
+Steam 导入先处理兼容文件，再询问是否转换剩余项目。首次转换视频、动图或 AVIF 时需要联网下载并校验 FFmpeg，之后复用缓存；安装包不含 FFmpeg。
+
+Steam 兼容图片和视频直接引用源文件；删除源文件或断开所在磁盘后，壁纸会暂时不可用，重新连接后可刷新列表。其他支持的媒体转换后缓存，仍关联 Steam 源文件。Scene、Web 仅导入预览图或预览动画，不支持完整互动场景及应用项目。旧版 Steam 副本在刷新并确认原文件一致后转为引用，正在使用的副本暂缓清理。
+
+可直接导入的 H.264 MP4 需满足：不超过 1920 × 1080、60 fps、128 MiB，音轨为 AAC 或无音轨。需要转码的视频由 FFmpeg 解码、Windows Media Foundation 编码，输出最高 1920 × 1080、30 fps，并移除音轨；直接导入的视频播放时同样静音。
+
+图片每边不超过 16,384 像素，总计不超过 5,000 万像素；转换后仍须小于等于 10 MiB，多页 BMP/TIFF 不支持。扩展名符合要求不代表一定能够解码。
+
+</details>
+
 ### 卸载与常见问题
 
 - **卸载**：从 Windows「已安装的应用」卸载。卸载前会执行外观恢复；取消或失败时停止卸载。壁纸库默认保留。
@@ -92,13 +101,14 @@ Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤12
 - 通过本机注册的官方 Codex 安装信息完成检测，并由本地引擎启动和应用背景。绿色连接状态表示已核验真实调试会话；找到安装但未建立连接时仍可通过应用壁纸启动连接。
 - 默认安装、启动和恢复流程不改写全局 `%USERPROFILE%\.codex\config.toml`。兼容旧状态的恢复保护逻辑仍保留。
 - 发行包固定使用 Node.js 24.22.1 x64 及其许可证，构建时核对 SHA-256 和 OpenJS Foundation 签名。本项目 EXE 尚无项目代码签名证书；上游 Node.js 签名不代表安装程序已签名，不要求关闭 Windows 安全保护。
-- 视频由 Windows 自带媒体组件转换为静音 H.264 MP4，保持比例，最高 1920 × 1080、30 fps。
 - 仍提供 [Release ZIP](https://github.com/JiPaiFan1109/CodexPage/releases)：完整解压后运行 `Install.cmd`。GitHub 自动生成的源码 ZIP 不含运行环境。
 - 程序运行和视频播放会占用内存及 CPU/GPU；不承诺所有 Codex 版本兼容或完全没有性能开销。
 
 </details>
 
-开发与验证：[构建说明](docs/windows-application.md) · [安装应用验证](docs/windows-application-validation.md) · [上线前清理审查](docs/pre-release-audit.md) · [安全说明](SECURITY.md)
+开发与验证：[构建说明](docs/windows-application.md) · [3.2.0 验证记录](docs/releases/v3.2.0-validation.md) · [安全说明](SECURITY.md)
+
+历史记录：[0.2.0 安装应用验证](docs/windows-application-validation.md) · [0.2.0 上线前清理审查](docs/pre-release-audit.md)
 
 ## 开源来源与许可证
 
