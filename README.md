@@ -1,5 +1,3 @@
-> 3.2.0 改善后台恢复与异常处理，升级保留壁纸库和设置。见 [发布说明](docs/releases/v3.2.0.md)。
-
 <p align="center">
   <img src="appearance/codexpage-wordmark.png" width="480" alt="CodexPage">
 </p>
@@ -45,46 +43,27 @@ Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤12
 
 </details>
 
-## 重要更新
+## 安装与使用
 
-> **3.2.0 升级须知：此次更新请前往 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.2.0) 下载 `CodexPage-Setup.exe`，先退出 CodexPage，再运行安装包覆盖升级。无需卸载，壁纸库和设置保留。**
+需要 **Windows x64**，并已安装 **Microsoft Store 官方版 Codex**。
+
+1. [下载安装包](https://github.com/JiPaiFan1109/CodexPage/releases/latest/download/CodexPage-Setup.exe)，双击运行。
+2. 打开 **CodexPage**，点击 **导入壁纸**，选择图片或视频。
+3. 选中壁纸，点击 **应用壁纸**。如提示重启 Codex，请先保存工作再确认。
+
+**升级**：退出 CodexPage 后安装到原目录，无需卸载，壁纸库与设置保留；完成后重新应用壁纸。
+
+## 重要更新
 
 | 日期（北京时间） | 版本 | 更新内容 |
 | --- | --- | --- |
+| 2026-11-02 | [3.2.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.2.0) | 改善后台恢复与重连提示，保存失败时保留调整，修复图库目录异常和损坏预览的处理 |
+| 2026-10-30 | [3.1.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.1) | 开始菜单统一为 CodexPage 单入口，清理已知旧快捷方式 |
 | 2026-10-28 | [3.1.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0) | 修复后台目录污染与重复后台升级阻塞，先加载壁纸库再连接 |
-| 2026-10-27 | [3.0.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.0.0) | 更新流程与安装校验加固，修复媒体异常和资源残留，改善键盘焦点与减少动画支持，升级 Node 24.22.1 |
-| 2026-10-25 | [2.3.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.3.1) | 先导入兼容壁纸，再确认转换或下载转换器；跳过保留已导入内容 |
-| 2026-10-25 | [2.3.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.3.0) | 扩展 Wallpaper Engine 媒体导入与预览，按需下载转换组件，改善宿主恢复及重启确认 |
-| 2026-10-24 | [2.2.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.2.1) | 修正 CodexPage 下载命名与发行附件，保留旧版更新兼容 |
-| 2026-10-23 | [2.1.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.1.0) | 自选安装目录、Steam 源文件引用、失效壁纸隐藏、启动恢复与弹窗改进 |
-| 2026-10-23 | [2.0.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v2.0.0) | 正式更名 CodexPage，更新艺术字与界面说明，修复成功换壁纸后误回滚，保留壁纸库与设置 |
-| 2026-10-22 | [1.2.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v1.2.1) | 修复升级时 CodexPage 无法退出、安装辅助进程异常退出或启动超时后的恢复问题；补齐视频缓存依赖；新版界面以深红色强调手动升级提示（旧版仍显示普通文字） |
-| 2026-10-22 | [1.2.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v1.2.0) | 修复微软商店版 Codex 连接状态误报，支持重新建立连接和手动定位 Codex，改善连接失败诊断 |
-| 2026-10-20 | [1.1.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v1.1.1) | 修复更新安装失败、下载校验失败，改善受限网络下的更新检查 |
-| 2026-10-20 | [1.1.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v1.1.0) | 更新更方便、壁纸更稳定、多窗口支持、清晰度修复与壁纸目录刷新 |
-| 2026-10-19 | [1.0.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v1.0.0) | 新版 CodexPage、Wallpaper Engine 批量导入、快速去重、预览、拖拽排序与签名更新 |
-| 2026-10-17 | [0.3.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v0.3.0) | 应用内更新提醒与一键升级，签名校验，保留壁纸库 |
-| 2026-10-16 | [0.2.2](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v0.2.2) | 修复窗口关闭后后台仍阻止升级；安装时安全退出已核实的换肤辅助进程，保留 Codex 和用户数据 |
-| 2026-10-13 | [0.2.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v0.2.1) | 修复取消后重复提示、重复恢复与进度提示问题；增加升级占用检查，减少卸载及关闭窗口时的多余弹窗 |
-| 2026-10-13 | [0.2.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v0.2.0) | Windows 安装应用；完整 CodexPage 与透明图标；自动检测 Codex；清理旧托盘及上游冗余功能 |
-| 2026-10-08 | [0.1.3](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v0.1.3) | 改进启动入口，阻止多套 Codex 实例并存，迁移旧动态主题 |
-| 2026-10-07 | [0.1.2](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v0.1.2) | 修复更新后的启动回滚问题，改善再次打开的速度 |
-| 2026-10-02 | [0.1.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v0.1.1) | 自动验证改为静默，适配新版 Codex 首页 |
-| 2026-10-01 | [0.1.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v0.1.0) | 首次公开发布，支持图片、视频背景及外观恢复 |
 
-详细修复内容见 [完整更新记录](CHANGELOG.md)。
+[3.2.0 发布说明](docs/releases/v3.2.0.md) · [完整更新记录](CHANGELOG.md)
 
-## 安装与使用
-
-支持 **Windows x64 + 官方 Microsoft Store OpenAI.Codex 客户端**。本版不支持 macOS、Linux、Windows ARM64 或其他来源的 Codex 安装。
-
-1. **[下载安装程序](https://github.com/JiPaiFan1109/CodexPage/releases/latest/download/CodexPage-Setup.exe)**，双击 `CodexPage-Setup.exe` 按向导安装。
-2. 从桌面或开始菜单打开 **CodexPage**。左下角图标显示真实连接状态及 Codex 版本；点击图标可重新检测。
-3. 点击 **导入壁纸**，选择图片或视频。导入只保存到收藏库；选中后可以先预览。
-4. 点击 **应用壁纸** 切换背景。需要重启 Codex 时，先保存工作，再按提示确认。
-5. 应用壁纸时会自动启动或连接 Codex。也可使用开始菜单中的 **打开换肤版 Codex**；右上角「•••」提供 **检查更新** 和 **恢复原始外观**。
-
-无需手动安装 Node.js、运行命令或填写 API Key；应用不包含 Codex 本体。原来的右下角托盘菜单不再作为应用入口。
+## 素材与常见问题
 
 ### 支持的素材
 
@@ -97,9 +76,8 @@ Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤12
 
 默认背景为项目生成的 **Night Sky** 图片。演示中的地球背景请按[素材获取说明](docs/earth-background.md)自行获取。
 
-### 升级、卸载与常见问题
+### 卸载与常见问题
 
-- **升级至 3.2.0**：请从 [GitHub 发布页](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.2.0) 下载安装包，退出 CodexPage 后覆盖安装。无需卸载，壁纸库与设置保留；完成后重新应用壁纸即可恢复换肤连接。CodexPage 打开时每天最多自动检查一次，支持稍后和跳过此版本；应用未运行时不会推送通知。
 - **卸载**：从 Windows「已安装的应用」卸载。卸载前会执行外观恢复；取消或失败时停止卸载。壁纸库默认保留。
 - **未找到 Codex**：确认当前 Windows 用户已安装官方 Store 版客户端，再点击左下角连接图标重试。
 - **从官方入口打开后没有皮肤**：回到 CodexPage 重新应用壁纸，按提示处理正在运行的会话。
@@ -113,7 +91,7 @@ Steam 直接引用仅支持可直接播放的 H.264 MP4（≤1080p/60fps、≤12
 - 安装时可选择有写入权限的目录，默认 `%LOCALAPPDATA%\CodexDynamicSkin`，无需管理员权限；壁纸库位于所选目录中的 `wallpaper-library`。重装默认沿用原目录，自动更新写回当前目录；更换目录不会自动迁移旧壁纸库。
 - 通过本机注册的官方 Codex 安装信息完成检测，并由本地引擎启动和应用背景。绿色连接状态表示已核验真实调试会话；找到安装但未建立连接时仍可通过应用壁纸启动连接。
 - 默认安装、启动和恢复流程不改写全局 `%USERPROFILE%\.codex\config.toml`。兼容旧状态的恢复保护逻辑仍保留。
-- 3.0.0 发行包固定使用 Node.js 24.22.1 x64 及其许可证，构建时核对 SHA-256 和 OpenJS Foundation 签名。本项目 EXE 尚无项目代码签名证书；上游 Node.js 签名不代表安装程序已签名，不要求关闭 Windows 安全保护。
+- 发行包固定使用 Node.js 24.22.1 x64 及其许可证，构建时核对 SHA-256 和 OpenJS Foundation 签名。本项目 EXE 尚无项目代码签名证书；上游 Node.js 签名不代表安装程序已签名，不要求关闭 Windows 安全保护。
 - 视频由 Windows 自带媒体组件转换为静音 H.264 MP4，保持比例，最高 1920 × 1080、30 fps。
 - 仍提供 [Release ZIP](https://github.com/JiPaiFan1109/CodexPage/releases)：完整解压后运行 `Install.cmd`。GitHub 自动生成的源码 ZIP 不含运行环境。
 - 程序运行和视频播放会占用内存及 CPU/GPU；不承诺所有 Codex 版本兼容或完全没有性能开销。
