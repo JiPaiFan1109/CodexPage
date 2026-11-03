@@ -1,4 +1,4 @@
-<p align="center">
+﻿<p align="center">
   <img src="appearance/codexpage-wordmark.png" width="480" alt="CodexPage">
 </p>
 <p align="center">为你的 Codex 换上喜欢的图片或动态背景。导入、预览、切换，在一个窗口里完成。</p>
@@ -24,7 +24,7 @@ CodexPage 2.0.0 界面示意图：以 3 行 × 4 列展示 12 张示例壁纸，
 
 - **Wallpaper Engine 导入**：左侧入口自动发现 Steam 库，兼容视频/图片直接引用源文件，不兼容媒体自动转换并缓存；Scene、Web 仅导入标注的预览图或预览动画，应用项目不支持。
 - **静态与动态背景**：导入本地图片或视频，为 Codex 更换背景。
-- **壁纸收藏库**：卡片浏览、静态/动态分类、大图预览、视频静音播放；支持重命名和删除。
+- **壁纸收藏库**：卡片浏览、静态/动态分类、大图预览、视频静音播放；右键可预览、应用、重命名或删除，右上管理面板可查看关于软件。
 - **自动识别 Codex**：打开 CodexPage 即可检测本机客户端，点击「应用壁纸」或「打开 Codex」进入换肤流程。
 - **保留收藏，随时恢复**：本地导入会保存副本，移动原文件不影响收藏；Steam 引用源文件删除后会从列表消失，下次打开 Codex 回到初始外观；升级保留壁纸库，可恢复 Codex 原始外观。
 
@@ -43,7 +43,7 @@ CodexPage 2.0.0 界面示意图：以 3 行 × 4 列展示 12 张示例壁纸，
 
 需要 **Windows x64**，并已安装 **Microsoft Store 官方版 Codex**。
 
-**磁盘占用**：3.2.0 应用本体约 **100 MB**（含运行环境，不含用户壁纸）；按需下载的 FFmpeg、媒体缓存及更新文件另占空间。
+**磁盘占用**：3.3.0 应用本体约 **100 MB**（含运行环境，不含用户壁纸）；按需下载的 FFmpeg、媒体缓存及更新文件另占空间。
 
 1. [下载安装包](https://github.com/JiPaiFan1109/CodexPage/releases/latest/download/CodexPage-Setup.exe)，双击运行。
 2. 打开 **CodexPage**，点击 **导入壁纸**，选择图片或视频。
@@ -55,11 +55,12 @@ CodexPage 2.0.0 界面示意图：以 3 行 × 4 列展示 12 张示例壁纸，
 
 | 日期（北京时间） | 版本 | 更新内容 |
 | --- | --- | --- |
+| 2026-11-03 | [3.3.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.0) | 壁纸右键管理、新增关于软件；保留并验证应用后壁纸误回跳修复 |
 | 2026-11-02 | [3.2.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.2.0) | 改善后台恢复与重连提示，保存失败时保留调整，修复图库目录异常和损坏预览的处理 |
 | 2026-10-30 | [3.1.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.1) | 开始菜单统一为 CodexPage 单入口，清理已知旧快捷方式 |
 | 2026-10-28 | [3.1.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0) | 修复后台目录污染与重复后台升级阻塞，先加载壁纸库再连接 |
 
-[3.2.0 发布说明](docs/releases/v3.2.0.md) · [完整更新记录](CHANGELOG.md)
+[3.3.0 发布说明](docs/releases/v3.3.0.md) · [完整更新记录](CHANGELOG.md)
 
 ## 素材与常见问题
 

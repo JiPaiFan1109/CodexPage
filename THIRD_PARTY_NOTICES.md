@@ -86,3 +86,9 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Gallery menu and About icon (2026-11-03)
+
+The info, eye and check icons are adapted from Lucide SVG geometry to WPF Paths, with stroke weight matching the existing interface. Sources: https://github.com/lucide-icons/lucide/blob/main/icons/info.svg , https://github.com/lucide-icons/lucide/blob/main/icons/eye.svg , https://github.com/lucide-icons/lucide/blob/main/icons/check.svg . The Lucide ISC and Feather MIT notices above apply. Rename and delete reuse the existing project icon geometry.
+
+WPF UI (https://github.com/lepoco/wpfui, MIT) was consulted as a native context-menu design reference; no source or dependencies were imported.

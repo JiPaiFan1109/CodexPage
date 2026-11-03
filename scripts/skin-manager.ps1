@@ -230,6 +230,10 @@ namespace DynamicSkin {
       }
     }
   }
+  $window.FindName('AboutWordmark').Source=$window.FindName('BrandWordmark').Source
+  $versionPath=Join-Path (Split-Path $PSScriptRoot -Parent) 'VERSION'
+  $version=if(Test-Path -LiteralPath $versionPath){([IO.File]::ReadAllText($versionPath)).Trim()}else{'未知'}
+  $window.FindName('AboutVersion').Text='版本 '+$version
   return $window
 }
 
@@ -306,6 +310,8 @@ function Update-DynamicManagerButtons {
   foreach($action in @('Import','Apply','Rename','Delete','Open','Restore')){$ui.Controls[($action+'Button')].IsEnabled=$state.$action}
   $ui.Controls.OpenButton.IsEnabled=(-not $ui.Busy)
   if($ui.PrepareOnly){$ui.Controls.ApplyButton.IsEnabled=([bool]$ui.Selected -and $ui.Selected.IsAvailable -and -not $ui.Busy)}
+  if($ui.Controls.ContextApplyButton){$ui.Controls.ContextApplyButton.IsEnabled=$ui.Controls.ApplyButton.IsEnabled}
+  if($ui.Controls.ContextPreviewButton){$ui.Controls.ContextPreviewButton.IsEnabled=([bool]$ui.Selected -and $ui.Selected.IsAvailable -and -not $ui.Busy)}
   foreach($name in @('LocalNavButton','EngineNavButton','ImageFilter','VideoFilter')){if($ui.Controls[$name]){$ui.Controls[$name].IsEnabled=(-not $ui.Busy)}}
   foreach($name in @('EngineImportButton','EngineFolderButton','EngineRefreshButton')){if($ui.Controls[$name]){$ui.Controls[$name].IsEnabled=(-not $ui.Busy)}}
   if($ui.Controls.CheckUpdateButton){
@@ -631,6 +637,32 @@ function Show-DynamicWallpaperRename {
   $dialog=New-DynamicRenameWindow -Owner $ui.Window -Name $ui.Selected.Name
   if($dialog.ShowDialog()){Start-DynamicManagerWork Rename $ui.Selected.Id $dialog.Tag.Text}
 }
+function Select-DynamicWallpaperContextTarget {
+  param($View)
+  $ui=$script:SkinManager
+  if($ui.Busy -or -not $View){return $false}
+  $ui.Controls.WallpaperList.SelectedItem=$View
+  # A failed draft save may restore the old selection. Never act on that card.
+  return ($null -ne $ui.Selected -and $ui.Selected.Id -eq $View.Id)
+}
+function Set-DynamicManagerAboutVisible {
+  param([bool]$Visible)
+  $ui=$script:SkinManager
+  if($Visible){
+    $ui.Controls.SettingsPanel.Visibility='Collapsed'
+    $ui.Controls.AboutOverlay.Visibility='Visible'
+    $ui.Controls.AboutDoneButton.Focus()|Out-Null
+  }else{
+    $ui.Controls.AboutOverlay.Visibility='Collapsed'
+    $ui.Controls.SettingsButton.Focus()|Out-Null
+  }
+}
+function Open-DynamicManagerAboutLink {
+  param([ValidateSet('GitHub','Email')][string]$Target)
+  $uri=if($Target -eq 'GitHub'){'https://github.com/JiPaiFan1109/CodexPage'}else{'mailto:jipaifanyyds@gmail.com'}
+  try{Start-Process -FilePath $uri -ErrorAction Stop|Out-Null}
+  catch{Show-DynamicManagerToast '无法打开默认应用，请手动使用关于软件中的地址。' Info}
+}
 function Show-DynamicSkinManager {
   param([string]$InstallRoot,[string]$StateRoot,[switch]$PrepareOnly)
   if([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA'){throw 'CodexPage 需要在 STA 模式下运行，请使用 powershell.exe -STA 启动。'}
@@ -639,6 +671,7 @@ function Show-DynamicSkinManager {
   foreach($name in @('EngineRefreshButton','EngineSearchSpinner','EngineSearchRotation','EngineSearchStatus','PreviewShade','OpacityPanel','WallpaperOpacitySlider','OpacityValue','GalleryPager','PageLabel','PreviousPageButton','NextPageButton','ImportButton','ImageFilter','VideoFilter','WallpaperList','EmptyState','EmptyTitle','PreviewPlaceholder','PreviewImage','PreviewVideo','SelectedName','SelectedDetails','SelectedFormat','SelectedSize','SelectedImportedAt','SelectedStatus','PreviewNotice','ApplyButton','RenameButton','DeleteButton','WorkProgress','StatusText','OpenButton','RestoreButton')){$controls[$name]=$window.FindName($name)}
   foreach($name in @('LocalNavButton','EngineNavButton','EngineImportButton','EngineFolderButton','EnginePanel','SettingsButton','SettingsPanel','PreviewOverlay','ClosePreviewButton','EngineToolbar','LocalNavLabel','EngineNavLabel','LocalNavIcon','EngineNavIcon','NavThumbTransform','FilterThumb','FilterThumbTransform','ConnectionBadge','ConnectionBadgeText','ConnectionLoading','ConnectionSpinner')){$controls[$name]=$window.FindName($name)}
   foreach($name in @('ConnectionLabel','ConnectionDetail','ConfirmationOverlay','ConfirmationTitle','ConfirmationMessage','ConfirmationScroll','ConfirmationCancelColumn','ConfirmationGapColumn','ConfirmAcceptButton','ConfirmCancelButton','ConfirmCloseButton','ToastPanel','ToastIcon','ToastIconBorder','ToastMessage')){$controls[$name]=$window.FindName($name)}
+  foreach($name in @('ContextPreviewButton','ContextApplyButton','AboutButton','AboutOverlay','AboutCloseButton','AboutDoneButton','AboutGithubButton','AboutEmailButton')){$controls[$name]=$window.FindName($name)}
   $script:SkinManager=@{Window=$window;Controls=$controls;InstallRoot=$InstallRoot;StateRoot=$StateRoot;ModuleRoot=$PSScriptRoot;PrepareOnly=[bool]$PrepareOnly;Items=@();Status=[pscustomobject]@{CurrentId=$null;Paused=$false;HasExternalCurrent=$false;Error=$null};Selected=$null;Source='Local';Filter='All';Busy=$false;UpdateClosing=$false;Playing=$false;PromptShown=$false;Worker=$null;Runspace=$null;Async=$null}
   $timer=New-Object Windows.Threading.DispatcherTimer;$timer.Interval=[timespan]::FromMilliseconds(120);$timer.Add_Tick({Complete-DynamicManagerWork});$script:SkinManager.Timer=$timer
   $sourceTimer=New-Object Windows.Threading.DispatcherTimer
@@ -667,6 +700,11 @@ function Show-DynamicSkinManager {
   $controls.LocalNavButton.Add_Click({Set-DynamicManagerSource Local})
   $controls.EngineNavButton.Add_Click({Set-DynamicManagerSource WallpaperEngine;if(-not $script:SkinManager.EngineLocated -and -not $script:SkinManager.Busy){Start-DynamicManagerWork EngineLocate}})
   $controls.SettingsButton.Add_Click({$panel=$script:SkinManager.Controls.SettingsPanel;if($panel.Visibility -eq 'Visible'){$panel.Visibility='Collapsed'}else{$panel.Visibility='Visible'}})
+  $controls.AboutButton.Add_Click({Set-DynamicManagerAboutVisible $true})
+  $controls.AboutCloseButton.Add_Click({Set-DynamicManagerAboutVisible $false})
+  $controls.AboutDoneButton.Add_Click({Set-DynamicManagerAboutVisible $false})
+  $controls.AboutGithubButton.Add_Click({Open-DynamicManagerAboutLink GitHub})
+  $controls.AboutEmailButton.Add_Click({Open-DynamicManagerAboutLink Email})
   $controls.EngineImportButton.Add_Click({
     $ui=$script:SkinManager
     Show-DynamicManagerConfirmation '导入本地壁纸？' '先导入可直接使用的壁纸，保留原文件。若有需要转换的文件，将在导入完成后询问。场景与网页仅导入标注的预览素材。' {Start-DynamicManagerWork EngineImport} -AcceptText '确认导入'
@@ -694,8 +732,25 @@ function Show-DynamicSkinManager {
   $script:SkinManager.OpacityTimer=$opacityTimer
   $controls.ClosePreviewButton.Add_Click({Close-DynamicCodexPreview})
   Initialize-DynamicManagerDrag
+  $controls.WallpaperList.Add_PreviewMouseRightButtonDown({
+    param($sender,$eventArgs)
+    $region=Get-DynamicDragRegion $eventArgs.OriginalSource
+    $script:SkinManager.ContextTargetValid=($region.Kind -eq 'Card' -and (Select-DynamicWallpaperContextTarget $region.Card.Content))
+    # Prevent WPF from selecting a different card after a rejected draft save.
+    $eventArgs.Handled=$true
+  })
+  $controls.WallpaperList.Add_ContextMenuOpening({
+    param($sender,$eventArgs)
+    $ui=$script:SkinManager
+    $keyboard=$eventArgs.CursorLeft -lt 0
+    if($keyboard){$valid=Select-DynamicWallpaperContextTarget $sender.SelectedItem}else{$valid=$ui.ContextTargetValid}
+    if(-not $valid -or $ui.Busy){$eventArgs.Handled=$true;return}
+    Update-DynamicManagerButtons
+  })
+  $controls.ContextPreviewButton.Add_Click({Show-DynamicCodexPreview})
+  $controls.ContextApplyButton.Add_Click({$script:SkinManager.Controls.ApplyButton.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))})
   $controls.WallpaperList.Add_KeyDown({param($sender,$eventArgs);if($eventArgs.Key -eq 'Return'){Show-DynamicCodexPreview}})
-  $window.Add_KeyDown({param($sender,$eventArgs);if($eventArgs.Key -eq 'Escape'){if($script:SkinManager.Controls.ConfirmationOverlay.Visibility -eq 'Visible'){Complete-DynamicManagerConfirmation $false}else{Close-DynamicCodexPreview;$script:SkinManager.Controls.SettingsPanel.Visibility='Collapsed'}}})
+  $window.Add_KeyDown({param($sender,$eventArgs);if($eventArgs.Key -eq 'Escape'){if($script:SkinManager.Controls.AboutOverlay.Visibility -eq 'Visible'){Set-DynamicManagerAboutVisible $false;$eventArgs.Handled=$true}elseif($script:SkinManager.Controls.ConfirmationOverlay.Visibility -eq 'Visible'){Complete-DynamicManagerConfirmation $false}else{Close-DynamicCodexPreview;$script:SkinManager.Controls.SettingsPanel.Visibility='Collapsed'}}})
   $controls.WallpaperList.Add_SelectionChanged({Update-DynamicManagerSelection})
   $controls.PreviousPageButton.Add_Click({if(-not $script:SkinManager.Busy -and $script:SkinManager.PageIndex -gt 0){$script:SkinManager.PageIndex--;Update-DynamicManagerList}})
   $controls.NextPageButton.Add_Click({if(-not $script:SkinManager.Busy -and $script:SkinManager.PageIndex -lt $script:SkinManager.PageCount-1){$script:SkinManager.PageIndex++;Update-DynamicManagerList}})
