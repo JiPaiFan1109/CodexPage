@@ -31,7 +31,7 @@ jobs:
           if($LASTEXITCODE -ne 0 -or $run.name -ne 'Windows UX regression review' -or $run.head_sha -ne $sha -or $run.conclusion -ne 'success'){throw 'Reviewed run does not match release source'}
           $version=[IO.File]::ReadAllText((Join-Path $PWD 'VERSION')).Trim()
           if($env:RELEASE_TAG -cne ('v'+$version)){throw 'Release tag/version mismatch'}
-          $release=gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:RELEASE_TAG" | ConvertFrom-Json
+          $release=@((gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=100" | ConvertFrom-Json) | Where-Object tag_name -eq $env:RELEASE_TAG) | Select-Object -First 1
           if($LASTEXITCODE -ne 0 -or -not $release.draft){throw 'Only an existing unpublished draft may be staged'}
           if($release.target_commitish -ne $sha){throw 'Draft source mismatch'}
       - uses: actions/download-artifact@v4
@@ -66,7 +66,7 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           $ErrorActionPreference='Stop'
-          $release=gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:RELEASE_TAG" | ConvertFrom-Json
+          $release=@((gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=100" | ConvertFrom-Json) | Where-Object tag_name -eq $env:RELEASE_TAG) | Select-Object -First 1
           if($LASTEXITCODE -ne 0 -or -not $release.draft){throw 'Refusing to modify public release'}
           $version=[IO.File]::ReadAllText((Join-Path $PWD 'VERSION')).Trim()
           $names=@(.\scripts\get-release-assets.ps1 -OutputDirectory reviewed -Version $version)
@@ -74,7 +74,7 @@ jobs:
             gh release upload $env:RELEASE_TAG (Join-Path 'reviewed' $name) --repo $env:GITHUB_REPOSITORY --clobber
             if($LASTEXITCODE -ne 0){throw "Draft upload failed: $name"}
           }
-          $release=gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:RELEASE_TAG" | ConvertFrom-Json
+          $release=@((gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=100" | ConvertFrom-Json) | Where-Object tag_name -eq $env:RELEASE_TAG) | Select-Object -First 1
           if(-not $release.draft -or @($release.assets).Count -ne 10){throw 'Draft inventory/state mismatch'}
           foreach($name in $names){
             $file=Join-Path 'reviewed' $name;$asset=$release.assets|Where-Object name -eq $name
