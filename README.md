@@ -43,6 +43,8 @@ CodexPage 2.0.0 界面示意图：以 3 行 × 4 列展示 12 张示例壁纸，
 
 需要 **Windows x64**，并已安装 **Microsoft Store 官方版 Codex**。
 
+**磁盘占用**：3.2.0 应用本体约 **100 MB**（含运行环境，不含用户壁纸）；按需下载的 FFmpeg、媒体缓存及更新文件另占空间。
+
 1. [下载安装包](https://github.com/JiPaiFan1109/CodexPage/releases/latest/download/CodexPage-Setup.exe)，双击运行。
 2. 打开 **CodexPage**，点击 **导入壁纸**，选择图片或视频。
 3. 选中壁纸，点击 **应用壁纸**。如提示重启 Codex，请先保存工作再确认。
