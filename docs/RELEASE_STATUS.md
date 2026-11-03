@@ -1,4 +1,16 @@
-﻿## 2026-11-03 3.3.0 发行验证进行中
+## 2026-11-03 3.3.0 已公开发布
+
+公开稳定版与 latest 为 [v3.3.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.0)，Release ID 432646486，标签提交 `42b84831774400b57854d4c7b64165dd06dd7545`。main 后续仅补充发行工具与完成记录，不移动标签或替换公开附件。
+
+本次包含图库右键预览/应用/重命名/删除、操作提示、关于软件（GitHub、邮箱、版本），并保留及回归验证此前应用成功后壁纸误回跳修复。current/VERSION 与 package.json 均为 3.3.0。
+
+唯一公开最终产物位于 `.local-evidence/release-3.3.0/cloud-final/`，由上述提交成功 CI 构建；`final/` 为未公开本机候选，不可混用。安装包 28,923,205 字节，SHA256 `fb21cc6a01054cc80972791647f3e7a22db7775d1b15014089805d23f1338f9c`。公开下载安装包 SHA256、旧客户端 RSA 签名、旧发现地址与旧安装 URL 复验通过（cloud-public-verified.json）。十附件远端大小与 digest 一致，77 项包文件、62 项安装清单及 ZIP 已核对。云端与本机候选的产品脚本和资源逐字节一致，仅生成的启动器和对应清单不同。
+
+121 项 Windows 脚本、52 项 Node 测试、165 项 PowerShell 解析通过；发行提交 CI [41632033638](https://github.com/JiPaiFan1109/CodexPage/actions/runs/41632033638) 成功。云端最终包的开始菜单、新装、签名更新、占用拒绝、取消/失败/正常卸载、3.2.0→3.3.0 覆盖升级及库保留通过。升级复验首次被先前中断的隔离测试安装路径影响，确认并卸载该临时安装后通过，失败证据保留。
+
+未安装或改变生产环境，未重启生产 Codex，未修改真实壁纸库。物理鼠标右键、多屏 DPI、真实 GPU、辅助技术、断电和满盘未实测。安装 EXE 无项目 Authenticode 签名，更新清单沿用 RSA 签名。详细证据见发行目录 cloud-final-checks.json、cloud-lifecycle-results.json、cloud-payload-verified.json。以下带日期记录为历史，不覆盖本段。
+
+## 2026-11-03 3.3.0 发行验证进行中
 
 用户已授权检查、整合发布 3.3.0，并明确要求保留应用后壁纸回跳修复。版本已提升至 3.3.0，尚未公开发布。独立发行目录 .local-evidence/release-3.3.0/；保留旧公开包，不安装生产、不重启生产 Codex、不修改真实壁纸库。
 
