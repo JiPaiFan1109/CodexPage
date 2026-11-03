@@ -43,6 +43,8 @@ Recorded from a real Codex window after checking for sensitive information. The 
 
 Requires **Windows x64 and the official Microsoft Store edition of Codex**.
 
+**Disk space:** the 3.2.0 application uses approximately **100 MB**, including its bundled runtime and excluding user wallpapers. On-demand FFmpeg, media caches, and update files use additional space.
+
 1. [Download setup](https://github.com/JiPaiFan1109/CodexPage/releases/latest/download/CodexPage-Setup.exe) and run it.
 2. Open **CodexPage** and select **导入壁纸** (Import wallpaper) to choose an image or video.
 3. Select a wallpaper and click **应用壁纸** (Apply). Save your work before confirming any Codex restart.
