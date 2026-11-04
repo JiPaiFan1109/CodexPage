@@ -20,7 +20,15 @@ function Save-DynamicUpdateState {
   $path=Join-Path $StateRoot 'update-state.json';$temp=$path+'.'+[guid]::NewGuid().ToString('N')+'.tmp'
   try{
     [IO.File]::WriteAllText($temp,($State|ConvertTo-Json -Compress),(New-Object Text.UTF8Encoding($false)))
-    if(Test-Path -LiteralPath $path){[IO.File]::Replace($temp,$path,[NullString]::Value)}else{[IO.File]::Move($temp,$path)}
+    for($attempt=0;$attempt -lt 5;$attempt++){
+      try{
+        if(Test-Path -LiteralPath $path){[IO.File]::Replace($temp,$path,[NullString]::Value)}else{[IO.File]::Move($temp,$path)}
+        break
+      }catch [IO.IOException]{
+        if($attempt -eq 4){throw}
+        Start-Sleep -Milliseconds 50
+      }
+    }
   }finally{if(Test-Path -LiteralPath $temp){Remove-Item -LiteralPath $temp -Force}}
 }
 
