@@ -689,7 +689,7 @@ function Open-DynamicManagerAboutLink {
   catch{Show-DynamicManagerToast '无法打开默认应用，请手动使用关于软件中的地址。' Info}
 }
 function Show-DynamicSkinManager {
-  param([string]$InstallRoot,[string]$StateRoot,[switch]$PrepareOnly)
+  param([string]$InstallRoot,[string]$StateRoot,[switch]$PrepareOnly,[switch]$OwnProcess)
   if([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA'){throw 'CodexPage 需要在 STA 模式下运行，请使用 powershell.exe -STA 启动。'}
   $window=New-DynamicSkinManagerWindow
   $controls=@{}
@@ -819,7 +819,7 @@ function Show-DynamicSkinManager {
     # call in a read/check worker can otherwise hold PowerShell's host shutdown
     # indefinitely even after BeginStop returns. Exit only this manager host once
     # settings/timers have been cleaned up; the native launcher releases its mutex.
-    if($exitAfterStop){[Environment]::Exit(0)}
+    if($exitAfterStop -and $OwnProcess){[Environment]::Exit(0)}
   }
 }
 

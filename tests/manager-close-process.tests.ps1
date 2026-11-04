@@ -21,7 +21,7 @@ if($Child){
     $timer=[Windows.Threading.DispatcherTimer]::new();$timer.Interval=[timespan]::FromMilliseconds(200)
     $timer.Add_Tick({$timer.Stop();[IO.File]::WriteAllText($marker,'close');$ui.Window.Close()}.GetNewClosure());$timer.Start()
   }
-  Show-DynamicSkinManager -InstallRoot $repo -StateRoot $StateDirectory -PrepareOnly
+  Show-DynamicSkinManager -InstallRoot $repo -StateRoot $StateDirectory -PrepareOnly -OwnProcess
   return
 }
 $root=Join-Path ([IO.Path]::GetTempPath()) ('manager-close-process-'+[guid]::NewGuid().ToString('N'))

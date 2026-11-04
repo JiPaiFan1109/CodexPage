@@ -33,5 +33,5 @@ if ($ImagePath -or $VideoPath) {
 
 . (Join-Path $PSScriptRoot 'skin-manager.ps1')
 $script:DynamicUpdateReadyToken=$UpdateReadyToken
-Show-DynamicSkinManager -InstallRoot $InstallRoot -StateRoot $StateRoot -PrepareOnly:$PrepareOnly
+Show-DynamicSkinManager -InstallRoot $InstallRoot -StateRoot $StateRoot -PrepareOnly:$PrepareOnly -OwnProcess
 }finally{if($updateGate){$updateGate.Dispose()}}
