@@ -16,8 +16,15 @@ $process=[pscustomobject]@{
   CommandLine='node C:\Skin\engine\scripts\injector.mjs --watch --port 9345 --browser-id browser-test --theme-dir C:\Skin\active-theme --pause-file C:\Skin\paused'
 }
 if(-not(Test-DreamSkinFastResumeState $state $codex $root @($process))){throw 'Healthy static wallpaper must reuse its watcher'}
+$state|Add-Member -NotePropertyName attachedExisting -NotePropertyValue $true
+if(Test-DreamSkinFastResumeState $state $codex $root @($process)){throw 'Plain open must not relaunch an attached profile'}
+if(-not(Test-DreamSkinFastResumeState $state $codex $root @($process) -AllowAttachedExisting)){throw 'Apply must reuse a healthy attached watcher without launching Codex'}
+$state.attachedExisting=$false
 $process.StartedAt='2026-10-17T01:00:00.0000000Z'
 if(Test-DreamSkinFastResumeState $state $codex $root @($process)){throw 'Reused PID must not qualify for fast resume'}
+$state.attachedExisting=$true
+if(Test-DreamSkinFastResumeState $state $codex $root @($process) -AllowAttachedExisting){throw 'Attached apply must still reject reused process IDs'}
+$state.attachedExisting=$false
 $process.StartedAt=$state.injectorStartedAt
 $state.videoPid=22;$state.videoStartedAt=$state.injectorStartedAt
 $state.videoScript='C:\Skin\engine\scripts\video-server.mjs';$state.videoReadyPath='C:\Skin\video-ready.json'

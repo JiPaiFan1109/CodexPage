@@ -18,7 +18,7 @@ function Get-DynamicCodexConnection {
         $reason='no-session'
         if($state -and $state.port){
           $reason='endpoint-unavailable'
-          $verified=Get-DreamSkinVerifiedCdpIdentityForAnyRegistered -Port $state.port
+          $verified=Get-DreamSkinVerifiedCdpIdentityForAnyRegistered -Port $state.port -PreferredInstall $codex
           if($verified){
             $reason='session-changed'
             if($verified.Identity.BrowserId -ceq $state.browserId){$connected=$true;$version=$verified.Codex.Version;$reason='connected'}
@@ -542,11 +542,12 @@ function Start-DynamicManagerWork {
       if(-not (Test-DynamicOperationCancelled $_.Exception)){throw}
       $selected=$Argument;$message='已取消操作，原有外观未改变。';$cancelled=$true
     }
-    $status=Get-DynamicWallpaperStatus $StateRoot
+    $items=@(Get-DynamicWallpaperItems $StateRoot)
+    $status=Get-DynamicWallpaperStatus $StateRoot -Items $items
     if($Operation -in @('Apply','Restore')){$connection=Get-DynamicCodexConnection -StateRoot $StateRoot}
     if($status.Error){$message='读取当前背景失败：'+$status.Error}
     if($PrepareOnly){$message='预览模式 · '+$message}
-    [pscustomobject]@{Items=@(Get-DynamicWallpaperItems $StateRoot);Status=$status;Connection=$connection;SelectedId=$selected;Message=$message;EngineReport=$engineReport;EngineRoots=$engineRoots;ConversionPrompt=$conversionPrompt;Cancelled=$cancelled;ConnectionError=$connectionError}
+    [pscustomobject]@{Items=$items;Status=$status;Connection=$connection;SelectedId=$selected;Message=$message;EngineReport=$engineReport;EngineRoots=$engineRoots;ConversionPrompt=$conversionPrompt;Cancelled=$cancelled;ConnectionError=$connectionError}
   }
   $null=$worker.AddScript($body.ToString()).AddArgument($ui.InstallRoot).AddArgument($ui.StateRoot).AddArgument($ui.ModuleRoot).AddArgument($Operation).AddArgument($Argument).AddArgument($Name).AddArgument($ui.PrepareOnly).AddArgument($queue).AddArgument($ui.Connection).AddArgument(@($ui.EngineRoots))
   $ui.Worker=$worker;$ui.Runspace=$runspace;$ui.Queue=$queue;$ui.Async=$worker.BeginInvoke();$ui.Timer.Start()

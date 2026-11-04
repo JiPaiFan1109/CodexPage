@@ -1094,8 +1094,16 @@ function Get-DreamSkinVerifiedCdpIdentityForAnyRegistered {
   # any registered OpenAI.Codex install keeps the strict owner validation
   # (every candidate passed the same package identity checks) without
   # restarting a healthy skinned Codex just because the Store updated.
-  param([int]$Port)
+  param([int]$Port,[object]$PreferredInstall)
+  # Reuse only a registration resolved by the caller during this operation.
+  # Endpoint ownership and browser identity are still checked live, not cached.
+  if($null -ne $PreferredInstall){
+    $identity=Get-DreamSkinVerifiedCdpIdentity -Port $Port -Codex $PreferredInstall
+    if($null -ne $identity){return [pscustomobject]@{Identity=$identity;Codex=$PreferredInstall}}
+  }
   foreach ($install in @(Get-DreamSkinRegisteredCodexInstalls)) {
+    if($null -ne $PreferredInstall -and $install.PackageFullName -ceq $PreferredInstall.PackageFullName -and
+      (Test-DreamSkinPathEqual $install.Executable $PreferredInstall.Executable)){continue}
     $identity = Get-DreamSkinVerifiedCdpIdentity -Port $Port -Codex $install
     if ($null -ne $identity) {
       return [pscustomobject]@{

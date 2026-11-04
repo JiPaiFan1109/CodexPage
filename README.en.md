@@ -55,7 +55,7 @@ Requires **Windows x64 and the official Microsoft Store edition of Codex**.
 
 | Date (Beijing time) | Version | Changes |
 | --- | --- | --- |
-| 2026-11-04 | [3.3.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.1) | Recover from update handoff failures and prevent background PowerShell windows |
+| 2026-11-04 | [3.3.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.1) | Fix update handoff and background PowerShell windows, and speed up connection checks and wallpaper application |
 | 2026-11-03 | [3.3.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.0) | Add wallpaper context menus and About; retain and verify the fix for wallpapers reverting after successful application |
 | 2026-11-02 | [3.2.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.2.0) | Improve background recovery and reconnect prompts; preserve unsaved adjustments after save failures; handle inaccessible library folders and damaged previews |
 | 2026-10-30 | [3.1.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.1) | Use a single CodexPage Start menu entry and remove known legacy shortcuts |

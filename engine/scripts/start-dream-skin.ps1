@@ -139,7 +139,9 @@ try {
   $fastState = $null
   if (-not $PortExplicit -and -not $ProfilePathExplicit -and -not $ForegroundInjector -and
       -not $RestartExisting -and -not $coexistingProfiles) {
-    $fastState = Get-DreamSkinFastResumeCandidate -StateRoot $StateRoot -Codex $currentCodex
+    # Manager requests never launch a profile in this branch, so verified
+    # attached sessions can reuse their watcher too. Plain opens stay conservative.
+    $fastState = Get-DreamSkinFastResumeCandidate -StateRoot $StateRoot -Codex $currentCodex -AllowAttachedExisting:([bool]$ResultToken)
   }
   if ($null -ne $fastState) {
     $fastArguments = @('--remote-debugging-address=127.0.0.1', "--remote-debugging-port=$($fastState.port)", "--user-data-dir=$($fastState.profilePath)")
@@ -169,7 +171,7 @@ try {
       if($fastState.videoPid){$fastArguments += @('--video-state',$fastState.videoReadyPath)}
       if($ResultToken){$fastArguments += '--silent-ui'}
       $fastVerify = Invoke-DreamSkinNative -FilePath $node.Path -ArgumentList $fastArguments
-      $stillRunning=Get-DreamSkinFastResumeCandidate -StateRoot $StateRoot -Codex $currentCodex
+      $stillRunning=Get-DreamSkinFastResumeCandidate -StateRoot $StateRoot -Codex $currentCodex -AllowAttachedExisting:([bool]$ResultToken)
       if ($fastVerify.ExitCode -eq 0 -and $null -ne $stillRunning -and
           $stillRunning.browserId -ceq $fastState.browserId) {
         Write-DreamSkinUtf8FileAtomically -Path (Join-Path $StateRoot 'verify.log') -Content (($fastVerify.Output -join "`r`n") + "`r`n")

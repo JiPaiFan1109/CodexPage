@@ -7,8 +7,8 @@
 }
 
 function Test-DreamSkinFastResumeState {
-  param([AllowNull()][object]$State,[object]$Codex,[string]$StateRoot,[object[]]$Processes)
-  if($State -and $State.attachedExisting){return $false}
+  param([AllowNull()][object]$State,[object]$Codex,[string]$StateRoot,[object[]]$Processes,[switch]$AllowAttachedExisting)
+  if($State -and $State.attachedExisting -and -not $AllowAttachedExisting){return $false}
   if($null -eq $State -or $State.codexPackageFullName -cne $Codex.PackageFullName -or
     -not(Test-DreamSkinPathEqual -Left "$($State.codexExe)" -Right "$($Codex.Executable)")){return $false}
   $paths=@{
@@ -45,7 +45,7 @@ function Test-DreamSkinFastResumeState {
 }
 
 function Get-DreamSkinFastResumeCandidate {
-  param([string]$StateRoot,[object]$Codex)
+  param([string]$StateRoot,[object]$Codex,[switch]$AllowAttachedExisting)
   try{
     $state=Read-DreamSkinState -Path (Join-Path $StateRoot 'state.json')
     if($null -eq $state -or (Test-Path -LiteralPath (Join-Path $StateRoot 'paused')) -or
@@ -54,7 +54,7 @@ function Get-DreamSkinFastResumeCandidate {
     $processes=@(Get-CimInstance Win32_Process -Filter $filter | ForEach-Object{
       $_ | Add-Member -NotePropertyName StartedAt -NotePropertyValue (Get-DreamSkinProcessStartedAt -ProcessId $_.ProcessId) -PassThru
     })
-    if(-not(Test-DreamSkinFastResumeState -State $state -Codex $Codex -StateRoot $StateRoot -Processes $processes)){return $null}
+    if(-not(Test-DreamSkinFastResumeState -State $state -Codex $Codex -StateRoot $StateRoot -Processes $processes -AllowAttachedExisting:$AllowAttachedExisting)){return $null}
     if(-not $state.videoPid){
       if(Test-Path -LiteralPath (Join-Path $StateRoot 'video-theme.json')){return $null}
       return $state

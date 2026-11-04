@@ -303,14 +303,15 @@ function Read-DynamicCurrentVideo {
 }
 
 function Get-DynamicWallpaperStatus {
-  param([string]$StateRoot)
+  param([string]$StateRoot,[object[]]$Items)
   $status=[pscustomobject]@{Paused=$false;CurrentId=$null;HasExternalCurrent=$false;Error=$null}
   try {
     if(Test-DreamSkinExternalSourceMissing -StateRoot $StateRoot){$status.Paused=$true;return $status}
     $status.Paused=Test-DreamSkinPaused -StateRoot $StateRoot
     $video=Read-DynamicCurrentVideo $StateRoot
     if($status.Paused){return $status}
-    $items=@(Get-DynamicWallpaperItems $StateRoot|Where-Object IsAvailable)
+    if(-not $PSBoundParameters.ContainsKey('Items')){$Items=@(Get-DynamicWallpaperItems $StateRoot)}
+    $items=@($Items|Where-Object IsAvailable)
     if($video){
       $matches=@($items|Where-Object { $_.Kind -eq 'Video' -and $_.MediaPath -ieq [IO.Path]::GetFullPath($video.filePath) -and $_.Sha256 -eq $video.expectedSha256 })
     } else {

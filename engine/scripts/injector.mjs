@@ -1397,6 +1397,7 @@ async function waitForVerifiedSession(
   expectedThemeId = null,
   expectedRevision = null,
   expectedVideo = false,
+  returnOnHidden = false,
 ) {
   const deadline = Date.now() + timeoutMs;
   let lastResult;
@@ -1408,6 +1409,18 @@ async function waitForVerifiedSession(
       );
       lastError = null;
       if (lastResult.pass) return lastResult;
+      // Verification cannot make a hidden window visible. Return a failed
+      // probe promptly so startup can activate it (or retain a pending plain
+      // open). One-shot application still waits for actual visible playback.
+      if (returnOnHidden && lastResult.installed === true && lastResult.stylePresent === true &&
+          lastResult.documentHidden === true && lastResult.documentVisibility === 'hidden' &&
+          lastResult.expectedVersion && lastResult.version === lastResult.expectedVersion &&
+          expectedThemeId && lastResult.themeId === expectedThemeId &&
+          expectedRevision && lastResult.revision === expectedRevision &&
+          lastResult.businessClassPollution === 0 &&
+          lastResult.readiness?.structurePass === true && lastResult.readiness?.viewportPass === true) {
+        return lastResult;
+      }
     } catch (error) {
       lastError = error;
     }
@@ -1467,7 +1480,8 @@ async function runOneShot(options) {
             );
           }
           await applyToSession(session, payload, loadedPayload?.video);
-          await new Promise((resolve) => setTimeout(resolve, 850));
+          // The verification loop below waits for decoding and visible playback.
+          // Ready images do not need an unconditional pre-verification delay.
         }
         if (options.reload) {
           await session.send("Page.reload", { ignoreCache: true });
@@ -1500,6 +1514,7 @@ async function runOneShot(options) {
               loadedPayload?.theme.id ?? null,
               loadedPayload?.revision ?? null,
               Boolean(loadedPayload?.video),
+              options.mode === 'verify',
             )
             : await verifySession(session, target.id);
         results.push({ targetId: target.id, markers: probe.markers, result: verified });

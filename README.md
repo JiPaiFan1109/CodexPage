@@ -55,7 +55,7 @@ CodexPage 2.0.0 界面示意图：以 3 行 × 4 列展示 12 张示例壁纸，
 
 | 日期（北京时间） | 版本 | 更新内容 |
 | --- | --- | --- |
-| 2026-11-04 | [3.3.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.1) | 修复更新交接卡住与后台 PowerShell 弹窗 |
+| 2026-11-04 | [3.3.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.1) | 修复更新交接和后台 PowerShell 弹窗，优化连接与壁纸应用速度 |
 | 2026-11-03 | [3.3.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.0) | 壁纸右键管理、新增关于软件；保留并验证应用后壁纸误回跳修复 |
 | 2026-11-02 | [3.2.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.2.0) | 改善后台恢复与重连提示，保存失败时保留调整，修复图库目录异常和损坏预览的处理 |
 | 2026-10-30 | [3.1.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.1) | 开始菜单统一为 CodexPage 单入口，清理已知旧快捷方式 |
