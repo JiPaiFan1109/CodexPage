@@ -9,13 +9,17 @@ function Get-DreamSkinBackgroundTaskSpec {
   try{$key=[BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($root.ToLowerInvariant()))).Replace('-','').Substring(0,16)}finally{$sha.Dispose()}
   [pscustomobject]@{
     Name="CodexPage-Monitor-$sid-$key";Sid=$sid;Root=$root
-    Executable=(Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe')
-    Arguments=('-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "'+(Join-Path $root 'engine/scripts/multi-instance.ps1')+'" -StateRoot "'+$root+'"')
+    Executable=(Join-Path $root 'engine/launcher/CodexDynamicSkinLauncher.exe')
+    Arguments='--monitor'
+    LegacyExecutable=(Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe')
+    LegacyArguments=('-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "'+(Join-Path $root 'engine/scripts/multi-instance.ps1')+'" -StateRoot "'+$root+'"')
   }
 }
 
 function Test-DreamSkinOwnedBackgroundTask {
-  param($Task,$Spec)
+  param($Task,$Spec,[switch]$Legacy)
+  $executable=if($Legacy){$Spec.LegacyExecutable}else{$Spec.Executable}
+  $arguments=if($Legacy){$Spec.LegacyArguments}else{$Spec.Arguments}
   $definition=$Task.Definition
   $owner=$definition.Principal.UserId
   if($owner -notmatch '^S-1-'){
@@ -24,18 +28,27 @@ function Test-DreamSkinOwnedBackgroundTask {
   return ($definition.RegistrationInfo.Source -ceq 'CodexPage/background-monitor/1' -and
     $owner -ieq $Spec.Sid -and $definition.Principal.LogonType -eq 3 -and
     $definition.Principal.RunLevel -eq 0 -and $definition.Actions.Count -eq 1 -and
-    $definition.Actions.Item(1).Path -ieq $Spec.Executable -and
-    $definition.Actions.Item(1).Arguments -ceq $Spec.Arguments)
+    $definition.Actions.Item(1).Path -ieq $executable -and
+    $definition.Actions.Item(1).Arguments -ceq $arguments)
 }
 
 function Enable-DreamSkinBackgroundTask {
   param([string]$StateRoot,[switch]$Start)
   $spec=Get-DreamSkinBackgroundTaskSpec $StateRoot
   if(-not (Test-Path -LiteralPath (Join-Path $spec.Root 'engine/scripts/multi-instance.ps1') -PathType Leaf)){throw 'Monitor script is missing.'}
+  if(-not (Test-Path -LiteralPath $spec.Executable -PathType Leaf)){throw 'Monitor launcher is missing.'}
   $service=New-Object -ComObject 'Schedule.Service';$service.Connect()
   $folder=$service.GetFolder('\');$task=$null
   try{$task=$folder.GetTask($spec.Name)}catch{if($_.Exception.HResult -ne -2147024894){throw}}
-  if($task -and -not (Test-DreamSkinOwnedBackgroundTask $task $spec)){throw 'An unrelated task uses the monitor task name; it was preserved.'}
+  $legacy=$task -and (Test-DreamSkinOwnedBackgroundTask $task $spec -Legacy)
+  if($task -and -not $legacy -and -not (Test-DreamSkinOwnedBackgroundTask $task $spec)){throw 'An unrelated task uses the monitor task name; it was preserved.'}
+  if($legacy){
+    $task.Stop(0)
+    $definition=$task.Definition
+    $action=$definition.Actions.Item(1)
+    $action.Path=$spec.Executable;$action.Arguments=$spec.Arguments;$action.WorkingDirectory=$spec.Root
+    $task=$folder.RegisterTaskDefinition($spec.Name,$definition,36,$spec.Sid,$null,3) # Update; do not fire the registration trigger.
+  }
   if(-not $task){
     $definition=$service.NewTask(0)
     $definition.RegistrationInfo.Source='CodexPage/background-monitor/1'
@@ -59,7 +72,7 @@ function Enable-DreamSkinBackgroundTask {
   # Migrate only the exact old command for this root, after registration succeeds.
   $runKey='HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
   $old=(Get-ItemProperty -LiteralPath $runKey -Name CodexDynamicSkinInstances -ErrorAction SilentlyContinue).CodexDynamicSkinInstances
-  if($old -and $old -ieq ('"'+$spec.Executable+'" '+$spec.Arguments)){
+  if($old -and $old -ieq ('"'+$spec.LegacyExecutable+'" '+$spec.LegacyArguments)){
     [IO.File]::WriteAllText((Join-Path $spec.Root 'legacy-monitor-run.json'),(@{Command=$old;MigratedAt=[datetime]::UtcNow.ToString('o')}|ConvertTo-Json),[Text.UTF8Encoding]::new($false))
     Remove-ItemProperty -LiteralPath $runKey -Name CodexDynamicSkinInstances -ErrorAction Stop
   }
@@ -72,7 +85,7 @@ function Disable-DreamSkinBackgroundTask {
   $spec=Get-DreamSkinBackgroundTaskSpec $StateRoot
   $service=New-Object -ComObject 'Schedule.Service';$service.Connect();$folder=$service.GetFolder('\')
   try{$task=$folder.GetTask($spec.Name)}catch{if($_.Exception.HResult -eq -2147024894){return};throw}
-  if(-not (Test-DreamSkinOwnedBackgroundTask $task $spec)){throw 'Unrelated scheduled task was preserved.'}
+  if(-not (Test-DreamSkinOwnedBackgroundTask $task $spec) -and -not (Test-DreamSkinOwnedBackgroundTask $task $spec -Legacy)){throw 'Unrelated scheduled task was preserved.'}
   $task.Enabled=$false
   $task.Stop(0)
   $folder.DeleteTask($spec.Name,0)

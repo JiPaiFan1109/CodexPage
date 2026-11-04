@@ -40,7 +40,7 @@ function Start-DreamSkinInstanceMonitor {
   }
   $scriptPath=Join-Path $PSScriptRoot 'multi-instance.ps1'
   $args='-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File '+(ConvertTo-DreamSkinProcessArgument $scriptPath)+' -StateRoot '+(ConvertTo-DreamSkinProcessArgument $StateRoot)
-  Start-Process (Join-Path $PSHOME 'powershell.exe') -ArgumentList $args -WindowStyle Hidden | Out-Null
+  Start-Process (Join-Path $PSHOME 'powershell.exe') -ArgumentList $args -NoNewWindow | Out-Null
 }
 
 function Write-DreamSkinInstanceStatus {
@@ -136,7 +136,7 @@ function Request-DreamSkinUpdateRecovery {
   Write-DreamSkinUtf8FileAtomically $receiptPath (@{Key=$Candidate.Key;Version=$Candidate.Version;Status='requested';Attempts=$attempt;RequestedAt=$Now.ToString('o')}|ConvertTo-Json)
   $logs=Join-Path $StateRoot 'logs/multi-instance'
   [IO.Directory]::CreateDirectory($logs)|Out-Null
-  try{Start-Process (Join-Path $PSHOME 'powershell.exe') -ArgumentList $args -WindowStyle Hidden -ErrorAction Stop -RedirectStandardOutput (Join-Path $logs 'update-recovery.log') -RedirectStandardError (Join-Path $logs 'update-recovery-error.log')|Out-Null}
+  try{Start-Process (Join-Path $PSHOME 'powershell.exe') -ArgumentList $args -NoNewWindow -ErrorAction Stop -RedirectStandardOutput (Join-Path $logs 'update-recovery.log') -RedirectStandardError (Join-Path $logs 'update-recovery-error.log')|Out-Null}
   catch{Remove-Item -LiteralPath $receiptPath -Force -ErrorAction SilentlyContinue;$Observation.Since=$Now;throw}
 }
 
@@ -263,7 +263,7 @@ function Invoke-DreamSkinInstanceMonitor {
             $endpoint=$wanted[$key]
             $args=@((ConvertTo-DreamSkinProcessArgument $injector),'--watch','--port',[string]$endpoint.Port,'--browser-id',$endpoint.BrowserId,'--theme-dir',(ConvertTo-DreamSkinProcessArgument (Join-Path $StateRoot 'active-theme')),'--pause-file',(ConvertTo-DreamSkinProcessArgument (Join-Path $StateRoot 'paused')))
             if($videoAvailable){$args+=@('--video-state',(ConvertTo-DreamSkinProcessArgument (Join-Path $StateRoot 'video-ready.json')))}
-            $child=Start-Process $node -ArgumentList $args -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $logDir ($endpoint.Port.ToString()+'.log')) -RedirectStandardError (Join-Path $logDir ($endpoint.Port.ToString()+'-error.log'))
+            $child=Start-Process $node -ArgumentList $args -NoNewWindow -PassThru -RedirectStandardOutput (Join-Path $logDir ($endpoint.Port.ToString()+'.log')) -RedirectStandardError (Join-Path $logDir ($endpoint.Port.ToString()+'-error.log'))
             $workers[$key]=@{Process=$child;Endpoint=$endpoint;Node=$node;Injector=$injector}
           }
           $registeredProcesses=@($processes|Where-Object {$candidate=$_;@($installs|Where-Object {Test-DreamSkinPathEqual $_.Executable $candidate.ExecutablePath}).Count -gt 0})

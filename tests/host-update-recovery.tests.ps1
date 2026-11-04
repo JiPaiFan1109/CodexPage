@@ -30,8 +30,8 @@ try {
   Assert ($replacement.Key -ne $candidate.Key) 'PID reuse must not reuse consent'
   $script:starts=0;$script:failStart=$false
   function Start-Process {
-    param($FilePath,$ArgumentList,$WindowStyle,$ErrorAction,$RedirectStandardOutput,$RedirectStandardError)
-    Assert ($WindowStyle -eq 'Hidden') 'Helper must stay hidden'
+    param($FilePath,$ArgumentList,[switch]$NoNewWindow,$ErrorAction,$RedirectStandardOutput,$RedirectStandardError)
+    Assert $NoNewWindow 'Helper must stay hidden'
     Assert ($ArgumentList -match '-PromptRestart' -and $ArgumentList -notmatch '-RestartExisting') 'Monitor may request consent, never authorize restart'
     if($script:failStart){throw 'fixture start failure'}
     $script:starts++

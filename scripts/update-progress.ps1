@@ -33,11 +33,17 @@ function Show-DynamicUpdateInstallProgress {
   $timer=New-Object Windows.Threading.DispatcherTimer
   $timer.Interval=[timespan]::FromMilliseconds(150)
   $window.Add_ContentRendered({
-    if($state.Async){return}
-    if($ReadyPath){[IO.File]::WriteAllText($ReadyPath,'ready')}
-    $state.Async=$worker.BeginInvoke();$timer.Start()
+    if($state.Async -or $state.Done){return}
+    try{
+      if($ReadyPath){[IO.File]::WriteAllText($ReadyPath,'ready')}
+      $state.Async=$worker.BeginInvoke();$timer.Start()
+    }catch{
+      $state.Result=[pscustomobject]@{Success=$false;Message=('无法启动更新：'+$_.Exception.Message)}
+      $state.Done=$true
+      $window.Close()
+    }
   }.GetNewClosure())
-  $window.Add_Closing({param($sender,$e) if(-not $state.Done){$e.Cancel=$true}}.GetNewClosure())
+  $window.Add_Closing({param($sender,$e) if(-not $state.Done){$e.Cancel=$true;$sender.WindowState='Minimized'}}.GetNewClosure())
   $button.Add_Click({
     if($state.Done){$window.Close()}
     else{

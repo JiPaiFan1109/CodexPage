@@ -114,7 +114,7 @@ function Start-DynamicUpdateHandoff {
       $ready=Join-Path $stage 'ui-ready'
       if(Test-Path -LiteralPath $ready){Remove-Item -LiteralPath $ready -Force}
       $arguments=@('-NoProfile','-STA','-WindowStyle','Hidden','-ExecutionPolicy','RemoteSigned','-File',('"'+$helper+'"'),'-InstallRoot',('"'+$ui.InstallRoot+'"'),'-Version',$ui.AvailableUpdate.version,'-ManagerProcessId',$PID,'-ReadyPath',('"'+$ready+'"'))
-      $helperProcess=Start-Process -FilePath (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe') -ArgumentList $arguments -WindowStyle Hidden -PassThru
+      $helperProcess=Start-Process -FilePath (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe') -ArgumentList $arguments -WorkingDirectory $stage -NoNewWindow -PassThru
       try{
         $deadline=[datetime]::UtcNow.AddSeconds(15)
         while(-not(Test-Path -LiteralPath $ready)){
@@ -123,16 +123,15 @@ function Start-DynamicUpdateHandoff {
           Start-Sleep -Milliseconds 50
         }
         if($helperProcess.HasExited){throw '安装窗口已退出，CodexPage 已保留，请重试。'}
-      }catch{
-        # Before handoff this process can only be waiting for this manager.
-        # Stop our own helper so a late startup cannot race a subsequent retry.
-        if(-not $helperProcess.HasExited){$helperProcess.Kill()}
-        throw
-      }finally{$helperProcess.Dispose()}
-      # The manager's normal close guard blocks while Busy. The helper now owns
-      # the upgrade, so allow this one intentional close to release the mutex.
-      $ui.UpdateClosing=$true
-      $ui.Window.Close()
+        # The manager's normal close guard blocks while Busy. The helper now owns
+        # the upgrade, so allow this one intentional close to release the mutex.
+        $ui.UpdateClosing=$true
+        $ui.Window.Close()
+        if(-not $ui.UpdateClosing){throw '管理器尚有未保存的调整，请保存后重试。'}
+      }finally{
+        if(-not $ui.UpdateClosing -and -not $helperProcess.HasExited){$helperProcess.Kill()}
+        $helperProcess.Dispose()
+      }
     }catch{$ui.UpdateClosing=$false;$ui.Busy=$false;$ui.Controls.UpdateProgress.Visibility='Collapsed';$ui.Controls.UpdateText.Text='无法启动升级，请重试：'+$_.Exception.Message;Update-DynamicManagerButtons}
 }
 

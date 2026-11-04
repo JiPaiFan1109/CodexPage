@@ -44,6 +44,9 @@ function Invoke-DynamicUpdateInstall {
 }
 '@
   [IO.File]::WriteAllText((Join-Path $root 'finish-update.ps1'),$fixture,[Text.UTF8Encoding]::new($true))
+  $unwritableReady=Join-Path $root 'missing-parent/ui-ready'
+  $failed=Show-DynamicUpdateInstallProgress $root $root '1.0.2' 0 $unwritableReady
+  Assert (-not $failed.Success -and $failed.Message -match '无法启动更新') 'Ready write failure must return and release the progress window'
   $ready=Join-Path $root 'ui-ready'
   $result=Show-DynamicUpdateInstallProgress $root $root '1.0.2' 0 $ready
   Assert ($result.Success -and (Test-Path $ready)) 'Successful helper must signal ready and return success'
@@ -53,11 +56,13 @@ function Invoke-DynamicUpdateInstall {
   $script:slowObserved=$false
   $slowObserver=[Windows.Threading.DispatcherTimer]::new();$slowObserver.Interval=[timespan]::FromMilliseconds(50)
   $slowObserver.Add_Tick({
-    if($script:testWindow.FindName('ReturnButton').Content -eq '查看安装日志'){
+    if(-not $script:slowObserved -and $script:testWindow.FindName('ReturnButton').Content -eq '查看安装日志'){
       $script:slowObserved=$true
       Assert ($script:testWindow.FindName('InstallProgress').IsIndeterminate) 'Slow install must not be marked successful'
       Assert ($script:testWindow.ResizeMode -eq 'CanMinimize') 'Slow install must allow minimizing'
       Save-ProgressPreview 'update-slow'
+      $script:testWindow.Close()
+      Assert ($script:testWindow.WindowState -eq 'Minimized') 'Closing an active update must hide the window without killing setup'
     }
   })
   $slowObserver.Start()

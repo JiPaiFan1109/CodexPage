@@ -76,7 +76,12 @@ if($MyInvocation.InvocationName -ne '.'){
   try{Save-DynamicUpdateResult $InstallRoot @{Success=$success;Message=$message;Version=$Version;CompletedUtc=[datetime]::UtcNow.ToString('o')}}
   catch{Write-DynamicUpdateFailure $PSScriptRoot 'result-write' $_.Exception}
   # Result persistence and launching are independent: a full/read-only disk must not prevent recovery.
-  try{Start-DynamicUpdatedManager $InstallRoot}
+  try{
+    # A failed handoff can leave the original manager open and holding the mutex.
+    if($success -or $ManagerProcessId -le 0 -or -not (Get-Process -Id $ManagerProcessId -ErrorAction SilentlyContinue)){
+      Start-DynamicUpdatedManager $InstallRoot
+    }
+  }
   catch{
     $success=$false
     Write-DynamicUpdateFailure $PSScriptRoot 'manager-start' $_.Exception

@@ -8,10 +8,22 @@ try{
   # This fixture is deliberately independent of Codex and real wallpaper state.
   [IO.File]::WriteAllText((Join-Path $scripts 'multi-instance.ps1'),@'
 param([string]$StateRoot)
+Add-Type -Name FixtureConsole -Namespace CodexPage -MemberDefinition '[System.Runtime.InteropServices.DllImport("kernel32.dll")] public static extern System.IntPtr GetConsoleWindow();'
+[CodexPage.FixtureConsole]::GetConsoleWindow().ToInt64() | Set-Content (Join-Path $StateRoot 'console.txt')
 $PID | Set-Content (Join-Path $StateRoot 'pid.txt')
 while($true){Start-Sleep -Seconds 1}
 '@)
   Assert ((Get-DreamSkinBackgroundTaskSpec ($root.ToUpperInvariant()+'\')).Name -eq $spec.Name) 'Task name must be canonical'
+  [IO.Directory]::CreateDirectory((Split-Path $spec.Executable -Parent))|Out-Null
+  $compiler=Join-Path $env:SystemRoot 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
+  & $compiler /nologo /target:winexe "/out:$($spec.Executable)" (Join-Path $PSScriptRoot '../engine/scripts/quick-launcher.cs')
+  if($LASTEXITCODE -ne 0){throw 'Fixture launcher compilation failed'}
+  $name=Enable-DreamSkinBackgroundTask $root
+  $service=New-Object -ComObject Schedule.Service;$service.Connect();$folder=$service.GetFolder('\')
+  $legacy=$folder.GetTask($name).Definition
+  $legacy.Actions.Item(1).Path=$spec.LegacyExecutable
+  $legacy.Actions.Item(1).Arguments=$spec.LegacyArguments
+  $null=$folder.RegisterTaskDefinition($name,$legacy,36,$spec.Sid,$null,3)
   $name=Enable-DreamSkinBackgroundTask $root -Start
   $service=New-Object -ComObject Schedule.Service;$service.Connect();$folder=$service.GetFolder('\')
   $task=$folder.GetTask($name);$definition=$task.Definition
@@ -22,6 +34,8 @@ while($true){Start-Sleep -Seconds 1}
   $deadline=[datetime]::UtcNow.AddSeconds(15)
   while(-not (Test-Path (Join-Path $root 'pid.txt')) -and [datetime]::UtcNow -lt $deadline){Start-Sleep -Milliseconds 250}
   $first=[int](Get-Content (Join-Path $root 'pid.txt'))
+  Assert ([long](Get-Content (Join-Path $root 'console.txt')) -eq 0) 'Migrated task must start without a console'
+  Assert ($task.Definition.Actions.Item(1).Arguments -ceq '--monitor') 'Task must use the GUI monitor launcher'
   $null=Enable-DreamSkinBackgroundTask $root -Start
   Start-Sleep -Seconds 2
   Assert ([int](Get-Content (Join-Path $root 'pid.txt')) -eq $first) 'Repeated enable must not duplicate the monitor'

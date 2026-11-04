@@ -244,6 +244,7 @@ function Register-DynamicManagerClosingGuard {
     $ui=$script:SkinManager
     if($ui.Busy -and -not $ui.UpdateClosing){$eventArgs.Cancel=$true;$ui.Controls.StatusText.Text='任务仍在进行，请等待完成后再关闭窗口。';return}
     if(-not (Test-DynamicManagerDraftSaved)){
+      $ui.UpdateClosing=$false
       $eventArgs.Cancel=$true
       Show-DynamicManagerConfirmation -Title '调整尚未保存' -Message '清晰度保存失败。返回后可重试关闭来保存，或放弃本次调整并关闭；原有壁纸和已保存设置会保留。' -AcceptText '放弃调整并关闭' -Action {
         $script:SkinManager.PendingOpacity=$null
