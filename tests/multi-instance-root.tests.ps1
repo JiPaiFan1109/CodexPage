@@ -18,8 +18,8 @@ try {
   . $module
   $script:starts=0;$script:launchArgs=$null
   function Start-Process {
-    param($FilePath,$ArgumentList,$WindowStyle)
-    Assert ($WindowStyle -eq 'Hidden') 'Monitor must launch hidden'
+    param($FilePath,$ArgumentList,[switch]$NoNewWindow)
+    Assert $NoNewWindow 'Monitor fallback must avoid creating a console window'
     $script:starts++;$script:launchArgs=$ArgumentList
   }
   $rejected=$false
