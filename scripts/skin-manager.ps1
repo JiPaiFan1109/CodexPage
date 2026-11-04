@@ -242,7 +242,7 @@ function Register-DynamicManagerClosingGuard {
   $Window.Add_Closing({
     param($sender,$eventArgs)
     $ui=$script:SkinManager
-    if($ui.Busy -and -not $ui.UpdateClosing){$eventArgs.Cancel=$true;$ui.Controls.StatusText.Text='任务仍在进行，请等待完成后再关闭窗口。';return}
+    if($ui.Busy -and -not $ui.UpdateClosing -and $ui.PendingOperation -notin @('LibraryLoad','Refresh','EngineLocate')){$eventArgs.Cancel=$true;$ui.Controls.StatusText.Text='正在保存或应用更改，暂时不能中断。可最小化窗口，完成后即可关闭。';return}
     if(-not (Test-DynamicManagerDraftSaved)){
       $ui.UpdateClosing=$false
       $eventArgs.Cancel=$true
@@ -260,6 +260,24 @@ function Format-DynamicWallpaperSize {
   if($Bytes -ge 1GB){return ('{0:N1} GB' -f ($Bytes/1GB))}
   if($Bytes -ge 1MB){return ('{0:N1} MB' -f ($Bytes/1MB))}
   return ('{0:N0} KB' -f ([Math]::Max(1.0,$Bytes/1KB)))
+}
+
+function Stop-DynamicManagerWorkers {
+  $ui=$script:SkinManager
+  if($ui.UpdateCancellation){
+    $ui.UpdateCancellation.Cancel=$true
+    if($ui.UpdateCancellation.Request){try{$ui.UpdateCancellation.Request.Abort()}catch{}}
+  }
+  foreach($names in @(@('UpdateWorker','UpdateRunspace','UpdateAsync'),@('Worker','Runspace','Async'))){
+    $worker=$ui[$names[0]];$space=$ui[$names[1]];$async=$ui[$names[2]]
+    if($worker){
+      if($async -and -not $async.IsCompleted){
+        # Stop on the worker thread. Synchronous Stop/Dispose can freeze Closing.
+        try{$null=$worker.BeginStop($null,$null)}catch{}
+      }else{$worker.Dispose();if($space){$space.Dispose()}}
+    }elseif($space){$space.Dispose()}
+    $ui[$names[0]]=$null;$ui[$names[1]]=$null;$ui[$names[2]]=$null
+  }
 }
 
 function Read-DynamicManagerBitmap {
@@ -322,7 +340,7 @@ function Update-DynamicManagerButtons {
   if($ui.Controls.CheckUpdateButton){
     $ui.Controls.CheckUpdateButton.IsEnabled=(-not $ui.Busy -and -not $ui.UpdateWorker -and -not $ui.PrepareOnly)
     foreach($name in @('InstallUpdateButton','LaterUpdateButton','SkipUpdateButton')){$ui.Controls[$name].IsEnabled=(-not $ui.Busy -and -not $ui.UpdateWorker)}
-    if($ui.UpdateWorker -and $ui.UpdateOperation -eq 'Download'){$ui.Controls.InstallUpdateButton.IsEnabled=(-not $ui.UpdateCancellation.Cancel)}
+    if($ui.UpdateWorker -and $ui.UpdateOperation -in @('Check','Download')){$ui.Controls.InstallUpdateButton.IsEnabled=(-not $ui.UpdateCancellation.Cancel)}
   }
 }
 
@@ -793,10 +811,7 @@ function Show-DynamicSkinManager {
     Stop-DynamicManagerPreview;$timer.Stop()
     if($script:SkinManager.ToastTimer){$script:SkinManager.ToastTimer.Stop()}
     $script:SkinManager.UpdateTimer.Stop();$script:SkinManager.UpdateStartupTimer.Stop()
-    if($script:SkinManager.UpdateCancellation){$script:SkinManager.UpdateCancellation.Cancel=$true;$request=$script:SkinManager.UpdateCancellation.Request;if($request){$request.Abort()}}
-    if($script:SkinManager.UpdateWorker){$script:SkinManager.UpdateWorker.Stop();$script:SkinManager.UpdateWorker.Dispose()}
-    if($script:SkinManager.UpdateRunspace){$script:SkinManager.UpdateRunspace.Dispose()}
-    if($script:SkinManager.Worker){$script:SkinManager.Worker.Dispose()};if($script:SkinManager.Runspace){$script:SkinManager.Runspace.Dispose()};$script:SkinManager=$null
+    Stop-DynamicManagerWorkers;$script:SkinManager=$null
   }
 }
 

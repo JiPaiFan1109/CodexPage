@@ -18,6 +18,7 @@ function Show-DynamicUpdateInstallProgress {
   $window=New-DynamicUpdateProgressWindow
   $status=$window.FindName('InstallStatus');$bar=$window.FindName('InstallProgress')
   $detail=$window.FindName('InstallDetail');$button=$window.FindName('ReturnButton')
+  $detail.Text='壁纸库与设置会保留，完成后自动打开 CodexPage。安装期间可最小化；点击关闭也会最小化，不会强行中断写入。'
   $queue=New-Object 'System.Collections.Concurrent.ConcurrentQueue[string]'
   $worker=[PowerShell]::Create();$runspace=[RunspaceFactory]::CreateRunspace();$runspace.Open();$worker.Runspace=$runspace
   $body={

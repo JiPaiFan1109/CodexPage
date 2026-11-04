@@ -29,12 +29,16 @@ try{
   $script:SkinManager=@{Window=$window;Controls=$controls;InstallRoot=$root;StateRoot=$root;PrepareOnly=$true;Busy=$false;Selected=$null;Status=@{};Connection=@{Available=$false}}
   Initialize-DynamicUpdateUI
   $ui=$script:SkinManager
+  $ui.UpdateOperation='Check';$ui.UpdateWorker=[pscustomobject]@{};$ui.UpdateCancellation=@{Cancel=$false;Request=$null}
+  $click=[Windows.Controls.Button]::ClickEvent
+  $controls.InstallUpdateButton.RaiseEvent([Windows.RoutedEventArgs]::new($click))
+  Assert ($ui.UpdateCancellation.Cancel -and -not $controls.InstallUpdateButton.IsEnabled -and $controls.UpdateDialogHeading.Text -eq '正在取消检查') 'Manual checking must expose a working cancel action'
+  $ui.UpdateWorker=$null
   $manifest=@{version='3.5.0';notes=('很长的更新说明，需要能够滚动阅读。'*80)}
   Complete-Fixture Check $false $manifest '' ''
   Assert ($controls.UpdateBanner.Visibility -eq 'Visible' -and $controls.UpdateNoticeContent.Visibility -eq 'Visible') 'Automatic discovery must open the notice'
   Assert ($controls.UpdateNotes.Text.Length -gt 500 -and $controls.UpdateNotes.Parent.MaxHeight -eq 210) 'Long notes must be bounded and scrollable'
   Assert ($controls.SkipUpdateButton.IsEnabled -and $controls.InstallUpdateButton.Content -eq '确认更新') 'Discovery must offer skip and consent'
-  $click=[Windows.Controls.Button]::ClickEvent
   $controls.SkipUpdateButton.RaiseEvent([Windows.RoutedEventArgs]::new($click))
   Assert ((Read-DynamicUpdateState $root).SkippedVersion -eq '3.5.0' -and $controls.UpdateBanner.Visibility -eq 'Collapsed') 'Skip must persist and close'
   Complete-Fixture Check $true $manifest '' ''

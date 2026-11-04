@@ -28,12 +28,18 @@ try{
   Remove-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
 }
 function Update-DynamicManagerButtons {}
+. (Join-Path $repo 'scripts/skin-manager.ps1')
+$window=New-DynamicSkinManagerWindow
+$controls=@{}
+foreach($name in @('UpdateText','UpdateBanner','UpdateDialogHeading','UpdateNoticeContent','UpdateProgressContent','SkipUpdateButton','InstallUpdateButton','LaterUpdateButton','UpdateDialogHint')){$controls[$name]=$window.FindName($name)}
+function Update-DynamicManagerButtons {}
 $worker=[PowerShell]::Create();$runspace=[RunspaceFactory]::CreateRunspace();$runspace.Open();$worker.Runspace=$runspace
 $null=$worker.AddScript('$e=[Net.WebException]::new("Forbidden");$e.Data["UpdateHttpStatus"]=403;throw $e')
 $async=$worker.BeginInvoke()
 while(-not $async.IsCompleted){Start-Sleep -Milliseconds 10}
 $timer=[pscustomobject]@{};$timer|Add-Member ScriptMethod Stop {}
-$script:SkinManager=@{UpdateQueue=[Collections.Concurrent.ConcurrentQueue[string]]::new();UpdateAsync=$async;UpdateWorker=$worker;UpdateRunspace=$runspace;UpdateTimer=$timer;UpdateOperation='Check';UpdateManual=$true;Controls=@{UpdateText=[pscustomobject]@{Text=''}}}
+$script:SkinManager=@{Window=$window;UpdateQueue=[Collections.Concurrent.ConcurrentQueue[string]]::new();UpdateAsync=$async;UpdateWorker=$worker;UpdateRunspace=$runspace;UpdateTimer=$timer;UpdateOperation='Check';UpdateManual=$true;Controls=$controls}
 Complete-DynamicUpdateWork
 if($script:SkinManager.Controls.UpdateText.Text -notmatch '403' -or $script:SkinManager.Controls.UpdateText.Text -match 'GetResponse|EndInvoke'){throw 'UI exposed the technical exception instead of useful guidance'}
+$window.Close()
 'PASS real HTTP 403 transport, cleanup and actual worker-to-UI readable error propagation'

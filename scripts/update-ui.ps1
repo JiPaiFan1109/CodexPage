@@ -68,15 +68,15 @@ function Start-DynamicUpdateWork {
   $ui=$script:SkinManager
   if($ui.UpdateWorker -or $ui.PrepareOnly -or $ui.Busy){return}
   if($Operation -eq 'Download' -and -not $ui.AvailableUpdate){return}
+  $ui.UpdateCancellation=[hashtable]::Synchronized(@{Cancel=$false;Request=$null})
   if($Operation -eq 'Download'){
     Save-DynamicManagerOpacity
     if($ui.PendingOpacity){Show-DynamicManagerToast '请先保存清晰度设置，再更新。' Error;return}
-    $ui.UpdateCancellation=[hashtable]::Synchronized(@{Cancel=$false;Request=$null})
     $ui.Controls.InstallUpdateButton.Content='取消下载'
   }
   $ui.UpdateOperation=$Operation;$ui.UpdateManual=[bool]$Manual
   $ui.Controls.UpdateText.Text='正在检查更新…'
-  if($Operation -eq 'Check' -and $Manual){Set-DynamicUpdateProgress '正在检查更新…';$ui.Controls.InstallUpdateButton.IsEnabled=$false;$ui.Controls.InstallUpdateButton.Visibility='Collapsed'}
+  if($Operation -eq 'Check' -and $Manual){Set-DynamicUpdateProgress '正在检查更新…';$ui.Controls.InstallUpdateButton.Content='取消检查'}
   if($Operation -eq 'Download'){Set-DynamicUpdateProgress '正在准备下载…'}
   $queue=New-Object 'System.Collections.Concurrent.ConcurrentQueue[string]'
   $worker=[PowerShell]::Create();$runspace=[RunspaceFactory]::CreateRunspace();$runspace.Open();$worker.Runspace=$runspace
@@ -84,6 +84,7 @@ function Start-DynamicUpdateWork {
     param($ModuleRoot,$InstallRoot,$StateRoot,$Operation,$Manual,$Manifest,$Queue,$Cancellation)
     $ErrorActionPreference='Stop'
     . (Join-Path $ModuleRoot 'app-update.ps1')
+    $script:DynamicUpdateCancellation=$Cancellation
     if($Operation -eq 'Check'){
       $update=Get-DynamicAppUpdate $InstallRoot $StateRoot -Manual:$Manual
       return [pscustomobject]@{Manifest=$update;Stage=$null}
@@ -120,10 +121,12 @@ function Complete-DynamicUpdateWork {
     else{$ui.Controls.UpdateText.Text='版本 '+$ui.AppVersion+' · 暂时无法检查更新，可稍后手动重试。'}
   }finally{
     $ui.UpdateWorker.Dispose();$ui.UpdateRunspace.Dispose();$ui.UpdateWorker=$null;$ui.UpdateRunspace=$null;$ui.UpdateAsync=$null
-    if($ui.UpdateOperation -eq 'Download'){
-      if($ui.UpdateCancellation.Cancel){Set-DynamicUpdateDialog Message '已取消下载' '此次更新未安装，可随时重新检查更新。'}
-      $ui.UpdateCancellation=$null;$ui.Controls.InstallUpdateButton.Content='确认更新'
+    if($ui.UpdateCancellation.Cancel){
+      $stage=$null
+      $title=if($ui.UpdateOperation -eq 'Download'){'已取消下载'}else{'已取消检查'}
+      Set-DynamicUpdateDialog Message $title '此次更新未安装，可随时重新检查更新。'
     }
+    $ui.UpdateCancellation=$null;$ui.Controls.InstallUpdateButton.Content='确认更新'
     Update-DynamicManagerButtons
     if($ui.Controls.UpdateBanner.Visibility -eq 'Visible' -and -not $ui.Controls.UpdateBanner.IsKeyboardFocusWithin){
       if($ui.UpdateDialogMode -eq 'Message'){$ui.Controls.LaterUpdateButton.Focus()|Out-Null}
@@ -197,11 +200,12 @@ function Initialize-DynamicUpdateUI {
   })
   $ui.Controls.InstallUpdateButton.Add_Click({
     $ui=$script:SkinManager
-    if($ui.UpdateWorker -and $ui.UpdateOperation -eq 'Download'){
+    if($ui.UpdateWorker -and $ui.UpdateOperation -in @('Check','Download')){
       $ui.UpdateCancellation.Cancel=$true
       $request=$ui.UpdateCancellation.Request
       if($request){$request.Abort()}
-      $ui.Controls.InstallUpdateButton.IsEnabled=$false;$ui.Controls.UpdateText.Text='正在取消下载…';$ui.Controls.UpdateDialogHeading.Text='正在取消下载'
+      $title=if($ui.UpdateOperation -eq 'Download'){'正在取消下载'}else{'正在取消检查'}
+      $ui.Controls.InstallUpdateButton.IsEnabled=$false;$ui.Controls.UpdateText.Text=$title;$ui.Controls.UpdateDialogHeading.Text=$title
     }elseif($ui.ReadyUpdateStage){Start-DynamicUpdateHandoff $ui.ReadyUpdateStage}
     else{Start-DynamicUpdateWork Download}
   })
