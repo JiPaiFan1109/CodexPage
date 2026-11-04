@@ -16,7 +16,9 @@ try{
   Reject {Test-DynamicNewVersion '0.4.0-beta.1' '0.3.0'}
   $now=[datetime]'2026-10-17T01:00:00Z'
   $state=@{LastCheckUtc=$now.ToString('o');SkippedVersion='0.4.0'}
-  Assert (-not(Test-DynamicUpdateDue $state $now.AddHours(23))) 'Automatic checks must be throttled'
+  Assert (-not(Test-DynamicUpdateDue $state $now.AddHours(1))) 'Same local day must not check twice'
+  $localMidnight=$now.ToLocalTime().Date.AddDays(1)
+  Assert (Test-DynamicUpdateDue $state $localMidnight) 'New local day must check before 24 hours elapse'
   Assert (Test-DynamicUpdateDue $state $now.AddHours(24)) 'Daily check must become due'
   Assert (Test-DynamicUpdateDue @{LastCheckUtc='broken'} $now) 'Broken cache must recover'
   Assert (Test-DynamicUpdateDue $state $now.AddDays(-2)) 'Clock rollback must recover'

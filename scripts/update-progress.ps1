@@ -2,6 +2,7 @@
   Add-Type -AssemblyName PresentationFramework
   $reader=[Xml.XmlReader]::Create((Join-Path $PSScriptRoot 'update-progress.xaml'))
   try{$window=[Windows.Markup.XamlReader]::Load($reader)}finally{$reader.Dispose()}
+  $window.FindName('InstallProgress').IsIndeterminate=[Windows.SystemParameters]::ClientAreaAnimation
   $wordmark=Join-Path $PSScriptRoot 'codexpage-wordmark.png'
   if(-not(Test-Path -LiteralPath $wordmark)){$wordmark=Join-Path (Split-Path $PSScriptRoot -Parent) 'appearance/codexpage-wordmark.png'}
   if(Test-Path -LiteralPath $wordmark){

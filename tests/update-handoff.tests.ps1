@@ -24,16 +24,16 @@ function Start-Process {
 try{
   foreach($script:mode in @('success','launch-error','dead-ready','close-veto','timeout')){
     $script:helperStopped=$false
-    $window=[Windows.Window]::new();$script:closed=$false
+    $window=New-DynamicSkinManagerWindow;$script:closed=$false
     $window.Add_Closed({$script:closed=$true})
     $worker=[PowerShell]::Create();$space=[RunspaceFactory]::CreateRunspace();$space.Open();$worker.Runspace=$space
     $null=$worker.AddScript('param($stage) [pscustomobject]@{Stage=$stage}').AddArgument($stage)
     $async=$worker.BeginInvoke();$null=$async.AsyncWaitHandle.WaitOne(5000)
     $script:SkinManager=@{Window=$window;Busy=$false;UpdateClosing=$false;UpdateOperation='Download';UpdateManual=$true;InstallRoot=$stage;AvailableUpdate=@{version='1.2.1'};UpdateWorker=$worker;UpdateRunspace=$space;UpdateAsync=$async;UpdateTimer=[Windows.Threading.DispatcherTimer]::new();UpdateQueue=[Collections.Concurrent.ConcurrentQueue[string]]::new();Controls=@{ConfirmCancelButton=[Windows.Controls.Button]::new();UpdateText=[Windows.Controls.TextBlock]::new();StatusText=[Windows.Controls.TextBlock]::new();UpdateProgress=[Windows.Controls.ProgressBar]::new();WorkProgress=[Windows.Controls.ProgressBar]::new();InstallUpdateButton=[Windows.Controls.Button]::new()}}
     Register-DynamicManagerClosingGuard $window
+    foreach($name in @('UpdateBanner','UpdateDialogHeading','UpdateNoticeContent','UpdateProgressContent','SkipUpdateButton','LaterUpdateButton','UpdateDialogHint','UpdateStageDetail','UpdatePercent')){$script:SkinManager.Controls[$name]=$window.FindName($name)}
     Complete-DynamicUpdateWork
-    Assert (-not $script:closed -and $script:SkinManager.ReadyUpdateStage -eq $stage) 'Download must leave the manager open until explicit install'
-    Start-DynamicUpdateHandoff $stage
+    Assert ($script:SkinManager.ReadyUpdateStage -eq $stage) 'Verified download must be passed directly to installation'
     if($script:mode -eq 'success'){Assert $script:closed 'Ready helper must close manager through the real guard'}
     else{
       Assert (-not $script:closed) ('Failed helper must retain manager: '+$script:mode)

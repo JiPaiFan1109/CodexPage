@@ -28,13 +28,29 @@ try{
   $ui.UpdateManual=$false;$window.FindName('SettingsPanel').Visibility='Collapsed'
   Show-DynamicUpdateNotice
   Show-DynamicUpdateNotice
-  if($window.FindName('SettingsPanel').Visibility -ne 'Collapsed' -or $script:noticeCount -ne 1){throw 'Automatic notice must be quiet and deduplicated'}
+  if($window.FindName('SettingsPanel').Visibility -ne 'Collapsed' -or $ui.Controls.UpdateBanner.Visibility -ne 'Visible' -or $script:noticeCount -ne 0){throw 'Automatic notice must open the central dialog without a toast'}
   $ui.UpdateManual=$true
   Show-DynamicUpdateNotice
   if($ui.Controls.UpdateText.Text -notmatch '1.0.0' -or $ui.Controls.UpdateText.Text -notmatch '0.3.0'){throw 'Update notice must show candidate and installed versions'}
   if($ui.Controls.UpdateNotes.Text -notmatch 'Wallpaper Engine'){throw 'Release highlights missing'}
-  if($window.FindName('SettingsPanel').Visibility -ne 'Visible'){throw 'Automatic update is hidden behind settings'}
+  if($window.FindName('SettingsPanel').Visibility -ne 'Collapsed'){throw 'Update dialog must not open settings'}
+  function Save-UpdatePreview([string]$Name){
+    if(-not $PreviewDirectory){return}
+    $window.FindName('UpdateDialogCard').BeginAnimation([Windows.UIElement]::OpacityProperty,$null)
+    foreach($size in @(@(1440,840),@(900,525))){
+      $surface=$window.Content;$surface.Measure([Windows.Size]::new($size[0],$size[1]));$surface.Arrange([Windows.Rect]::new(0,0,$size[0],$size[1]));$surface.UpdateLayout()
+      $bitmap=[Windows.Media.Imaging.RenderTargetBitmap]::new($size[0],$size[1],96,96,[Windows.Media.PixelFormats]::Pbgra32);$bitmap.Render($surface)
+      $encoder=[Windows.Media.Imaging.PngBitmapEncoder]::new();$encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap))
+      $stream=[IO.File]::Create((Join-Path $PreviewDirectory ($Name+'-'+$size[0]+'.png')));try{$encoder.Save($stream)}finally{$stream.Dispose()}
+    }
+  }
+  $ui.AppVersion='3.3.1'
+  $ui.AvailableUpdate=[pscustomobject]@{version='3.4.0';notes="每天首次打开时自动检查更新。`n更新提示集中展示，确认后直接下载并安装。`n修复壁纸库加载完成后无法翻页的问题。"}
+  Show-DynamicUpdateNotice
+  Save-UpdatePreview 'notice'
   Set-DynamicUpdateProgress '正在下载更新… 37%'
+  $ui.Controls.InstallUpdateButton.Content='取消下载'
+  Save-UpdatePreview 'progress'
   $ui.Controls.InstallUpdateButton.Content='取消下载'
   $ui.UpdateWorker=[pscustomobject]@{};$ui.UpdateOperation='Download'
   $ui.UpdateCancellation=[hashtable]::Synchronized(@{Cancel=$false;Request=$null})

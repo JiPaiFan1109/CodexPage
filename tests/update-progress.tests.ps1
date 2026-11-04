@@ -4,12 +4,17 @@ $repo=Split-Path $PSScriptRoot -Parent
 . (Join-Path $repo 'scripts/update-progress.ps1')
 . (Join-Path $repo 'scripts/update-ui.ps1')
 function Assert($Value,$Message){if(-not $Value){throw $Message}}
-$bar=[pscustomobject]@{Visibility='Collapsed';IsIndeterminate=$true;Value=0}
-$script:SkinManager=@{Controls=@{UpdateText=[pscustomobject]@{Text=''};UpdateProgress=$bar}}
+. (Join-Path $repo 'scripts/skin-manager.ps1')
+$manager=New-DynamicSkinManagerWindow
+$controls=@{}
+foreach($name in @('UpdateText','UpdateProgress','UpdateBanner','UpdateDialogHeading','UpdateNoticeContent','UpdateProgressContent','SkipUpdateButton','InstallUpdateButton','LaterUpdateButton','UpdateDialogHint','UpdateStageDetail','UpdatePercent')){$controls[$name]=$manager.FindName($name)}
+$bar=$controls.UpdateProgress
+$script:SkinManager=@{Window=$manager;Controls=$controls}
 Set-DynamicUpdateProgress '正在下载更新… 37%'
 Assert (-not $bar.IsIndeterminate -and $bar.Value -eq 37 -and $bar.Visibility -eq 'Visible') 'Download must expose real progress'
 Set-DynamicUpdateProgress '正在校验更新包…'
-Assert $bar.IsIndeterminate 'Verification must not claim a measured percentage'
+Assert ($bar.IsIndeterminate -eq [Windows.SystemParameters]::ClientAreaAnimation -and $controls.UpdatePercent.Text -eq '') 'Verification must not claim a measured percentage or ignore reduced motion'
+$manager.Close()
 $createWindow=${function:New-DynamicUpdateProgressWindow}
 function New-DynamicUpdateProgressWindow {
   $window=& $createWindow

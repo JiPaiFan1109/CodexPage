@@ -14,12 +14,34 @@ try{
     $thumbs=@(Get-Item -LiteralPath (Join-Path $PSScriptRoot '../engine/assets/demo-background.png'))
     for($i=0;$i -lt $items.Count;$i++){if($thumbs.Count){$items[$i].ThumbnailPath=$thumbs[$i%$thumbs.Count].FullName};$items[$i].Name=if($items[$i].Kind -eq 'Video'){'动态壁纸 '+($i+1)}else{'静态壁纸 '+($i+1)}}
   }
-  $script:SkinManager=@{Window=$window;Controls=$controls;Items=$items;Filter='All';Source='Local';Status=@{CurrentId='0'};Busy=$false}
+  $script:SkinManager=@{Window=$window;Controls=$controls;Items=$items;Filter='All';Source='Local';Status=@{CurrentId='0'};Busy=$false;PrepareOnly=$false}
   $surface=$window.Content
   $surface.Measure([Windows.Size]::new(1440,840));$surface.Arrange([Windows.Rect]::new(0,0,1440,840));$surface.UpdateLayout()
   Update-DynamicManagerList
   Assert ($controls.WallpaperList.Items.Count -eq 12 -and $controls.PageLabel.Text -eq '1 / 3') 'First page incorrect'
   Assert (-not $controls.PreviousPageButton.IsEnabled -and $controls.NextPageButton.IsEnabled) 'First page navigation incorrect'
+  # Use the production click handlers, rather than only assigning PageIndex.
+  $managerSource=Get-Content (Join-Path $PSScriptRoot '../scripts/skin-manager.ps1')
+  foreach($line in $managerSource){
+    if($line -match '^  \$controls\.(PreviousPageButton|NextPageButton)\.Add_Click'){
+      . ([scriptblock]::Create($line))
+    }
+  }
+  $script:SkinManager.Busy=$true;Update-DynamicManagerList
+  Assert (-not $controls.NextPageButton.IsEnabled) 'Loading must disable pagination'
+  $script:SkinManager.Busy=$false;Update-DynamicManagerButtons
+  Assert ($controls.NextPageButton.IsEnabled) 'Completed background work did not restore pagination'
+  $click=[Windows.Controls.Button]::ClickEvent
+  $controls.NextPageButton.RaiseEvent([Windows.RoutedEventArgs]::new($click))
+  Assert ($controls.PageLabel.Text -eq '2 / 3' -and $controls.WallpaperList.Items[0].Id -eq '12') 'Next click did not display second page'
+  $controls.NextPageButton.RaiseEvent([Windows.RoutedEventArgs]::new($click))
+  Assert ($controls.PageLabel.Text -eq '3 / 3' -and -not $controls.NextPageButton.IsEnabled) 'Next click did not reach last page'
+  $script:SkinManager.Busy=$true;Update-DynamicManagerButtons
+  Assert (-not $controls.PreviousPageButton.IsEnabled -and -not $controls.NextPageButton.IsEnabled) 'Work must disable both page buttons'
+  $script:SkinManager.Busy=$false;Update-DynamicManagerButtons
+  Assert ($controls.PreviousPageButton.IsEnabled -and -not $controls.NextPageButton.IsEnabled) 'Completion lost last-page boundary'
+  1..2|ForEach-Object {$controls.PreviousPageButton.RaiseEvent([Windows.RoutedEventArgs]::new($click))}
+  Assert ($controls.PageLabel.Text -eq '1 / 3' -and -not $controls.PreviousPageButton.IsEnabled) 'Previous clicks did not return to first page'
   foreach($card in $controls.WallpaperList.Items){Assert (($card.PlayVisibility -eq 'Visible') -eq ($card.Item.Kind -eq 'Video')) 'Static wallpaper has play badge'}
   Switch-DynamicManagerFilter Image
   Assert ($script:SkinManager.Filter -eq 'Image' -and $controls.FilterThumb.Visibility -eq 'Visible') 'Image filter not selected'

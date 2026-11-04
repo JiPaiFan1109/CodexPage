@@ -1,4 +1,4 @@
-﻿<p align="center">
+<p align="center">
   <img src="appearance/codexpage-wordmark.png" width="480" alt="CodexPage">
 </p>
 <p align="center">Give Codex an image or animated background. Import, preview, and switch wallpapers in one window.</p>
@@ -43,7 +43,7 @@ Recorded from a real Codex window after checking for sensitive information. The 
 
 Requires **Windows x64 and the official Microsoft Store edition of Codex**.
 
-**Disk space:** the 3.3.1 application uses approximately **100 MB**, including its bundled runtime and excluding user wallpapers. On-demand FFmpeg, media caches, and update files use additional space.
+**Disk space:** the 3.4.0 application uses approximately **100 MB**, including its bundled runtime and excluding user wallpapers. On-demand FFmpeg, media caches, and update files use additional space.
 
 1. [Download setup](https://github.com/JiPaiFan1109/CodexPage/releases/latest/download/CodexPage-Setup.exe) and run it.
 2. Open **CodexPage** and select **导入壁纸** (Import wallpaper) to choose an image or video.
@@ -51,17 +51,20 @@ Requires **Windows x64 and the official Microsoft Store edition of Codex**.
 
 **Upgrading:** exit CodexPage and install over the existing version in the same directory. No uninstall is needed; your library and settings are retained. Reapply your wallpaper afterward.
 
+On the first launch each local day, CodexPage checks for updates. Confirm the central notice to download, verify and install; skip applies to that version only. The top-right Check for updates action checks immediately and can show a skipped version.
+
 ## Important updates
 
 | Date (Beijing time) | Version | Changes |
 | --- | --- | --- |
+| 2026-11-04 | [3.4.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.4.0) | Add daily update notices, one-confirmation download and install, and restore gallery pagination |
 | 2026-11-04 | [3.3.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.1) | Fix update handoff and background PowerShell windows, and speed up connection checks and wallpaper application |
 | 2026-11-03 | [3.3.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.0) | Add wallpaper context menus and About; retain and verify the fix for wallpapers reverting after successful application |
 | 2026-11-02 | [3.2.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.2.0) | Improve background recovery and reconnect prompts; preserve unsaved adjustments after save failures; handle inaccessible library folders and damaged previews |
 | 2026-10-30 | [3.1.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.1) | Use a single CodexPage Start menu entry and remove known legacy shortcuts |
 | 2026-10-28 | [3.1.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0) | Fix monitor directory handling and duplicate-worker upgrade blockage; load the library before connecting |
 
-[3.3.1 release notes](docs/releases/v3.3.1.md) · [Full changelog](CHANGELOG.md)
+[3.4.0 release notes](docs/releases/v3.4.0.md) · [Full changelog](CHANGELOG.md)
 
 ## Media and troubleshooting
 

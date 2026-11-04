@@ -307,6 +307,10 @@ function Stop-DynamicManagerPreview {
 
 function Update-DynamicManagerButtons {
   $ui=$script:SkinManager
+  if($ui.Controls.GalleryPager){
+    $ui.Controls.PreviousPageButton.IsEnabled=($ui.PageIndex -gt 0 -and -not $ui.Busy)
+    $ui.Controls.NextPageButton.IsEnabled=($ui.PageIndex -lt $ui.PageCount-1 -and -not $ui.Busy)
+  }
   $state=Get-DynamicManagerActionState $ui.Selected $ui.Status $ui.Busy $ui.PrepareOnly ([bool]$ui.Connection.Available)
   foreach($action in @('Import','Apply','Rename','Delete','Open','Restore')){$ui.Controls[($action+'Button')].IsEnabled=$state.$action}
   $ui.Controls.OpenButton.IsEnabled=(-not $ui.Busy)

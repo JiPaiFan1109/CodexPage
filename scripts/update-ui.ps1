@@ -1,14 +1,47 @@
 ﻿. (Join-Path $PSScriptRoot 'app-update.ps1')
 
+function Set-DynamicUpdateDialog {
+  param([ValidateSet('Notice','Progress','Message')][string]$Mode,[string]$Heading,[string]$Detail)
+  $ui=$script:SkinManager;$c=$ui.Controls
+  $changed=($ui.UpdateDialogMode -ne $Mode -or $c.UpdateBanner.Visibility -ne 'Visible')
+  $ui.UpdateDialogMode=$Mode
+  if($c.UpdateBanner.Visibility -ne 'Visible'){$ui.UpdatePreviousFocus=[Windows.Input.Keyboard]::FocusedElement}
+  $ui.Window.FindName('SettingsPanel').Visibility='Collapsed'
+  $c.UpdateBanner.Visibility='Visible';$c.UpdateDialogHeading.Text=$Heading
+  $c.UpdateNoticeContent.Visibility=if($Mode -eq 'Notice'){'Visible'}else{'Collapsed'}
+  $c.UpdateProgressContent.Visibility=if($Mode -eq 'Progress'){'Visible'}else{'Collapsed'}
+  $c.SkipUpdateButton.Visibility=if($Mode -eq 'Notice'){'Visible'}else{'Collapsed'}
+  $c.InstallUpdateButton.Visibility=if($Mode -eq 'Message'){'Collapsed'}else{'Visible'}
+  $c.LaterUpdateButton.Visibility=if($Mode -eq 'Message'){'Visible'}else{'Collapsed'}
+  $c.UpdateDialogHint.Text=$Detail
+  if($changed -and [Windows.SystemParameters]::ClientAreaAnimation){
+    $card=$ui.Window.FindName('UpdateDialogCard')
+    $card.BeginAnimation([Windows.UIElement]::OpacityProperty,[Windows.Media.Animation.DoubleAnimation]::new(0.65,1,[Windows.Duration]::new([timespan]::FromMilliseconds(140))))
+  }
+  if($Mode -eq 'Notice'){$c.InstallUpdateButton.Content='确认更新'}
+  if($changed){if($Mode -eq 'Message'){$c.LaterUpdateButton.Focus()|Out-Null}else{$c.InstallUpdateButton.Focus()|Out-Null}}
+}
+
+function Close-DynamicUpdateDialog {
+  $ui=$script:SkinManager
+  $ui.Controls.UpdateBanner.Visibility='Collapsed'
+  if($ui.UpdatePreviousFocus){[Windows.Input.Keyboard]::Focus($ui.UpdatePreviousFocus)|Out-Null;$ui.UpdatePreviousFocus=$null}
+}
+
 function Set-DynamicUpdateProgress {
   param([string]$Message)
   $ui=$script:SkinManager
   $ui.Controls.UpdateText.Text=$Message
+  $heading=($Message -replace '[…\.\s]*\d{1,3}%','').TrimEnd([char[]]'… ')
+  Set-DynamicUpdateDialog Progress $heading '壁纸库与设置会保留，更新完成后自动打开 CodexPage。'
+  $ui.Controls.UpdateStageDetail.Text=if($Message -match '\d{1,3}%'){'下载完成后将校验并自动安装'}else{'请稍候'}
   $bar=$ui.Controls.UpdateProgress
   $bar.Visibility='Visible'
   $match=[regex]::Match($Message,'(\d{1,3})%')
   $bar.IsIndeterminate=-not $match.Success
-  if($match.Success){$bar.Value=[Math]::Min(100,[int]$match.Groups[1].Value)}
+  if(-not [Windows.SystemParameters]::ClientAreaAnimation){$bar.IsIndeterminate=$false}
+  $ui.Controls.UpdatePercent.Text=if($match.Success){$match.Value}else{''}
+  if($match.Success){$bar.Value=[Math]::Min(100,[int]$match.Groups[1].Value)}else{$bar.Value=0}
 }
 
 function Show-DynamicUpdateNotice {
@@ -16,6 +49,7 @@ function Show-DynamicUpdateNotice {
   if(-not $ui.AvailableUpdate){return}
   $ui.Controls.UpdateText.Text='新版本 '+$ui.AvailableUpdate.version+'    当前版本：'+$ui.AppVersion
   $ui.Controls.UpdateNotes.Text=$ui.AvailableUpdate.notes
+  $ui.Controls.UpdateVersionText.Text=('新版本 {0}    ·    当前版本 {1}' -f $ui.AvailableUpdate.version,$ui.AppVersion)
   $notes=[string]$ui.AvailableUpdate.notes
   if($notes.StartsWith('【升级方式】')){
     $lines=$notes -split "`n",2
@@ -26,13 +60,7 @@ function Show-DynamicUpdateNotice {
     $ui.Controls.UpdateNotes.Inlines.Add($warning)
     if($lines.Count -gt 1){$ui.Controls.UpdateNotes.Inlines.Add([Windows.Documents.Run]::new("`n"+$lines[1]))}
   }
-  $ui.Controls.UpdateBanner.Visibility='Visible'
-  $panel=$ui.Window.FindName('SettingsPanel')
-  if($panel -and $ui.UpdateManual){$panel.Visibility='Visible'}
-  if(-not $ui.UpdateManual -and $ui.NotifiedUpdateVersion -ne $ui.AvailableUpdate.version){
-    $ui.NotifiedUpdateVersion=$ui.AvailableUpdate.version
-    Show-DynamicManagerToast ('发现新版本 '+$ui.AvailableUpdate.version+'，可在设置中下载。') Info
-  }
+  Set-DynamicUpdateDialog Notice '发现新版本' '确认后将下载并安装更新。壁纸库与设置会保留。'
 }
 
 function Start-DynamicUpdateWork {
@@ -48,6 +76,7 @@ function Start-DynamicUpdateWork {
   }
   $ui.UpdateOperation=$Operation;$ui.UpdateManual=[bool]$Manual
   $ui.Controls.UpdateText.Text='正在检查更新…'
+  if($Operation -eq 'Check' -and $Manual){Set-DynamicUpdateProgress '正在检查更新…';$ui.Controls.InstallUpdateButton.IsEnabled=$false;$ui.Controls.InstallUpdateButton.Visibility='Collapsed'}
   if($Operation -eq 'Download'){Set-DynamicUpdateProgress '正在准备下载…'}
   $queue=New-Object 'System.Collections.Concurrent.ConcurrentQueue[string]'
   $worker=[PowerShell]::Create();$runspace=[RunspaceFactory]::CreateRunspace();$runspace.Open();$worker.Runspace=$runspace
@@ -83,20 +112,27 @@ function Complete-DynamicUpdateWork {
       elseif($ui.UpdateManual){$ui.AvailableUpdate=$null;$ui.ReadyUpdateStage=$null}
       if($ui.AvailableUpdate){
         Show-DynamicUpdateNotice
-      }elseif($ui.UpdateManual){$ui.Controls.UpdateBanner.Visibility='Collapsed';$ui.Controls.UpdateText.Text='当前已是最新稳定版（'+$ui.AppVersion+'）。'}
+      }elseif($ui.UpdateManual){$ui.Controls.UpdateText.Text='当前已是最新稳定版（'+$ui.AppVersion+'）。';Set-DynamicUpdateDialog Message '已是最新版本' $ui.Controls.UpdateText.Text}
       else{$ui.Controls.UpdateText.Text='版本 '+$ui.AppVersion}
     }
   }catch{
-    if($ui.UpdateManual -or $ui.UpdateOperation -eq 'Download'){$ui.Controls.UpdateText.Text='更新未完成：'+(Get-DynamicUpdateFailureMessage $_.Exception)}
+    if($ui.UpdateManual -or $ui.UpdateOperation -eq 'Download'){$ui.Controls.UpdateText.Text='更新未完成：'+(Get-DynamicUpdateFailureMessage $_.Exception);Set-DynamicUpdateDialog Message '更新未完成' ($ui.Controls.UpdateText.Text+' 关闭后可手动重试。')}
     else{$ui.Controls.UpdateText.Text='版本 '+$ui.AppVersion+' · 暂时无法检查更新，可稍后手动重试。'}
   }finally{
     $ui.UpdateWorker.Dispose();$ui.UpdateRunspace.Dispose();$ui.UpdateWorker=$null;$ui.UpdateRunspace=$null;$ui.UpdateAsync=$null
-    if($ui.UpdateOperation -eq 'Download'){$ui.UpdateCancellation=$null;$ui.Controls.UpdateProgress.Visibility='Collapsed';$ui.Controls.InstallUpdateButton.Content='下载更新'}
+    if($ui.UpdateOperation -eq 'Download'){
+      if($ui.UpdateCancellation.Cancel){Set-DynamicUpdateDialog Message '已取消下载' '此次更新未安装，可随时重新检查更新。'}
+      $ui.UpdateCancellation=$null;$ui.Controls.InstallUpdateButton.Content='确认更新'
+    }
     Update-DynamicManagerButtons
+    if($ui.Controls.UpdateBanner.Visibility -eq 'Visible' -and -not $ui.Controls.UpdateBanner.IsKeyboardFocusWithin){
+      if($ui.UpdateDialogMode -eq 'Message'){$ui.Controls.LaterUpdateButton.Focus()|Out-Null}
+      else{$ui.Controls.InstallUpdateButton.Focus()|Out-Null}
+    }
   }
   if($stage){
-    $ui.ReadyUpdateStage=$stage;$ui.Controls.InstallUpdateButton.Content='立即安装'
-    $ui.Controls.UpdateText.Text='更新已下载并校验，点击立即安装后才会关闭管理器。'
+    $ui.ReadyUpdateStage=$stage
+    Start-DynamicUpdateHandoff $stage
   }
 }
 
@@ -132,23 +168,32 @@ function Start-DynamicUpdateHandoff {
         if(-not $ui.UpdateClosing -and -not $helperProcess.HasExited){$helperProcess.Kill()}
         $helperProcess.Dispose()
       }
-    }catch{$ui.UpdateClosing=$false;$ui.Busy=$false;$ui.Controls.UpdateProgress.Visibility='Collapsed';$ui.Controls.UpdateText.Text='无法启动升级，请重试：'+$_.Exception.Message;Update-DynamicManagerButtons}
+    }catch{$ui.UpdateClosing=$false;$ui.Busy=$false;$ui.Controls.UpdateText.Text='无法启动升级，请重试：'+$_.Exception.Message;Set-DynamicUpdateDialog Message '无法启动更新' $ui.Controls.UpdateText.Text;Update-DynamicManagerButtons}
 }
 
 function Initialize-DynamicUpdateUI {
   $ui=$script:SkinManager
   foreach($name in @('CheckUpdateButton','UpdateText','UpdateProgress','UpdateBanner','UpdateNotes','InstallUpdateButton','LaterUpdateButton','SkipUpdateButton')){$ui.Controls[$name]=$ui.Window.FindName($name)}
+  foreach($name in @('UpdateDialogHeading','UpdateDialogWordmark','UpdateNoticeContent','UpdateProgressContent','UpdateVersionText','UpdateStageDetail','UpdatePercent','UpdateDialogHint')){$ui.Controls[$name]=$ui.Window.FindName($name)}
+  $ui.Controls.UpdateDialogWordmark.Source=$ui.Window.FindName('BrandWordmark').Source
+  $ui.Window.Add_PreviewKeyDown({param($sender,$e)
+    $ui=$script:SkinManager
+    if($ui.Controls.UpdateBanner.Visibility -eq 'Visible' -and $e.Key -eq 'Escape'){
+      if(-not $ui.UpdateWorker -and -not $ui.Busy){Close-DynamicUpdateDialog}
+      $e.Handled=$true
+    }
+  })
   $ui.AppVersion=[IO.File]::ReadAllText((Join-Path $ui.InstallRoot 'VERSION')).Trim()
   $ui.Controls.UpdateText.Text='版本 '+$ui.AppVersion
   $ui.AvailableUpdate=$null;$ui.UpdateWorker=$null;$ui.UpdateRunspace=$null;$ui.UpdateAsync=$null
   $timer=New-Object Windows.Threading.DispatcherTimer;$timer.Interval=[timespan]::FromMilliseconds(150);$timer.Add_Tick({Complete-DynamicUpdateWork});$ui.UpdateTimer=$timer
   $ui.Controls.CheckUpdateButton.Add_Click({Start-DynamicUpdateWork Check -Manual})
-  $ui.Controls.LaterUpdateButton.Add_Click({$script:SkinManager.Controls.UpdateBanner.Visibility='Collapsed'})
+  $ui.Controls.LaterUpdateButton.Add_Click({Close-DynamicUpdateDialog})
   $ui.Controls.SkipUpdateButton.Add_Click({
     try{
       $ui=$script:SkinManager;$state=Read-DynamicUpdateState $ui.StateRoot;$state.SkippedVersion=$ui.AvailableUpdate.version
-      Save-DynamicUpdateState $ui.StateRoot $state;$ui.AvailableUpdate=$null;$ui.ReadyUpdateStage=$null;$ui.Controls.InstallUpdateButton.Content='下载更新';$ui.Controls.UpdateBanner.Visibility='Collapsed';$ui.Controls.UpdateText.Text='已跳过此版本，可手动检查更新。'
-    }catch{$script:SkinManager.Controls.UpdateText.Text='无法保存跳过设置，请重试。'}
+      Save-DynamicUpdateState $ui.StateRoot $state;$ui.AvailableUpdate=$null;$ui.ReadyUpdateStage=$null;$ui.Controls.InstallUpdateButton.Content='确认更新';Close-DynamicUpdateDialog;$ui.Controls.UpdateText.Text='已跳过此版本，可手动检查更新。'
+    }catch{$script:SkinManager.Controls.UpdateDialogHint.Text='无法保存跳过设置，请重试。'}
   })
   $ui.Controls.InstallUpdateButton.Add_Click({
     $ui=$script:SkinManager
@@ -156,13 +201,13 @@ function Initialize-DynamicUpdateUI {
       $ui.UpdateCancellation.Cancel=$true
       $request=$ui.UpdateCancellation.Request
       if($request){$request.Abort()}
-      $ui.Controls.InstallUpdateButton.IsEnabled=$false;$ui.Controls.UpdateText.Text='正在取消下载…'
+      $ui.Controls.InstallUpdateButton.IsEnabled=$false;$ui.Controls.UpdateText.Text='正在取消下载…';$ui.Controls.UpdateDialogHeading.Text='正在取消下载'
     }elseif($ui.ReadyUpdateStage){Start-DynamicUpdateHandoff $ui.ReadyUpdateStage}
     else{Start-DynamicUpdateWork Download}
   })
   # Wait for the initial library refresh; automatic checking has its own worker and does not block editing.
   $startup=New-Object Windows.Threading.DispatcherTimer;$startup.Interval=[timespan]::FromSeconds(1)
-  $startup.Add_Tick({$ui=$script:SkinManager;$ui.UpdateStartupTimer.Interval=[timespan]::FromMinutes(1);if(-not $ui.Busy -and -not $ui.UpdateWorker -and -not $ui.ReadyUpdateStage -and (Test-DynamicUpdateDue (Read-DynamicUpdateState $ui.StateRoot))){Start-DynamicUpdateWork Check}});$ui.UpdateStartupTimer=$startup
+  $startup.Add_Tick({$ui=$script:SkinManager;$ui.UpdateStartupTimer.Interval=[timespan]::FromMinutes(1);if(-not $ui.Busy -and -not $ui.UpdateWorker -and -not $ui.ReadyUpdateStage){$ui.UpdateStartupTimer.Stop();if(Test-DynamicUpdateDue (Read-DynamicUpdateState $ui.StateRoot)){Start-DynamicUpdateWork Check}}});$ui.UpdateStartupTimer=$startup
   if(-not $ui.PrepareOnly){$startup.Start();Remove-DynamicStaleUpdateStages $ui.InstallRoot}
   $resultPath=Join-Path $ui.InstallRoot 'update-result.json'
   if(Test-Path -LiteralPath $resultPath){

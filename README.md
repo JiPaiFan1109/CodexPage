@@ -1,4 +1,4 @@
-﻿<p align="center">
+<p align="center">
   <img src="appearance/codexpage-wordmark.png" width="480" alt="CodexPage">
 </p>
 <p align="center">为你的 Codex 换上喜欢的图片或动态背景。导入、预览、切换，在一个窗口里完成。</p>
@@ -43,7 +43,7 @@ CodexPage 2.0.0 界面示意图：以 3 行 × 4 列展示 12 张示例壁纸，
 
 需要 **Windows x64**，并已安装 **Microsoft Store 官方版 Codex**。
 
-**磁盘占用**：3.3.1 应用本体约 **100 MB**（含运行环境，不含用户壁纸）；按需下载的 FFmpeg、媒体缓存及更新文件另占空间。
+**磁盘占用**：3.4.0 应用本体约 **100 MB**（含运行环境，不含用户壁纸）；按需下载的 FFmpeg、媒体缓存及更新文件另占空间。
 
 1. [下载安装包](https://github.com/JiPaiFan1109/CodexPage/releases/latest/download/CodexPage-Setup.exe)，双击运行。
 2. 打开 **CodexPage**，点击 **导入壁纸**，选择图片或视频。
@@ -51,17 +51,20 @@ CodexPage 2.0.0 界面示意图：以 3 行 × 4 列展示 12 张示例壁纸，
 
 **升级**：退出 CodexPage 后安装到原目录，无需卸载，壁纸库与设置保留；完成后重新应用壁纸。
 
+每天首次打开时检查更新，发现新版后居中提示。确认更新后自动下载、校验并安装；跳过只针对该版本。右上角“检查更新”可立即检查，并可重新查看被跳过的版本。
+
 ## 重要更新
 
 | 日期（北京时间） | 版本 | 更新内容 |
 | --- | --- | --- |
+| 2026-11-04 | [3.4.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.4.0) | 每日首次打开检查更新、居中公告与确认后自动下载安装，修复图库无法翻页 |
 | 2026-11-04 | [3.3.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.1) | 修复更新交接和后台 PowerShell 弹窗，优化连接与壁纸应用速度 |
 | 2026-11-03 | [3.3.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.0) | 壁纸右键管理、新增关于软件；保留并验证应用后壁纸误回跳修复 |
 | 2026-11-02 | [3.2.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.2.0) | 改善后台恢复与重连提示，保存失败时保留调整，修复图库目录异常和损坏预览的处理 |
 | 2026-10-30 | [3.1.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.1) | 开始菜单统一为 CodexPage 单入口，清理已知旧快捷方式 |
 | 2026-10-28 | [3.1.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0) | 修复后台目录污染与重复后台升级阻塞，先加载壁纸库再连接 |
 
-[3.3.1 发布说明](docs/releases/v3.3.1.md) · [完整更新记录](CHANGELOG.md)
+[3.4.0 发布说明](docs/releases/v3.4.0.md) · [完整更新记录](CHANGELOG.md)
 
 ## 素材与常见问题
 

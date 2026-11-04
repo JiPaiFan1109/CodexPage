@@ -47,6 +47,10 @@ try{
   $json=Join-Path $stage 'update.json';[IO.File]::WriteAllText($json,($manifest|ConvertTo-Json -Compress),(New-Object Text.UTF8Encoding($false)))
   [IO.File]::WriteAllText((Join-Path $stage 'update.sig'),[Convert]::ToBase64String($rsa.SignData([IO.File]::ReadAllBytes($json),'SHA256')))
   . (Join-Path $repo 'scripts/finish-update.ps1')
+  # Isolate the test manager identity from a real open CodexPage instance.
+  $fixtureMutex='CodexDynamicSkinManager.Test.'+[guid]::NewGuid().ToString('N')
+  $installBody=${function:Invoke-DynamicUpdateInstall}.ToString().Replace("'CodexDynamicSkinManager'",("'"+$fixtureMutex+"'"))
+  Set-Item function:Invoke-DynamicUpdateInstall ([scriptblock]::Create($installBody))
   [IO.File]::WriteAllText((Join-Path $root 'wallpaper.txt'),'keep')
   [IO.File]::WriteAllText((Join-Path $root 'fail'),'')
   Reject {Invoke-DynamicUpdateInstall $root $stage '0.4.0' 0}

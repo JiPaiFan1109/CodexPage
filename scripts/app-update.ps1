@@ -26,7 +26,12 @@ function Save-DynamicUpdateState {
 
 function Test-DynamicUpdateDue {
   param($State,[datetime]$Now=[datetime]::UtcNow)
-  try{if($State.NextRetryUtc){return ($Now.ToUniversalTime() -lt [datetime]::Parse($State.LastCheckUtc).ToUniversalTime() -or $Now.ToUniversalTime() -ge [datetime]::Parse($State.NextRetryUtc).ToUniversalTime())};$Now=$Now.ToUniversalTime();$last=[datetime]::Parse($State.LastCheckUtc).ToUniversalTime();return ($Now -lt $last -or ($Now-$last).TotalHours -ge 24)}catch{return $true}
+  try{
+    $last=[datetime]::Parse($State.LastCheckUtc).ToUniversalTime()
+    if($Now.ToUniversalTime() -lt $last){return $true}
+    if($State.Failures -gt 0 -and $State.NextRetryUtc){return ($Now.ToUniversalTime() -ge [datetime]::Parse($State.NextRetryUtc).ToUniversalTime())}
+    return ($Now.ToLocalTime().Date -ne $last.ToLocalTime().Date)
+  }catch{return $true}
 }
 
 function Read-DynamicSignedUpdate {
