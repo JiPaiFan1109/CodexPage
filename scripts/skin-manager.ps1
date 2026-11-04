@@ -274,6 +274,7 @@ function Stop-DynamicManagerWorkers {
       if($async -and -not $async.IsCompleted){
         # Stop on the worker thread. Synchronous Stop/Dispose can freeze Closing.
         try{$null=$worker.BeginStop($null,$null)}catch{}
+        $ui.ExitAfterWorkerStop=$true
       }else{$worker.Dispose();if($space){$space.Dispose()}}
     }elseif($space){$space.Dispose()}
     $ui[$names[0]]=$null;$ui[$names[1]]=$null;$ui[$names[2]]=$null
@@ -811,7 +812,14 @@ function Show-DynamicSkinManager {
     Stop-DynamicManagerPreview;$timer.Stop()
     if($script:SkinManager.ToastTimer){$script:SkinManager.ToastTimer.Stop()}
     $script:SkinManager.UpdateTimer.Stop();$script:SkinManager.UpdateStartupTimer.Stop()
-    Stop-DynamicManagerWorkers;$script:SkinManager=$null
+    Stop-DynamicManagerWorkers
+    $exitAfterStop=$script:SkinManager.ExitAfterWorkerStop
+    $script:SkinManager=$null
+    # The close guard excludes active write transactions. An uncancellable native
+    # call in a read/check worker can otherwise hold PowerShell's host shutdown
+    # indefinitely even after BeginStop returns. Exit only this manager host once
+    # settings/timers have been cleaned up; the native launcher releases its mutex.
+    if($exitAfterStop){[Environment]::Exit(0)}
   }
 }
 

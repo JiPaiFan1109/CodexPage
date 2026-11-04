@@ -63,7 +63,8 @@ function Invoke-DynamicUpdateInstall {
   $slowObserver.Add_Tick({
     if(-not $script:slowObserved -and $script:testWindow.FindName('ReturnButton').Content -eq '查看安装日志'){
       $script:slowObserved=$true
-      Assert ($script:testWindow.FindName('InstallProgress').IsIndeterminate) 'Slow install must not be marked successful'
+      $progress=$script:testWindow.FindName('InstallProgress')
+      Assert ($progress.IsIndeterminate -eq [Windows.SystemParameters]::ClientAreaAnimation -and $progress.Value -eq 0) 'Slow install must respect reduced motion without claiming success'
       Assert ($script:testWindow.ResizeMode -eq 'CanMinimize') 'Slow install must allow minimizing'
       Save-ProgressPreview 'update-slow'
       $script:testWindow.Close()
