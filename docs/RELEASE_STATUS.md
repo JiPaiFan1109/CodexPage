@@ -1,3 +1,15 @@
+﻿## 2026-11-04 3.3.1 已公开发布
+
+公开稳定版与 latest 为 [v3.3.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.1)，Release ID 433401003，标签提交 a0295d53708d8f7b93b71fb9b0a38a78d98af79a。main 后续可补充完成记录，不移动标签或替换公开附件。
+
+本次包含更新交接恢复、无控制台后台与旧计划任务迁移，以及另一个对话完成的连接、隐藏窗口验证、健康会话复用、图库读取和路径检查性能优化。保留壁纸应用回跳保护。current/VERSION 和 package.json 已同步为 3.3.1。
+
+唯一公开最终产物位于 .local-evidence/release-3.3.1/cloud-final/；final/ 与 local-combined/ 为未公开候选。安装包 28932141 字节，SHA256 b18026c9cd4fa1e8967fce497beadbb47fb05a84f86c0e0a2843c1a4430c3091。十附件与远端大小/digest 一致，公开下载、旧客户端 RSA 签名、旧发现地址和旧安装链接复验通过。包清单、安装清单与 ZIP 已验证；与发行源码比较仅 background-task.ps1 有 LF/CRLF 差异，文本内容一致。
+
+最终提交 CI 41751594549 成功，57 项 Node 回归、168 项 PowerShell 解析通过。最终包隔离新装、签名更新、占用拒绝、取消/失败/正常卸载、开始菜单、3.3.0→3.3.1 覆盖升级、旧任务迁移及库保留通过。初次本地更新回归发现旧隐藏参数断言不适配新无控制台方式，修正测试后最终 CI 全套通过；下载一次网络中断，重试校验成功。
+
+未安装维护者生产环境，未重启生产 Codex，未修改真实壁纸库。现场任务管理器无法结束的具体原因与提问触发弹窗的精确关联尚缺日志；真实新版端到端连接时长、GPU/多屏/辅助技术、断电满盘未实测。安装 EXE 无项目 Authenticode 签名，更新清单沿用 RSA 签名。证据见 cloud-lifecycle-results.json、cloud-payload-verified.json、cloud-public-verified.json。以下为历史记录。
+
 ## 2026-11-03 3.3.0 已公开发布
 
 公开稳定版与 latest 为 [v3.3.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.0)，Release ID 432646486，标签提交 `42b84831774400b57854d4c7b64165dd06dd7545`。main 后续仅补充发行工具与完成记录，不移动标签或替换公开附件。
