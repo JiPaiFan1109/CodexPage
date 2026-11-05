@@ -6,7 +6,7 @@ function Pump([int]$ms=50){
  $frame=[Windows.Threading.DispatcherFrame]::new();$timer=[Windows.Threading.DispatcherTimer]::new();$timer.Interval=[timespan]::FromMilliseconds($ms)
  $timer.Add_Tick({$timer.Stop();$frame.Continue=$false}.GetNewClosure());$timer.Start();[Windows.Threading.Dispatcher]::PushFrame($frame)
 }
-function Settle($condition){for($i=0;$i -lt 40;$i++){if(& $condition){return};Pump};throw 'Timed out waiting for theme state'}
+function Settle($condition,[string]$stage){for($i=0;$i -lt 40;$i++){if(& $condition){return};Pump};throw ('Timed out waiting for '+$stage+'; thumb='+$theme.ThumbX+'; duration='+$theme.LastDuration+'; saved='+(Read-DynamicManagerTheme $state))}
 function Render($window,$name,$width=1440,$height=840){
  if(-not $PreviewDirectory){return}
  $window.UpdateLayout();$drawing=[Windows.Media.DrawingVisual]::new();$context=$drawing.RenderOpen()
@@ -39,13 +39,18 @@ try{
  $window.Show();Pump 100;Render $window 'day-1440';Render $window 'day-900' 900 525
  $selected=$window.FindName('WallpaperList').SelectedItem
  $toggle.IsChecked=$true;Pump 90
+ if($theme.LastDuration -gt 0){$theme.Seek(90);Assert ($theme.ThumbX -gt 0 -and $theme.ThumbX -lt 46) 'Animation did not reach an intermediate position'}
  $before=$theme.ThumbX;$color=$window.FindName('DesignSurface').Background.GradientStops[0].Color
  $toggle.IsChecked=$false
  if([Windows.SystemParameters]::ClientAreaAnimation){Assert ([Math]::Abs($theme.ThumbX-$before) -lt 0.1) 'Reversal snapped slider';Assert ($color -eq $window.FindName('DesignSurface').Background.GradientStops[0].Color) 'Reversal snapped background'}
  foreach($i in 1..15){$toggle.IsChecked=-not $toggle.IsChecked;Pump 15}
  $toggle.IsChecked=$true
- Settle { $theme.ThumbX -eq 46 -and $window.FindName('DesignSurface').Background.GradientStops[0].Color.ToString() -eq '#FF141C28' }
- Settle { (Read-DynamicManagerTheme $state) -eq 'Night' }
+ Pump 400
+ Write-Output ('Theme natural sample: thumb='+$theme.ThumbX+'; duration='+$theme.LastDuration+'; background='+$window.FindName('DesignSurface').Background.GradientStops[0].Color)
+ # Headless/offscreen WPF has no guaranteed render tick. Sample the same native clocks deterministically.
+ $theme.Seek(350)
+ Settle { $theme.ThumbX -eq 46 -and $window.FindName('DesignSurface').Background.GradientStops[0].Color.ToString() -eq '#FF141C28' } 'animation endpoint'
+ Settle { (Read-DynamicManagerTheme $state) -eq 'Night' } 'debounced preference save'
  Assert ($window.FindName('WallpaperList').SelectedItem -eq $selected) 'Theme lost gallery selection'
  Assert ($window.Resources['MutedBrush'].Color.ToString() -eq '#FFA7B7CC') 'Secondary text did not follow theme'
  Render $window 'night-1440';Render $window 'night-900' 900 525
@@ -68,7 +73,7 @@ try{
  $path=Join-Path $state 'manager-appearance.json'
  $locked=[IO.File]::Open($path,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
  $reopened.FindName('ThemeToggle').IsChecked=$false
- Settle {$reopened.Resources['ManagerThemeSaveState'].Failed}
+ Settle {$reopened.Resources['ManagerThemeSaveState'].Failed} 'locked preference failure'
  Assert ($reopened.Resources['ManagerThemeSaveState'].Pending) 'Failed save discarded pending choice'
  Assert ((Read-DynamicManagerTheme $state) -eq 'Night') 'Failed save damaged previous preference'
  $locked.Dispose();$locked=$null;$reopened.Close();$reopened=$null
