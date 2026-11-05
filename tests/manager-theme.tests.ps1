@@ -7,7 +7,12 @@ function Pump([int]$ms=50){
  $frame=[Windows.Threading.DispatcherFrame]::new();$timer=[Windows.Threading.DispatcherTimer]::new();$timer.Interval=[timespan]::FromMilliseconds($ms)
  $timer.Add_Tick({$timer.Stop();$frame.Continue=$false}.GetNewClosure());$timer.Start();[Windows.Threading.Dispatcher]::PushFrame($frame)
 }
-function Settle($condition,[string]$stage){for($i=0;$i -lt 40;$i++){if(& $condition){return};Pump};throw ('Timed out waiting for '+$stage+'; thumb='+$theme.ThumbX+'; duration='+$theme.LastDuration+'; background='+$window.FindName('DesignSurface').Background.GradientStops[0].Color+'; saved='+(Read-DynamicManagerTheme $state))}
+function Settle($condition,[string]$stage){
+ for($i=0;$i -lt 40;$i++){if(& $condition){return};Pump}
+ $diagnosticWindow=if($window){$window}else{$reopened}
+ $background=if($diagnosticWindow){ColorHex $diagnosticWindow.FindName('DesignSurface').Background.GradientStops[0].Color}else{'unavailable'}
+ throw ('Timed out waiting for '+$stage+'; thumb='+$theme.ThumbX+'; duration='+$theme.LastDuration+'; background='+$background+'; saved='+(Read-DynamicManagerTheme $state))
+}
 function Render($window,$name,$width=1440,$height=840){
  if(-not $PreviewDirectory){return}
  $window.UpdateLayout();$drawing=[Windows.Media.DrawingVisual]::new();$context=$drawing.RenderOpen()
@@ -41,6 +46,8 @@ try{
  $window.Show();Pump 100;Render $window 'day-1440';Render $window 'day-900' 900 525
  $selected=$window.FindName('WallpaperList').SelectedItem
  $toggle.IsChecked=$true;Pump 90
+ $expectedDuration=if([Windows.SystemParameters]::ClientAreaAnimation -and -not $ReducedMotionFixture){300}else{0}
+ Assert ($theme.LastDuration -eq $expectedDuration) 'Theme animation duration ignored system or fixture preference'
  if($theme.LastDuration -gt 0){$theme.Seek(90);Assert ($theme.ThumbX -gt 0 -and $theme.ThumbX -lt 46) 'Animation did not reach an intermediate position'}
  $before=$theme.ThumbX;$color=$window.FindName('DesignSurface').Background.GradientStops[0].Color
  $toggle.IsChecked=$false
