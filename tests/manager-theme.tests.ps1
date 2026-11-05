@@ -1,12 +1,13 @@
-﻿param([string]$PreviewDirectory)
+﻿param([string]$PreviewDirectory,[switch]$ReducedMotionFixture)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '../scripts/skin-manager.ps1')
 function Assert($ok,$message){if(-not $ok){throw $message}}
+function ColorHex([Windows.Media.Color]$color){return ('#{0:X2}{1:X2}{2:X2}{3:X2}' -f $color.A,$color.R,$color.G,$color.B)}
 function Pump([int]$ms=50){
  $frame=[Windows.Threading.DispatcherFrame]::new();$timer=[Windows.Threading.DispatcherTimer]::new();$timer.Interval=[timespan]::FromMilliseconds($ms)
  $timer.Add_Tick({$timer.Stop();$frame.Continue=$false}.GetNewClosure());$timer.Start();[Windows.Threading.Dispatcher]::PushFrame($frame)
 }
-function Settle($condition,[string]$stage){for($i=0;$i -lt 40;$i++){if(& $condition){return};Pump};throw ('Timed out waiting for '+$stage+'; thumb='+$theme.ThumbX+'; duration='+$theme.LastDuration+'; saved='+(Read-DynamicManagerTheme $state))}
+function Settle($condition,[string]$stage){for($i=0;$i -lt 40;$i++){if(& $condition){return};Pump};throw ('Timed out waiting for '+$stage+'; thumb='+$theme.ThumbX+'; duration='+$theme.LastDuration+'; background='+$window.FindName('DesignSurface').Background.GradientStops[0].Color+'; saved='+(Read-DynamicManagerTheme $state))}
 function Render($window,$name,$width=1440,$height=840){
  if(-not $PreviewDirectory){return}
  $window.UpdateLayout();$drawing=[Windows.Media.DrawingVisual]::new();$context=$drawing.RenderOpen()
@@ -22,6 +23,7 @@ try{
  if($PreviewDirectory){[void][IO.Directory]::CreateDirectory([IO.Path]::GetFullPath($PreviewDirectory))}
  $window=New-DynamicSkinManagerWindow -StateRoot $state
  $theme=$window.Resources['ManagerThemeController'];$toggle=$window.FindName('ThemeToggle')
+ if($ReducedMotionFixture){$theme.ReduceMotion=$true}
  Assert (-not $theme.IsNight -and -not (Test-Path $state)) 'First launch must be Day without writing settings'
  $window.ShowActivated=$false;$window.WindowStartupLocation='Manual';$window.Left=-10000;$window.Top=-10000
  $cards=[Collections.Generic.List[DynamicSkin.WallpaperCard]]::new()
@@ -42,24 +44,24 @@ try{
  if($theme.LastDuration -gt 0){$theme.Seek(90);Assert ($theme.ThumbX -gt 0 -and $theme.ThumbX -lt 46) 'Animation did not reach an intermediate position'}
  $before=$theme.ThumbX;$color=$window.FindName('DesignSurface').Background.GradientStops[0].Color
  $toggle.IsChecked=$false
- if([Windows.SystemParameters]::ClientAreaAnimation){Assert ([Math]::Abs($theme.ThumbX-$before) -lt 0.1) 'Reversal snapped slider';Assert ($color -eq $window.FindName('DesignSurface').Background.GradientStops[0].Color) 'Reversal snapped background'}
+ if($theme.LastDuration -gt 0){Assert ([Math]::Abs($theme.ThumbX-$before) -lt 0.1) 'Reversal snapped slider';Assert ($color -eq $window.FindName('DesignSurface').Background.GradientStops[0].Color) 'Reversal snapped background'}
  foreach($i in 1..15){$toggle.IsChecked=-not $toggle.IsChecked;Pump 15}
  $toggle.IsChecked=$true
  Pump 400
  Write-Output ('Theme natural sample: thumb='+$theme.ThumbX+'; duration='+$theme.LastDuration+'; background='+$window.FindName('DesignSurface').Background.GradientStops[0].Color)
  # Headless/offscreen WPF has no guaranteed render tick. Sample the same native clocks deterministically.
  $theme.Seek(350)
- Settle { $theme.ThumbX -eq 46 -and $window.FindName('DesignSurface').Background.GradientStops[0].Color.ToString() -eq '#FF141C28' } 'animation endpoint'
+ Settle { $theme.ThumbX -eq 46 -and (ColorHex $window.FindName('DesignSurface').Background.GradientStops[0].Color) -eq '#FF141C28' } 'animation endpoint'
  Settle { (Read-DynamicManagerTheme $state) -eq 'Night' } 'debounced preference save'
  Assert ($window.FindName('WallpaperList').SelectedItem -eq $selected) 'Theme lost gallery selection'
- Assert ($window.Resources['MutedBrush'].Color.ToString() -eq '#FFA7B7CC') 'Secondary text did not follow theme'
+ Assert ((ColorHex $window.Resources['MutedBrush'].Color) -eq '#FFA7B7CC') 'Secondary text did not follow theme'
  Render $window 'night-1440';Render $window 'night-900' 900 525
  foreach($scene in @(@('SettingsPanel','settings'),@('AboutOverlay','about'),@('ConfirmationOverlay','confirmation'),@('UpdateBanner','update'),@('PreviewOverlay','preview'))){
   $window.FindName($scene[0]).Visibility='Visible';Render $window ('night-'+$scene[1]);$window.FindName($scene[0]).Visibility='Collapsed'
  }
  $renamed=New-DynamicRenameWindow $window '长文件名称 — 夜间重命名'
- Assert ($renamed.Background.Color.ToString() -eq '#FF263345') 'Rename surface stayed white'
- Assert ($renamed.Tag.Foreground.Color.ToString() -eq '#FFE8EDF5') 'Rename text unreadable'
+ Assert ((ColorHex $renamed.Background.Color) -eq '#FF263345') 'Rename surface stayed white'
+ Assert ((ColorHex $renamed.Tag.Foreground.Color) -eq '#FFE8EDF5') 'Rename text unreadable'
  $renamed.Close();$renamed=$null
  $theme.ReduceMotion=$true;$toggle.IsChecked=$false
  Assert ($theme.ThumbX -eq 0 -and $theme.LastDuration -eq 0) 'Reduced motion failed'
