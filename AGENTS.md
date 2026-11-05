@@ -1,4 +1,12 @@
-﻿## 2026-11-04 3.4.0 已公开发布
+## 2026-11-05 3.5.0 发行验证进行中
+
+用户已在实际窗口认可日夜与专注预览，要求采用、打开本机正式管理器，随后明确授权检查测试后发布 GitHub。current/VERSION 和 package.json=3.5.0，尚未公开发布。独立发行源码 .local-evidence/release-3.5.0/repository，分支 codex/release-3.5.0；以远端 main 为基线纳入日夜、专注预览、图片视频术语、启动原生兜底与旧进程记录修复。
+
+本机安装目录 C:/Users/weiruan/AppData/Local/CodexDynamicSkin 仍标记 3.4.0，已按本轮采用要求更新 6 个界面文件及图标许可，备份 .local-evidence/focus-preview-20261105/local-install-backup；local-ui-patch.json 记录哈希。正常模式已打开真实图库并确认连接成功，未点击应用或重启确认。此前“未安装/待用户确认”为历史，不覆盖本段。
+
+源码 57 项 Node、132 个 Windows 脚本通过，独立审查无阻塞；正在构建并准备最终包验证。只公开通过验证的云端最终产物，不移动 3.4.0 标签或替换附件。
+
+## 2026-11-04 3.4.0 已公开发布
 
 公开稳定版与 latest 为 [v3.4.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.4.0)，Release ID 433488032，标签提交 638f94f1221dff23f05ab452419c3104e6bf1946。main 后续仅补充完成记录，不移动标签或替换公开附件。
 

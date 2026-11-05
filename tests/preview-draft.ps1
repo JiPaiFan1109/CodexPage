@@ -72,7 +72,7 @@ try{
     $controls.SettingsPanel.Visibility='Visible';$controls.UpdateText.Text='当前版本 '+([IO.File]::ReadAllText((Join-Path $PSScriptRoot '../VERSION'))).Trim()+' · 隔离预览'
     Save-DraftState 'settings';$controls.SettingsPanel.Visibility='Collapsed'
     $controls.ConfirmationOverlay.Visibility='Visible';Save-DraftState 'confirmation';$controls.ConfirmationOverlay.Visibility='Collapsed'
-    $controls.PreviewOverlay.Visibility='Visible';$controls.SelectedName.Text='星空 · 静态壁纸';$controls.PreviewImage.Source=Read-DynamicManagerBitmap $items[1].ThumbnailPath
+    $controls.PreviewOverlay.Visibility='Visible';$controls.SelectedName.Text='星空 · 图片壁纸';$controls.PreviewImage.Source=Read-DynamicManagerBitmap $items[1].ThumbnailPath
     $controls.OpacityPanel.Visibility='Visible';$controls.WallpaperOpacitySlider.Value=50;$controls.OpacityValue.Text='50 / 100';$controls.PreviewImage.Opacity=1;$controls.PreviewNotice.Text='背景淡化默认 50；自动保存，应用壁纸后生效。'
     Save-DraftState 'wallpaper-preview';$controls.PreviewOverlay.Visibility='Collapsed'
     $script:SkinManager.Items=@();Update-DynamicManagerList;Save-DraftState 'empty-library'

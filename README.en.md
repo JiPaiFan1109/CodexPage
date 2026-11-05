@@ -17,11 +17,13 @@ A community tool, **not an official OpenAI product or affiliated with OpenAI**. 
 ## Interface and features
 
 <p align="center">
-  <img src="docs/images/skin-manager-v2.0.0.png" width="1100" alt="New CodexPage: a full gallery of 12 sample wallpapers in 3 rows and 4 columns">
+  <img src="docs/images/focus-preview-day.png" width="1100" alt="CodexPage focus preview with day and night appearance">
 </p>
 
-CodexPage 2.0.0 interface illustration: 12 sample wallpapers fill a 3-row, 4-column gallery. Sample artwork is for illustration and is not bundled as preset wallpapers. [View full screenshot](docs/images/skin-manager-v2.0.0.png).
+CodexPage 3.5.0 focus preview with original demonstration artwork; artwork is not bundled.
 
+- **Day and night appearance:** switch at the top right, retain your preference, and respect reduced motion.
+- **Focus preview:** view media at its original aspect ratio and return to the same gallery position.
 - **Wallpaper Engine imports:** discover Steam libraries and import supported images, videos, or previews.
 - **Images and videos:** import local files and use them as Codex backgrounds.
 - **Wallpaper library:** card gallery, image/video filters, large previews, silent video playback, renaming, and deletion.
@@ -57,6 +59,7 @@ On the first launch each local day, CodexPage checks for updates. Confirm the ce
 
 | Date (Beijing time) | Version | Changes |
 | --- | --- | --- |
+| 2026-11-05 | [3.5.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.5.0) | Day/night appearance, focus preview, clearer media labels and safer startup recovery |
 | 2026-11-04 | [3.4.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.4.0) | Add daily update notices, one-confirmation download and install, and restore gallery pagination |
 | 2026-11-04 | [3.3.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.1) | Fix update handoff and background PowerShell windows, and speed up connection checks and wallpaper application |
 | 2026-11-03 | [3.3.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.0) | Add wallpaper context menus and About; retain and verify the fix for wallpapers reverting after successful application |
@@ -64,7 +67,7 @@ On the first launch each local day, CodexPage checks for updates. Confirm the ce
 | 2026-10-30 | [3.1.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.1) | Use a single CodexPage Start menu entry and remove known legacy shortcuts |
 | 2026-10-28 | [3.1.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0) | Fix monitor directory handling and duplicate-worker upgrade blockage; load the library before connecting |
 
-[3.4.0 release notes](docs/releases/v3.4.0.md) · [Full changelog](CHANGELOG.md)
+[3.5.0 release notes](docs/releases/v3.5.0.md) · [Full changelog](CHANGELOG.md)
 
 ## Media and troubleshooting
 

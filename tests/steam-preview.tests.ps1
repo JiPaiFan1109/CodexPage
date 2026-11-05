@@ -21,7 +21,7 @@ try{
   $batch=Import-DynamicWallpaperEngine @((Join-Path $root 'Steam')) $state
   Assert ($batch.Imported -eq 2 -and $batch.Previews -eq 2 -and $batch.Skipped -eq 2 -and $batch.Failed -eq 1) 'Scene/web preview classification or unsafe-path rejection failed'
   $items=@(Get-DynamicWallpaperItems $state)
-  Assert (@($items|Where-Object {$_.Kind -eq 'Image' -and $_.ConversionMode -eq 'StaticPreview' -and $_.Name.EndsWith('静态预览')}).Count -eq 2) 'Preview was presented as a complete animated wallpaper'
+  Assert (@($items|Where-Object {$_.Kind -eq 'Image' -and $_.ConversionMode -eq 'StaticPreview' -and $_.Name.EndsWith('图片预览')}).Count -eq 2) 'Preview was presented as a complete animated wallpaper'
   Assert ($items[0].Id -ne $items[1].Id) 'Independent projects with identical previews were merged'
   $scene=@($items|Where-Object {$_.Name.StartsWith('scene')})[0]
   Assert ([bool]$scene) ('Scene preview missing: '+($items.Name -join ', '))

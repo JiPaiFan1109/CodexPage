@@ -127,7 +127,7 @@ function Import-DynamicSteamCache {
       $prepared|Add-Member -NotePropertyName ConversionMode -NotePropertyValue $Mode
       $displayTitle=$Title
       if($displayTitle.Length -gt 100){$displayTitle=$displayTitle.Substring(0,100);if([char]::IsHighSurrogate($displayTitle[$displayTitle.Length-1])){$displayTitle=$displayTitle.Substring(0,$displayTitle.Length-1)}}
-      if($Mode -eq 'StaticPreview'){$displayTitle+=' · 静态预览'}
+      if($Mode -eq 'StaticPreview'){$displayTitle+=' · 图片预览'}
       if($Mode -eq 'AnimatedPreview'){$displayTitle+=' · 预览动画'}
       Complete-DynamicWallpaperImport $StateRoot $prepared $displayTitle $Report
     }finally{

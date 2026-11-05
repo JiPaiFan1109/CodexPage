@@ -1,0 +1,82 @@
+[
+  {
+    "file": "IconBack.svg",
+    "bytes": 682,
+    "sha256": "746b500d735b5f6ab075151ba0588600c7bb88d43102c03b2284fd064f5080ab"
+  },
+  {
+    "file": "IconCheck.svg",
+    "bytes": 448,
+    "sha256": "643b76be6638a22b348c14990f0957335fbe98b39e9adb7ba7b4dc86b6745177"
+  },
+  {
+    "file": "IconClose.svg",
+    "bytes": 726,
+    "sha256": "f23a501be08e93ad334f1705be0c9e8224a8e7457bd884fe59263db1c6a4f3dc"
+  },
+  {
+    "file": "IconDelete.svg",
+    "bytes": 944,
+    "sha256": "0f0769b54d5862f2390ea7e51aab825e5dc10d4fa36da34d1559acc55799be92"
+  },
+  {
+    "file": "IconFolder.svg",
+    "bytes": 703,
+    "sha256": "b223f863f213dcc1bf75a65d31a287830380c08503c79565b317c77b10e7a2e1"
+  },
+  {
+    "file": "IconImage.svg",
+    "bytes": 1133,
+    "sha256": "205577a958d9ba03377d211b00dc625abaa56a878719dd5ea880f8e2ea8cfac8"
+  },
+  {
+    "file": "IconInfo.svg",
+    "bytes": 790,
+    "sha256": "ec9891767b25630079faca1b06026cab94eee56129dc1264a40d256aa65911bb"
+  },
+  {
+    "file": "IconMore.svg",
+    "bytes": 592,
+    "sha256": "aacb8ee10e503858f5465d18beb79f16d1ad790eb2b802127ee572062129fc3a"
+  },
+  {
+    "file": "IconPause.svg",
+    "bytes": 772,
+    "sha256": "c500f2b5d0e71a9fc29359887b9df17448111956f7bbe91ea52ad36b7a5a066f"
+  },
+  {
+    "file": "IconPlay.svg",
+    "bytes": 484,
+    "sha256": "5345128c168b3d238d40f90a185e7d47ac6f226db48898c3a938af11eb7e65e0"
+  },
+  {
+    "file": "IconRefresh.svg",
+    "bytes": 1333,
+    "sha256": "9537e4dc984b915d1d67bf2ed61c1fdf713c69d0b293a4dc12b2520d57ab55b7"
+  },
+  {
+    "file": "IconRename.svg",
+    "bytes": 961,
+    "sha256": "b5e15de832d52e2e11c4e543e46a0ec1570ce3e1cbd7a1eb28830b89b49c25ca"
+  },
+  {
+    "file": "IconVideo.svg",
+    "bytes": 732,
+    "sha256": "702ff830cd7f27e78026f437419ccab609e714514111e2ea89f19e6f33d33bb7"
+  },
+  {
+    "file": "LICENSE",
+    "bytes": 1078,
+    "sha256": "69bc45dc42b9acb96a69823adbc6ae538374e3c0bde169b855b32c48eaaef52f"
+  },
+  {
+    "file": "IconSun.svg",
+    "bytes": 1927,
+    "sha256": "0ab79963a8c16c623980da51a0b2623be939b9ee167958123c11240adfcdbbaa"
+  },
+  {
+    "file": "IconMoon.svg",
+    "bytes": 828,
+    "sha256": "7b8c77347c704ca3f76a5fed4865f9011caf4663d011850043067ca8ee490ee8"
+  }
+]

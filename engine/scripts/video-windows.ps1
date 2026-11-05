@@ -164,6 +164,9 @@ function Stop-DreamSkinRecordedVideo {
     if ($State.videoReadyPath) { Remove-Item -LiteralPath "$($State.videoReadyPath)" -Force -ErrorAction SilentlyContinue }
     return $true
   }
+  # A protected non-Node process may have recycled the saved helper PID.
+  # Do not inspect privileged properties or stop it; retain readiness evidence.
+  if ($handle.ProcessName -and $handle.ProcessName -ine 'node') { return $false }
   $startedAt = $handle.StartTime.ToUniversalTime().ToString('o')
   if ($State.videoStartedAt -and $startedAt -cne "$($State.videoStartedAt)") {
     if ($State.videoReadyPath) { Remove-Item -LiteralPath "$($State.videoReadyPath)" -Force -ErrorAction SilentlyContinue }

@@ -54,7 +54,7 @@ function Show-DynamicUpdateNotice {
   if($notes.StartsWith('【升级方式】')){
     $lines=$notes -split "`n",2
     $warning=[Windows.Documents.Run]::new($lines[0])
-    $warning.Foreground=[Windows.Media.BrushConverter]::new().ConvertFromString('#B42318')
+    $warning.SetResourceReference([Windows.Documents.TextElement]::ForegroundProperty,'ThemeDanger')
     $warning.FontWeight=[Windows.FontWeights]::SemiBold
     $ui.Controls.UpdateNotes.Inlines.Clear()
     $ui.Controls.UpdateNotes.Inlines.Add($warning)

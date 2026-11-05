@@ -69,11 +69,50 @@ function Start-DynamicFullLauncher {
   $script=Join-Path $ScriptRoot 'start-dream-skin.ps1'
   $quoted='"'+$script.Replace('"','\"')+'"'
   $logs=Join-Path (Split-Path (Split-Path $ScriptRoot -Parent) -Parent) 'logs'
-  [void][IO.Directory]::CreateDirectory($logs)
   $attempt=(Get-Date -Format 'yyyyMMdd-HHmmss-fff')+'-'+[guid]::NewGuid().ToString('N')
-  Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList "-NoProfile -WindowStyle Hidden -ExecutionPolicy RemoteSigned -File $quoted -PromptRestart" -WindowStyle Hidden `
-    -RedirectStandardOutput (Join-Path $logs ($attempt+'-output.log')) `
-    -RedirectStandardError (Join-Path $logs ($attempt+'-error.log'))|Out-Null
+  $child=$null
+  try {
+    [void][IO.Directory]::CreateDirectory($logs)
+    $child=Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList "-NoProfile -WindowStyle Hidden -ExecutionPolicy RemoteSigned -File $quoted -PromptRestart" -WindowStyle Hidden -PassThru `
+      -RedirectStandardOutput (Join-Path $logs ($attempt+'-output.log')) `
+      -RedirectStandardError (Join-Path $logs ($attempt+'-error.log'))
+    # A redirected Codex shortcut must observe startup failure, including errors
+    # before the full script's try block (module loading and prerequisites).
+    $null=$child.Handle # retain the exit code on Windows PowerShell 5.1
+    $child.WaitForExit()
+    if($child.ExitCode -eq 0){return}
+    throw "Wallpaper startup exited with code $($child.ExitCode)."
+  } catch {
+    $failure=$_.Exception.Message
+    try {
+      $opened=Start-DynamicNativeFallback -ScriptRoot $ScriptRoot
+      $outcome=if($opened){'native-activation-requested'}else{'existing-codex-preserved'}
+    } catch {
+      $outcome='native-fallback-failed: '+$_.Exception.Message
+    }
+    try {
+      [IO.File]::AppendAllText((Join-Path $logs 'quick-launch.log'),
+        (Get-Date).ToString('o')+' '+$failure+' '+$outcome+[Environment]::NewLine)
+    } catch { Write-Warning ('Could not record shortcut recovery: '+$failure+' '+$outcome) }
+  } finally {
+    if($child){$child.Dispose()}
+  }
+}
+
+function Start-DynamicNativeFallback {
+  param([string]$ScriptRoot)
+  # Rediscover the current Store registration. Do not depend on saved state,
+  # Node, the theme/profile, the operation lock, or the redirected shortcut.
+  . (Join-Path $ScriptRoot 'common-windows.ps1')
+  $installs=@(Get-DreamSkinRegisteredCodexInstalls)
+  if($installs.Count -eq 0){throw 'No verified Codex Store installation is available for native startup.'}
+  foreach($install in $installs){
+    # The full launcher may already have reopened Codex during rollback.
+    # Never kill a live session or create a second profile as error recovery.
+    if(@(Get-DreamSkinCodexProcesses -Codex $install).Count -gt 0){return $false}
+  }
+  $null=Start-DreamSkinCodex -Codex $installs[0]
+  return $true
 }
 
 function Initialize-DynamicQuickPackageLauncher {

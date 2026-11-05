@@ -1,0 +1,472 @@
+[
+  {
+    "key": "ThemeBrush0",
+    "day": "#172134",
+    "night": "#E8EDF5"
+  },
+  {
+    "key": "ThemeBrush1",
+    "day": "#3564DC",
+    "night": "#81AAFF"
+  },
+  {
+    "key": "ThemeBrush2",
+    "day": "#3564DC",
+    "night": "#81AAFF"
+  },
+  {
+    "key": "ThemeBrush3",
+    "day": "#D8E3F0",
+    "night": "#3B4B62"
+  },
+  {
+    "key": "ThemeBrush4",
+    "day": "#3564DC",
+    "night": "#81AAFF"
+  },
+  {
+    "key": "ThemeBrush5",
+    "day": "#FCFEFF",
+    "night": "#263345"
+  },
+  {
+    "key": "ThemeBrush6",
+    "day": "#DCE6F1",
+    "night": "#344154"
+  },
+  {
+    "key": "ThemeBrush7",
+    "day": "#F2FFFFFF",
+    "night": "#344154"
+  },
+  {
+    "key": "ThemeBrush8",
+    "day": "#C9DDF4",
+    "night": "#3A4A61"
+  },
+  {
+    "key": "ThemeBrush9",
+    "day": "#FCFFFFFF",
+    "night": "#212D3D"
+  },
+  {
+    "key": "ThemeBrush10",
+    "day": "#EDF3FB",
+    "night": "#2C3B50"
+  },
+  {
+    "key": "ThemeBrush11",
+    "day": "#3564DC",
+    "night": "#81AAFF"
+  },
+  {
+    "key": "ThemeBrush12",
+    "day": "#E7EFF9",
+    "night": "#2C3B50"
+  },
+  {
+    "key": "ThemeBrush13",
+    "day": "#355B91",
+    "night": "#A8C5FF"
+  },
+  {
+    "key": "ThemeBrush14",
+    "day": "#526B89",
+    "night": "#A7B7CC"
+  },
+  {
+    "key": "ThemeBrush15",
+    "day": "#526B89",
+    "night": "#A7B7CC"
+  },
+  {
+    "key": "ThemeBrush16",
+    "day": "#526B89",
+    "night": "#A7B7CC"
+  },
+  {
+    "key": "ThemeBrush17",
+    "day": "#526B89",
+    "night": "#A7B7CC"
+  },
+  {
+    "key": "ThemeBrush18",
+    "day": "#526B89",
+    "night": "#A7B7CC"
+  },
+  {
+    "key": "ThemeBrush19",
+    "day": "#526B89",
+    "night": "#A7B7CC"
+  },
+  {
+    "key": "ThemeBrush20",
+    "day": "#DCE6F1",
+    "night": "#344154"
+  },
+  {
+    "key": "ThemeBrush21",
+    "day": "#B13B46",
+    "night": "#FF9BA6"
+  },
+  {
+    "key": "ThemeBrush22",
+    "day": "#B13B46",
+    "night": "#FF9BA6"
+  },
+  {
+    "key": "ThemeBrush23",
+    "day": "#C5D9EF",
+    "night": "#2E4056"
+  },
+  {
+    "key": "ThemeBrush24",
+    "day": "#637B9E",
+    "night": "#A7B7CC"
+  },
+  {
+    "key": "ThemeBrush25",
+    "day": "#EDF3FA",
+    "night": "#2C3B50"
+  },
+  {
+    "key": "ThemeBrush26",
+    "day": "#EDF3FA",
+    "night": "#2C3B50"
+  },
+  {
+    "key": "ThemeBrush27",
+    "day": "#D6E4F5",
+    "night": "#25354B"
+  },
+  {
+    "key": "ThemeBrush28",
+    "day": "#FCFEFF",
+    "night": "#263345"
+  },
+  {
+    "key": "ThemeBrush29",
+    "day": "#DCE6F1",
+    "night": "#344154"
+  },
+  {
+    "key": "ThemeBrush30",
+    "day": "#EDF3FB",
+    "night": "#2C3B50"
+  },
+  {
+    "key": "ThemeBrush31",
+    "day": "#577DE0",
+    "night": "#91B3FF"
+  },
+  {
+    "key": "ThemeBrush32",
+    "day": "#EDF3FB",
+    "night": "#2C3B50"
+  },
+  {
+    "key": "ThemeBrush33",
+    "day": "#577DE0",
+    "night": "#91B3FF"
+  },
+  {
+    "key": "ThemeBrush34",
+    "day": "#EDF3FB",
+    "night": "#2C3B50"
+  },
+  {
+    "key": "ThemeBrush35",
+    "day": "#577DE0",
+    "night": "#91B3FF"
+  },
+  {
+    "key": "ThemeBrush36",
+    "day": "#F5F9FE",
+    "night": "#1C2838"
+  },
+  {
+    "key": "ThemeBrush37",
+    "day": "#E7EFF9",
+    "night": "#2C3B50"
+  },
+  {
+    "key": "ThemeBrush38",
+    "day": "#526B89",
+    "night": "#A7B7CC"
+  },
+  {
+    "key": "ThemeBrush39",
+    "day": "#F2F7FC",
+    "night": "#263345"
+  },
+  {
+    "key": "ThemeBrush40",
+    "day": "#E7EFFB",
+    "night": "#2C3B50"
+  },
+  {
+    "key": "ThemeBrush41",
+    "day": "#294D88",
+    "night": "#355EA3"
+  },
+  {
+    "key": "ThemeBrush42",
+    "day": "#991B1B",
+    "night": "#FFB2BC"
+  },
+  {
+    "key": "ThemeBrush43",
+    "day": "#FFF1F2",
+    "night": "#472731"
+  },
+  {
+    "key": "ThemeBrush44",
+    "day": "#601D2D45",
+    "night": "#A008101C"
+  },
+  {
+    "key": "ThemeBrush45",
+    "day": "#FCFEFF",
+    "night": "#263345"
+  },
+  {
+    "key": "ThemeBrush46",
+    "day": "#8590A2",
+    "night": "#ADBCD0"
+  },
+  {
+    "key": "ThemeBrush47",
+    "day": "#EDF3FB",
+    "night": "#2C3B50"
+  },
+  {
+    "key": "ThemeBrush48",
+    "day": "#3564DC",
+    "night": "#81AAFF"
+  },
+  {
+    "key": "ThemeBrush49",
+    "day": "#DCE6F1",
+    "night": "#344154"
+  },
+  {
+    "key": "ThemeBrush50",
+    "day": "#3564DC",
+    "night": "#81AAFF"
+  },
+  {
+    "key": "ThemeBrush51",
+    "day": "#601D2D45",
+    "night": "#A008101C"
+  },
+  {
+    "key": "ThemeBrush52",
+    "day": "#FCFEFF",
+    "night": "#263345"
+  },
+  {
+    "key": "ThemeBrush53",
+    "day": "#526B89",
+    "night": "#A7B7CC"
+  },
+  {
+    "key": "ThemeBrush54",
+    "day": "#23344C",
+    "night": "#DFE7F2"
+  },
+  {
+    "key": "ThemeBrush55",
+    "day": "#526B89",
+    "night": "#A7B7CC"
+  },
+  {
+    "key": "ThemeBrush56",
+    "day": "#294D88",
+    "night": "#355EA3"
+  },
+  {
+    "key": "ThemeBrush57",
+    "day": "#3564DC",
+    "night": "#81AAFF"
+  },
+  {
+    "key": "ThemeBrush58",
+    "day": "#DCE6F1",
+    "night": "#344154"
+  },
+  {
+    "key": "ThemeBrush59",
+    "day": "#526B89",
+    "night": "#A7B7CC"
+  },
+  {
+    "key": "ThemeBrush60",
+    "day": "#E9EFF7",
+    "night": "#2C3B50"
+  },
+  {
+    "key": "ThemeBrush61",
+    "day": "#E9EFF7",
+    "night": "#2C3B50"
+  },
+  {
+    "key": "ThemeBrush62",
+    "day": "#601D2D45",
+    "night": "#A008101C"
+  },
+  {
+    "key": "ThemeBrush63",
+    "day": "#FCFEFF",
+    "night": "#263345"
+  },
+  {
+    "key": "ThemeBrush64",
+    "day": "#8590A2",
+    "night": "#ADBCD0"
+  },
+  {
+    "key": "ThemeBrush65",
+    "day": "#3E5067",
+    "night": "#C1CDDD"
+  },
+  {
+    "key": "ThemeBrush66",
+    "day": "#E9EDF3",
+    "night": "#354459"
+  },
+  {
+    "key": "ThemeBrush67",
+    "day": "#FCFEFF",
+    "night": "#263345"
+  },
+  {
+    "key": "ThemeBrush68",
+    "day": "#23344C",
+    "night": "#DFE7F2"
+  },
+  {
+    "key": "ThemeBrush69",
+    "day": "#294D88",
+    "night": "#355EA3"
+  },
+  {
+    "key": "ThemeBrush70",
+    "day": "#23344C",
+    "night": "#DFE7F2"
+  },
+  {
+    "key": "ThemeBrush71",
+    "day": "#FFFFFF",
+    "night": "#2B3A4F"
+  },
+  {
+    "key": "ThemeBrush72",
+    "day": "#FFFFFF",
+    "night": "#2D3D54"
+  },
+  {
+    "key": "ThemeBrush73",
+    "day": "#FFFFFF",
+    "night": "#415778"
+  },
+  {
+    "key": "ThemeBrush74",
+    "day": "#FFFFFF",
+    "night": "#E4ECF7"
+  },
+  {
+    "key": "MutedBrush",
+    "day": "#526B89",
+    "night": "#A7B7CC"
+  },
+  {
+    "key": "AccentBrush",
+    "day": "#3564DC",
+    "night": "#81AAFF"
+  },
+  {
+    "key": "SoftLineBrush",
+    "day": "#DCE6F1",
+    "night": "#344154"
+  },
+  {
+    "key": "ThemeBrush78",
+    "day": "#D6E4F5",
+    "night": "#28384D"
+  },
+  {
+    "key": "ThemeBrush79",
+    "day": "#BCD0E8",
+    "night": "#42536B"
+  },
+  {
+    "key": "ThemeBrush80",
+    "day": "#FFFFFF",
+    "night": "#4B6D9C"
+  },
+  {
+    "key": "ThemeBrush81",
+    "day": "#355B91",
+    "night": "#9AAEC9"
+  },
+  {
+    "key": "ThemeBrush82",
+    "day": "#647B9C",
+    "night": "#EFF5FF"
+  },
+  {
+    "key": "ThemeText",
+    "day": "#172134",
+    "night": "#E8EDF5"
+  },
+  {
+    "key": "ThemeSurface",
+    "day": "#FFFFFF",
+    "night": "#263345"
+  },
+  {
+    "key": "ThemeField",
+    "day": "#FFFFFF",
+    "night": "#1C2838"
+  },
+  {
+    "key": "ThemeFieldBorder",
+    "day": "#BCCCE0",
+    "night": "#536981"
+  },
+  {
+    "key": "ThemeSecondary",
+    "day": "#E9EDF3",
+    "night": "#354459"
+  },
+  {
+    "key": "ThemeFilterText",
+    "day": "#637B9E",
+    "night": "#A7B7CC"
+  },
+  {
+    "key": "ThemeFilterBorder",
+    "day": "#EDEDF0",
+    "night": "#415778"
+  },
+  {
+    "key": "ThemeDanger",
+    "day": "#B42318",
+    "night": "#FFB2A8"
+  },
+  {
+    "key": "ThemeCardHover",
+    "day": "#EDF3FD",
+    "night": "#2C3B50"
+  },
+  {
+    "key": "ThemeMenuHover",
+    "day": "#E7EFFB",
+    "night": "#2C3B50"
+  },
+  {
+    "key": "ThemeValueText",
+    "day": "#294D88",
+    "night": "#A8C5FF"
+  }
+]

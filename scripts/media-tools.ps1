@@ -193,7 +193,7 @@ function Convert-DynamicExtendedImage {
     $stream=[IO.File]::OpenRead($SourcePath)
     try{
       $decoder=[Windows.Media.Imaging.BitmapDecoder]::Create($stream,[Windows.Media.Imaging.BitmapCreateOptions]::PreservePixelFormat,[Windows.Media.Imaging.BitmapCacheOption]::OnLoad)
-      if($decoder.Frames.Count -ne 1){throw '多页图片不能作为单张静态壁纸自动转换。'}
+      if($decoder.Frames.Count -ne 1){throw '多页图片不能作为单张图片壁纸自动转换。'}
       $frame=$decoder.Frames[0]
       if($frame.PixelWidth -gt 16384 -or $frame.PixelHeight -gt 16384 -or ([long]$frame.PixelWidth*$frame.PixelHeight) -gt 50000000){throw '图片尺寸超过安全上限。'}
       $encoder=[Windows.Media.Imaging.PngBitmapEncoder]::new();$encoder.Frames.Add($frame)

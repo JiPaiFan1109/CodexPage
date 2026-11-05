@@ -234,7 +234,7 @@ function Invoke-DreamSkinInstanceMonitor {
               $lastState=[IO.File]::ReadAllText((Join-Path $StateRoot 'state.json'))
               $videoAvailable=$true
               } catch {
-                [IO.File]::AppendAllText((Join-Path $logDir 'monitor-error.log'),[datetime]::UtcNow.ToString('o')+' Video unavailable; using static background while retrying: '+$_.Exception.Message+[Environment]::NewLine)
+                [IO.File]::AppendAllText((Join-Path $logDir 'monitor-error.log'),[datetime]::UtcNow.ToString('o')+' Video unavailable; using image background while retrying: '+$_.Exception.Message+[Environment]::NewLine)
               }
             }
           }

@@ -167,7 +167,7 @@ function Set-DynamicWallpaperTransparency {
   param([string]$StateRoot,[string]$Id,[ValidateRange(0,100)][int]$Transparency)
   Invoke-DynamicWallpaperLock $StateRoot {
     $item=Get-DynamicWallpaperItem $StateRoot $Id
-    if(-not $item.IsAvailable -or $item.Kind -ne 'Image'){throw '仅可调整可用的静态壁纸。'}
+    if(-not $item.IsAvailable -or $item.Kind -ne 'Image'){throw '仅可调整可用的图片壁纸。'}
     $path=Join-Path (Get-DynamicWallpaperDirectory $StateRoot $Id) 'item.json'
     $entry=[IO.File]::ReadAllText($path)|ConvertFrom-Json
     $entry|Add-Member -NotePropertyName transparency -NotePropertyValue $Transparency -Force
@@ -180,7 +180,7 @@ function Set-DynamicWallpaperPreviewLevel {
   param([string]$StateRoot,[string]$Id,[ValidateRange(0,100)][int]$Level)
   Invoke-DynamicWallpaperLock $StateRoot {
     $item=Get-DynamicWallpaperItem $StateRoot $Id
-    if(-not $item.IsAvailable -or $item.Kind -ne 'Image'){throw '仅可调整可用的静态壁纸。'}
+    if(-not $item.IsAvailable -or $item.Kind -ne 'Image'){throw '仅可调整可用的图片壁纸。'}
     $path=Join-Path (Get-DynamicWallpaperDirectory $StateRoot $Id) 'item.json'
     $entry=[IO.File]::ReadAllText($path)|ConvertFrom-Json
     $entry|Add-Member -NotePropertyName previewLevel -NotePropertyValue $Level -Force
@@ -297,7 +297,7 @@ function Read-DynamicCurrentVideo {
   Assert-DreamSkinNoReparseComponents -Path $path
   if(-not (Test-Path -LiteralPath $path -PathType Leaf)){return $null}
   $video=[IO.File]::ReadAllText($path)|ConvertFrom-Json -ErrorAction Stop
-  if($video.schema -cne 'codex-dream-skin-video/1' -or -not [IO.Path]::IsPathRooted([string]$video.filePath) -or [long]$video.expectedSize -le 0 -or [long]$video.expectedSize -gt 128MB -or [string]$video.expectedSha256 -cnotmatch '^[0-9a-f]{64}$'){throw '当前动态背景配置无效。'}
+  if($video.schema -cne 'codex-dream-skin-video/1' -or -not [IO.Path]::IsPathRooted([string]$video.filePath) -or [long]$video.expectedSize -le 0 -or [long]$video.expectedSize -gt 128MB -or [string]$video.expectedSha256 -cnotmatch '^[0-9a-f]{64}$'){throw '当前视频背景配置无效。'}
   Assert-DreamSkinNoReparseComponents -Path $video.filePath
   return $video
 }
@@ -358,7 +358,7 @@ function Remove-DynamicWallpaper {
     if($status.Error){throw ('无法确认当前背景，暂不能删除：'+$status.Error)}
     if($status.CurrentId -eq $Id){throw '请先应用其他壁纸或恢复原始外观，再删除当前壁纸。'}
     $video=Read-DynamicCurrentVideo $StateRoot
-    if($video -and [IO.Path]::GetFullPath($video.filePath).StartsWith($directory+'\',[StringComparison]::OrdinalIgnoreCase)){throw '动态背景仍引用此壁纸，请先切换或在 CodexPage 恢复原始外观。'}
+    if($video -and [IO.Path]::GetFullPath($video.filePath).StartsWith($directory+'\',[StringComparison]::OrdinalIgnoreCase)){throw '视频背景仍引用此壁纸，请先切换或在 CodexPage 恢复原始外观。'}
     if(Test-Path -LiteralPath $directory){
       # Refuse unexpected nested folders or reparse files before recursive deletion.
       foreach($child in Get-ChildItem -LiteralPath $directory -Force){
@@ -399,7 +399,7 @@ function Save-DynamicCurrentWallpaper {
     if(-not $video){
       $theme=Read-DreamSkinTheme -ThemeDirectory (Join-Path $StateRoot 'active-theme')
       $result=Import-DynamicWallpaper $theme.ImagePath Image $StateRoot $Report
-      if(-not $result.AlreadyExists){$result.Item=Rename-DynamicWallpaper $StateRoot $result.Item.Id '当前静态背景'}
+      if(-not $result.AlreadyExists){$result.Item=Rename-DynamicWallpaper $StateRoot $result.Item.Id '当前图片背景'}
       return $result
     }
     if(-not (Test-Path -LiteralPath $video.filePath -PathType Leaf) -or (Get-Item -LiteralPath $video.filePath).Length -ne $video.expectedSize -or (Get-FileHash -LiteralPath $video.filePath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $video.expectedSha256){throw '当前视频丢失或内容已改变，无法保存。'}
@@ -412,7 +412,7 @@ function Save-DynamicCurrentWallpaper {
       $hash=(Get-FileHash -LiteralPath $copy -Algorithm SHA256).Hash.ToLowerInvariant()
       if($hash -ne $video.expectedSha256 -or (Get-Item -LiteralPath $copy).Length -ne $video.expectedSize){throw '当前视频在保存时发生变化。'}
       $prepared=[pscustomobject]@{Kind='Video';Path=$copy;Size=[long]$video.expectedSize;Sha256=$hash}
-      Complete-DynamicWallpaperImport $StateRoot $prepared '当前动态背景' $Report
+      Complete-DynamicWallpaperImport $StateRoot $prepared '当前视频背景' $Report
     }finally{
       if(Test-Path -LiteralPath $directory){Assert-DreamSkinNoReparseComponents -Path $directory;Remove-Item -LiteralPath $directory -Recurse -Force}
     }

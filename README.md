@@ -17,14 +17,16 @@
 ## 界面与功能
 
 <p align="center">
-  <img src="docs/images/skin-manager-v2.0.0.png" width="1100" alt="CodexPage：3 行 4 列、12 张示例壁纸的完整画廊">
+  <img src="docs/images/focus-preview-day.png" width="1100" alt="CodexPage 专注预览与日夜切换">
 </p>
 
-CodexPage 2.0.0 界面示意图：以 3 行 × 4 列展示 12 张示例壁纸，呈现完整画廊布局（示例素材不随软件预置）。[查看完整截图](docs/images/skin-manager-v2.0.0.png)。
+CodexPage 3.5.0 专注预览：日夜切换与应用入口保持可见，返回后保留图库位置。图中为原创演示素材，不随应用预置。
 
+- **日夜外观**：右上角切换白天与黑夜，自动记住偏好，尊重系统减少动态效果设置。
+- **专注预览**：大图保持媒体原比例，预览时可切换日夜、调整图片背景强度，返回后保留图库位置。
 - **Wallpaper Engine 导入**：左侧入口自动发现 Steam 库，兼容视频/图片直接引用源文件，不兼容媒体自动转换并缓存；Scene、Web 仅导入标注的预览图或预览动画，应用项目不支持。
 - **静态与动态背景**：导入本地图片或视频，为 Codex 更换背景。
-- **壁纸收藏库**：卡片浏览、静态/动态分类、大图预览、视频静音播放；右键可预览、应用、重命名或删除，右上管理面板可查看关于软件。
+- **壁纸收藏库**：卡片浏览、图片/视频分类、大图预览、视频静音播放；右键可预览、应用、重命名或删除，右上管理面板可查看关于软件。
 - **自动识别 Codex**：打开 CodexPage 即可检测本机客户端，点击「应用壁纸」或「打开 Codex」进入换肤流程。
 - **保留收藏，随时恢复**：本地导入会保存副本，移动原文件不影响收藏；Steam 引用源文件删除后会从列表消失，下次打开 Codex 回到初始外观；升级保留壁纸库，可恢复 Codex 原始外观。
 
@@ -57,6 +59,7 @@ CodexPage 2.0.0 界面示意图：以 3 行 × 4 列展示 12 张示例壁纸，
 
 | 日期（北京时间） | 版本 | 更新内容 |
 | --- | --- | --- |
+| 2026-11-05 | [3.5.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.5.0) | 日夜模式、专注预览、图片与视频标签统一，以及启动与壁纸切换可靠性修复 |
 | 2026-11-04 | [3.4.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.4.0) | 每日首次打开检查更新、居中公告与确认后自动下载安装，修复图库无法翻页 |
 | 2026-11-04 | [3.3.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.1) | 修复更新交接和后台 PowerShell 弹窗，优化连接与壁纸应用速度 |
 | 2026-11-03 | [3.3.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.3.0) | 壁纸右键管理、新增关于软件；保留并验证应用后壁纸误回跳修复 |
@@ -64,7 +67,7 @@ CodexPage 2.0.0 界面示意图：以 3 行 × 4 列展示 12 张示例壁纸，
 | 2026-10-30 | [3.1.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.1) | 开始菜单统一为 CodexPage 单入口，清理已知旧快捷方式 |
 | 2026-10-28 | [3.1.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0) | 修复后台目录污染与重复后台升级阻塞，先加载壁纸库再连接 |
 
-[3.4.0 发布说明](docs/releases/v3.4.0.md) · [完整更新记录](CHANGELOG.md)
+[3.5.0 发布说明](docs/releases/v3.5.0.md) · [完整更新记录](CHANGELOG.md)
 
 ## 素材与常见问题
 

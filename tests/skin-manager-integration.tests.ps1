@@ -34,7 +34,7 @@ try{
           switch($script:qa.Step){
             0 {Assert ($ui.Items.Count -eq 0) 'Fresh UI was not empty';Start-DynamicManagerWork Import (Join-Path $repo 'docs/images/earth-preview.png');$script:qa.Step=1}
             1 {
-              Assert ($ui.Items.Count -eq 1 -and $ui.Selected.Kind -eq 'Image') 'Background import did not update cards'
+              Assert ($ui.Items.Count -eq 1 -and $ui.Selected.Kind -eq 'Image') ('Background import did not update cards: '+$ui.Controls.StatusText.Text)
               Show-DynamicCodexPreview
               Assert ($ui.Controls.PreviewOverlay.Visibility -eq 'Visible' -and $null -ne $ui.Controls.PreviewImage.Source) 'Codex preview did not open with selected image'
               Close-DynamicCodexPreview
@@ -59,11 +59,11 @@ try{
               Close-DynamicCodexPreview
               Assert ($null -eq $ui.Controls.PreviewVideo.Source -and -not $ui.Playing) 'Preview did not release source'
               $handle=[IO.File]::Open($media,'Open','ReadWrite','None');$handle.Dispose()
-              Start-DynamicManagerWork Rename $ui.Selected.Id '我的地球动态壁纸'
+              Start-DynamicManagerWork Rename $ui.Selected.Id '我的地球视频壁纸'
               $script:qa.Step=4
             }
             4 {
-              Assert ($ui.Selected.Name -eq '我的地球动态壁纸') 'Rename did not persist through worker'
+              Assert ($ui.Selected.Name -eq '我的地球视频壁纸') 'Rename did not persist through worker'
               foreach($view in $ui.Controls.WallpaperList.ItemsSource){
                 Assert $view.Item.IsAvailable 'Optional thumbnail failure must not make playable media unavailable'
                 if($view.Item.ThumbnailPath){Assert ($null -ne $view.ThumbnailImage) ('Existing thumbnail did not load: '+$view.Name)}

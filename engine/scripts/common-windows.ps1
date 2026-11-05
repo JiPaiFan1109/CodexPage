@@ -1232,6 +1232,10 @@ function Stop-DreamSkinRecordedInjector {
   $processId = [int]$State.injectorPid
   $processHandle = Get-Process -Id $processId -ErrorAction SilentlyContinue
   if (-not $processHandle) { return $true }
+  # Windows can reuse a dead helper's PID for a protected system process.
+  # A non-Node name disproves ownership even when StartTime is inaccessible.
+  # This only rejects stale identity; it never authorizes stopping a process.
+  if ($processHandle.ProcessName -and $processHandle.ProcessName -ine 'node') { return $false }
   try {
     $startedAt = $processHandle.StartTime.ToUniversalTime().ToString('o')
   } catch {

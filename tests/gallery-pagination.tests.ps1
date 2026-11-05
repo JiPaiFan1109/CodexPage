@@ -12,7 +12,7 @@ try{
   $items=@(for($i=0;$i -lt 25;$i++){[pscustomobject]@{Id=[string]$i;Name=('壁纸 '+($i+1));Kind=if($i%2){'Image'}else{'Video'};Sources=@('Local');IsAvailable=$true;Size=1024;ThumbnailPath=$null}})
   if($PreviewDirectory){
     $thumbs=@(Get-Item -LiteralPath (Join-Path $PSScriptRoot '../engine/assets/demo-background.png'))
-    for($i=0;$i -lt $items.Count;$i++){if($thumbs.Count){$items[$i].ThumbnailPath=$thumbs[$i%$thumbs.Count].FullName};$items[$i].Name=if($items[$i].Kind -eq 'Video'){'动态壁纸 '+($i+1)}else{'静态壁纸 '+($i+1)}}
+    for($i=0;$i -lt $items.Count;$i++){if($thumbs.Count){$items[$i].ThumbnailPath=$thumbs[$i%$thumbs.Count].FullName};$items[$i].Name=if($items[$i].Kind -eq 'Video'){'视频壁纸 '+($i+1)}else{'图片壁纸 '+($i+1)}}
   }
   $script:SkinManager=@{Window=$window;Controls=$controls;Items=$items;Filter='All';Source='Local';Status=@{CurrentId='0'};Busy=$false;PrepareOnly=$false}
   $surface=$window.Content
