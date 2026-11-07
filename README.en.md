@@ -22,11 +22,11 @@ A community tool, **not an official OpenAI product or affiliated with OpenAI**. 
 
 CodexPage wallpaper library. Original demonstration artwork shown here is not bundled.
 
-- **Automatic Codex detection:** the manager locates the supported local client; Apply and Open Codex use the local skin engine.
+- **Automatic Codex detection:** open CodexPage to automatically connect to Codex on your computer.
 - **Image and video backgrounds:** import local images or videos to change your Codex background.
-- **Wallpaper Engine imports:** compatible images and videos use the original files without duplicate copies; converted media uses cache space.
-- **Wallpaper library:** card gallery, image/video filters, large previews, silent video playback, renaming, and deletion.
-- **Keep your collection:** upgrades preserve your library, and you can restore Codex's original appearance at any time.
+- **Wallpaper Engine imports:** open CodexPage to automatically find your local Wallpaper Engine wallpaper folder. Compatible images and videos use the original files without duplicate copies; converted media uses cache space.
+- **Wallpaper library:** browse cards, filter images and videos, view large previews, and play videos silently. Right-click to preview, apply, rename, or delete; the top-right management panel also provides About information.
+- **Restore anytime:** restore Codex's original appearance from the settings center at the top right.
 
 <details>
 <summary>See an animated background inside Codex</summary>
