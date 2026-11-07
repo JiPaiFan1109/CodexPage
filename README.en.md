@@ -17,18 +17,17 @@ A community tool, **not an official OpenAI product or affiliated with OpenAI**. 
 ## Interface and features
 
 <p align="center">
-  <img src="docs/images/focus-preview-day.png" width="1100" alt="CodexPage focus preview with day and night appearance">
+  <img src="docs/images/wallpaper-library.png" width="1100" alt="CodexPage wallpaper library">
 </p>
 
-CodexPage 3.5.0 focus preview with original demonstration artwork; artwork is not bundled.
+CodexPage wallpaper library. Original demonstration artwork shown here is not bundled.
 
-- **Day and night appearance:** switch at the top right, retain your preference, and respect reduced motion.
-- **Focus preview:** view media at its original aspect ratio and return to the same gallery position.
-- **Wallpaper Engine imports:** discover Steam libraries and import supported images, videos, or previews.
+- **Wallpaper Engine imports:** automatically find Steam wallpapers and import images, videos, or preview media.
 - **Images and videos:** import local files and use them as Codex backgrounds.
 - **Wallpaper library:** card gallery, image/video filters, large previews, silent video playback, renaming, and deletion.
 - **Automatic Codex detection:** the manager locates the supported local client; Apply and Open Codex use the local skin engine.
-- **Keep your collection:** local imports retain a copy, so moving their originals does not affect them. Steam references disappear from the gallery when their source is unavailable; the next Codex launch uses its original appearance. Upgrades preserve the library, and you can restore Codex's original appearance.
+- **Keep your collection:** upgrades preserve your library, and you can restore Codex's original appearance at any time.
+- **Focus preview:** view media at its original aspect ratio and return to the same gallery position.
 
 <details>
 <summary>See an animated background inside Codex</summary>
