@@ -95,19 +95,20 @@ function Read-DynamicWallpaperItem {
     }
     $item.ThumbnailPath=Join-Path $Directory $entry.thumbnailFile
     foreach($file in @($item.MediaPath,$item.ThumbnailPath)){Assert-DreamSkinNoReparseComponents -Path $file}
-    if(-not (Test-Path -LiteralPath $item.MediaPath -PathType Leaf) -or (Get-Item -LiteralPath $item.MediaPath).Length -ne $item.Size){throw '壁纸文件丢失或大小已改变。'}
+    # Fresh FileInfo instances avoid repeated provider lookups without caching
+    # availability across refreshes. Path guards above still run on every read.
+    $mediaFile=[IO.FileInfo]::new($item.MediaPath)
+    if(-not $mediaFile.Exists -or $mediaFile.Length -ne $item.Size){throw '壁纸文件丢失或大小已改变。'}
     $item.Sha256=$entry.sha256
-    if(-not (Test-Path -LiteralPath $item.ThumbnailPath -PathType Leaf)){$item.ThumbnailPath=$null}
+    if(-not [IO.File]::Exists($item.ThumbnailPath)){$item.ThumbnailPath=$null}
     $item.IsAvailable=$true
   } catch { $item.Error=$_.Exception.Message }
   # Only count immediate, non-reparse files. Never follow untrusted subdirectories.
   # Disk accounting is optional: a denied/deleted directory must not abort the gallery.
   try{
     Assert-DreamSkinNoReparseComponents -Path $Directory
-    if(Test-Path -LiteralPath $Directory -PathType Container){
-      foreach($file in Get-ChildItem -LiteralPath $Directory -File -Force -ErrorAction Stop){
-        if(($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0){$item.DiskSize += $file.Length}
-      }
+    foreach($file in ([IO.DirectoryInfo]::new($Directory)).EnumerateFiles()){
+      if(($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0){$item.DiskSize += $file.Length}
     }
   }catch{$item.DiskSize=0L}
   return $item
@@ -220,7 +221,8 @@ function Complete-DynamicWallpaperImport {
     $extension=[IO.Path]::GetExtension($Prepared.Path).ToLowerInvariant()
     $mediaName='wallpaper'+$extension
     $destination=Join-Path $directory $mediaName
-    Move-Item -LiteralPath $Prepared.Path -Destination $destination
+    try { Move-Item -LiteralPath $Prepared.Path -Destination $destination }
+    catch { Write-DynamicImportFailure $StateRoot 'media-rename' $_;throw }
     # A prepared image is the media itself; no second full-size copy is retained.
     $entry=[ordered]@{schema='codex-dynamic-skin-wallpaper/1';id=$id;name=$displayName;kind=$Prepared.Kind;mediaFile=$mediaName;thumbnailFile='thumbnail.png';size=$Prepared.Size;sha256=$Prepared.Sha256;importedAtUtc=[datetime]::UtcNow.ToString('o')}
     if($Prepared.SourceSha256){$entry.sourceSha256=$Prepared.SourceSha256}
@@ -234,7 +236,8 @@ function Complete-DynamicWallpaperImport {
     Write-DreamSkinUtf8FileAtomically -Path (Join-Path $directory 'item.json') -Content ($entry|ConvertTo-Json)
     Assert-DreamSkinNoReparseComponents -Path $directory
     $target=Join-Path $paths.Items $id
-    Move-Item -LiteralPath $directory -Destination $target
+    try { Move-Item -LiteralPath $directory -Destination $target }
+    catch { Write-DynamicImportFailure $StateRoot 'entry-commit' $_;throw }
     [pscustomobject]@{Item=(Get-DynamicWallpaperItem $StateRoot $id);AlreadyExists=$false}
   }
 }

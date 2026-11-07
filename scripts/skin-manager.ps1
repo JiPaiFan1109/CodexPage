@@ -283,6 +283,14 @@ function Stop-DynamicManagerWorkers {
   }
 }
 
+function Get-DynamicManagerBitmapByteEstimate {
+  param($Bitmap)
+  # Budget at least a 32-bit surface, retaining higher precision when present.
+  # This bounds cached pixel estimates, not WIC/GPU or total process memory.
+  $stride=[long]([Math]::Ceiling(([double]$Bitmap.PixelWidth*[Math]::Max(32,$Bitmap.Format.BitsPerPixel))/32)*4)
+  return $stride*[long]$Bitmap.PixelHeight
+}
+
 function Read-DynamicManagerBitmap {
   param([string]$Path,[int]$DecodeWidth=640)
   if(-not $Path){return $null}
@@ -297,24 +305,44 @@ function Read-DynamicManagerBitmap {
     }
     $cache=$null;$key=$null
     if($script:SkinManager){
-      if(-not $script:SkinManager.BitmapCache){$script:SkinManager.BitmapCache=@{}}
+      if($script:SkinManager.BitmapCache -isnot [Collections.Specialized.OrderedDictionary]){
+        $script:SkinManager.BitmapCache=[ordered]@{};$script:SkinManager.BitmapCacheBytes=0L
+      }
       $cache=$script:SkinManager.BitmapCache
-      $file=Get-Item -LiteralPath $Path -ErrorAction Stop
+      $file=[IO.FileInfo]::new([IO.Path]::GetFullPath($Path))
+      if(-not $file.Exists){return $null}
       $key=$file.FullName+'|'+$file.Length+'|'+$file.LastWriteTimeUtc.Ticks+'|'+$DecodeWidth
-      if($cache.ContainsKey($key)){return $cache[$key]}
+      if($cache.Contains($key)){
+        $cached=$cache[$key];$cache.Remove($key);$cache.Add($key,$cached)
+        return $cached
+      }
     }
     # Own the stream so failed WIC decoding cannot retain a lock until collection.
     $stream=[IO.File]::OpenRead([IO.Path]::GetFullPath($Path))
     if([IO.Path]::GetExtension($Path) -ieq '.ico'){
       $decoder=[Windows.Media.Imaging.BitmapDecoder]::Create($stream,[Windows.Media.Imaging.BitmapCreateOptions]::PreservePixelFormat,[Windows.Media.Imaging.BitmapCacheOption]::OnLoad)
-      $frame=$decoder.Frames|Sort-Object PixelWidth -Descending|Select-Object -First 1
-      $frame.Freeze();return $frame
+      $bitmap=$decoder.Frames|Sort-Object PixelWidth -Descending|Select-Object -First 1
+    }else{
+      $bitmap=New-Object Windows.Media.Imaging.BitmapImage
+      $bitmap.BeginInit();$bitmap.CacheOption=[Windows.Media.Imaging.BitmapCacheOption]::OnLoad
+      $bitmap.StreamSource=$stream;$bitmap.DecodePixelWidth=$DecodeWidth
+      $bitmap.EndInit()
     }
-    $bitmap=New-Object Windows.Media.Imaging.BitmapImage
-    $bitmap.BeginInit();$bitmap.CacheOption=[Windows.Media.Imaging.BitmapCacheOption]::OnLoad
-    $bitmap.StreamSource=$stream;$bitmap.DecodePixelWidth=$DecodeWidth
-    $bitmap.EndInit();$bitmap.Freeze()
-    if($cache -ne $null){if($cache.Count -ge 64){$cache.Clear()};$cache[$key]=$bitmap}
+    $bitmap.Freeze()
+    # Full previews share this cache with thumbnails. Bound both entry count
+    # and estimated pixels; an oversized image can display without retention.
+    if($cache -ne $null){
+      $bytes=Get-DynamicManagerBitmapByteEstimate $bitmap
+      if($bytes -le 64MB){
+        $cachedBytes=[long]$script:SkinManager.BitmapCacheBytes
+        while($cache.Count -gt 0 -and ($cache.Count -ge 64 -or $cachedBytes+$bytes -gt 64MB)){
+          $cachedBytes-=Get-DynamicManagerBitmapByteEstimate $cache[0]
+          $cache.RemoveAt(0)
+        }
+        $cache.Add($key,$bitmap)
+        $script:SkinManager.BitmapCacheBytes=$cachedBytes+$bytes
+      }
+    }
     return $bitmap
   }catch{return $null}finally{if($stream){$stream.Dispose()}}
 }
@@ -438,10 +466,11 @@ function Update-DynamicManagerList {
   $source='Local';if($ui.Source){$source=$ui.Source}
   $title=$ui.Window.FindName('GalleryTitle');$count=$ui.Window.FindName('GalleryCount')
   if($title){$title.Text=if($source -eq 'WallpaperEngine'){'Wallpaper'}else{'本地壁纸'};if($ui.Filter -eq 'Image'){$title.Text+=' · 图片'}elseif($ui.Filter -eq 'Video'){$title.Text+=' · 视频'}}
-  if($count){$count.Text=([string]@(Get-DynamicVisibleWallpapers $ui.Items $ui.Filter $source).Count)+' 张'}
+  $visible=@(Get-DynamicVisibleWallpapers $ui.Items $ui.Filter $source)
+  if($count){$count.Text=([string]$visible.Count)+' 张'}
   $context=$source+'|'+$ui.Filter
   if($ui.PageContext -ne $context){$ui.PageIndex=0;$ui.PageContext=$context}
-  $page=Get-DynamicWallpaperPage @(Get-DynamicVisibleWallpapers $ui.Items $ui.Filter $source) ([int]$ui.PageIndex) $requestedId
+  $page=Get-DynamicWallpaperPage $visible ([int]$ui.PageIndex) $requestedId
   $ui.PageIndex=$page.Index;$ui.PageCount=$page.Count
   if($ui.Controls.GalleryPager){
     $ui.Controls.GalleryPager.Visibility=if($page.Count -gt 1){'Visible'}else{'Collapsed'}

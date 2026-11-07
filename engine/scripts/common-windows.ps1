@@ -404,7 +404,7 @@ function Assert-DreamSkinTrustedNodeImage {
   param([Parameter(Mandatory = $true)][string]$Path)
 
   # Runs BEFORE the binary is ever executed. Get-DreamSkinValidatedNodeRuntime
-  # learns the version by running `node -p`, so any authenticity check placed
+  # learns the runtime identity by executing Node, so any authenticity check placed
   # after that point would already have executed attacker-controlled code.
   Import-DreamSkinPowerShellSecurityModule
   $signature = Get-AuthenticodeSignature -LiteralPath $Path -ErrorAction Stop
@@ -430,20 +430,22 @@ function Get-DreamSkinValidatedNodeRuntime {
     throw "Node.js runtime does not exist: $candidate"
   }
   Assert-DreamSkinTrustedNodeImage -Path $candidate
-  $versionProbe = Invoke-DreamSkinNative -FilePath $candidate -ArgumentList @('-p', 'process.versions.node') -DiscardStderr
-  $version = ($versionProbe.Output -join '').Trim()
-  if ($versionProbe.ExitCode -ne 0 -or -not $version) { throw 'The Node.js runtime could not be validated.' }
+  # Get both fields from one signed process instead of starting Node twice.
+  # The separator cannot occur in either a Node version or a Base64 path.
+  $runtimeProbe = Invoke-DreamSkinNative -FilePath $candidate -ArgumentList @(
+    '-e', "process.stdout.write(process.versions.node + '|' + Buffer.from(process.execPath, 'utf8').toString('base64'))"
+  ) -DiscardStderr
+  $fields = @(($runtimeProbe.Output -join '').Trim() -split '\|')
+  if ($runtimeProbe.ExitCode -ne 0 -or $fields.Count -ne 2 -or -not $fields[0]) { throw 'The Node.js runtime could not be validated.' }
+  $version = $fields[0]
   # Windows PowerShell 5.1 decodes redirected native stdout through the active
   # console code page. Node writes UTF-8, so a non-ASCII temporary path can be
   # corrupted before Test-Path sees it. Keep the transport ASCII-only and
   # decode the original UTF-8 bytes explicitly; never fall back to the
   # candidate when the identity probe is invalid.
-  $pathProbe = Invoke-DreamSkinNative -FilePath $candidate -ArgumentList @(
-    '-e', "process.stdout.write(Buffer.from(process.execPath, 'utf8').toString('base64'))"
-  ) -DiscardStderr
-  $encodedRuntimePath = ($pathProbe.Output -join '').Trim()
+  $encodedRuntimePath = $fields[1]
   $runtimePath = ''
-  if ($pathProbe.ExitCode -eq 0 -and $encodedRuntimePath) {
+  if ($encodedRuntimePath) {
     try {
       $runtimePath = ConvertFrom-DreamSkinUtf8Base64 -Value $encodedRuntimePath
     } catch {
@@ -454,10 +456,9 @@ function Get-DreamSkinValidatedNodeRuntime {
   if ($runtimePath) {
     try { $runtimePathExists = Test-Path -LiteralPath $runtimePath -PathType Leaf } catch {}
   }
-  if ($pathProbe.ExitCode -ne 0 -or -not $runtimePath -or -not $runtimePathExists) {
+  if (-not $runtimePath -or -not $runtimePathExists) {
     $reason = 'path-not-found'
-    if ($pathProbe.ExitCode -ne 0) { $reason = 'probe-exit' }
-    elseif (-not $encodedRuntimePath) { $reason = 'empty-output' }
+    if (-not $encodedRuntimePath) { $reason = 'empty-output' }
     elseif (-not $runtimePath) { $reason = 'invalid-output' }
     throw "The Node.js executable path could not be validated ($reason)."
   }

@@ -1,20 +1,56 @@
 ﻿function Initialize-DynamicMedia {
   param([Parameter(Mandatory)][string]$InstallRoot)
   $script:DynamicInstallRoot = [IO.Path]::GetFullPath($InstallRoot)
-  # Dot-sourced functions must remain available after initialization returns.
+  $engineScripts = Join-Path $script:DynamicInstallRoot 'engine/scripts'
   foreach ($file in @('config-utf8.ps1','common-windows.ps1','theme-windows.ps1')) {
-    $engineScripts = Join-Path $script:DynamicInstallRoot 'engine/scripts'
     $source = [IO.File]::ReadAllText((Join-Path $engineScripts $file))
     $source = $source.Replace('$PSScriptRoot', ("'" + $engineScripts.Replace("'", "''") + "'"))
     $definitions = [scriptblock]::Create($source)
     . $definitions
-    foreach ($function in Get-ChildItem Function: | Where-Object Name -match 'DreamSkin') {
-      Set-Item -Path ('Function:script:' + $function.Name) -Value $function.ScriptBlock
-    }
+  }
+  # All helpers share this initialization scope. Export once after loading so
+  # they survive the return without rescanning/copying earlier helpers twice.
+  foreach ($function in Get-ChildItem Function: | Where-Object Name -match 'DreamSkin') {
+    Set-Item -Path ('Function:script:' + $function.Name) -Value $function.ScriptBlock
   }
 }
 
 . (Join-Path $PSScriptRoot 'media-tools.ps1')
+
+function Write-DynamicImportFailure {
+  param([string]$StateRoot,[string]$Stage,$Failure)
+  # Keep only the latest failure, without media paths, messages or source text.
+  # Diagnostics must never replace the original error or bypass path guards.
+  try {
+    $directory=Join-Path ([IO.Path]::GetFullPath($StateRoot)) 'diagnostics'
+    Ensure-DreamSkinManagedDirectory -Path $directory -Root $StateRoot
+    $path=Join-Path $directory 'import-failure.json'
+    Assert-DreamSkinNoReparseComponents -Path $path
+    $exceptions=@();$exception=$Failure.Exception
+    while($exception -and $exceptions.Count -lt 8){
+      $exceptions+=@{Type=$exception.GetType().FullName;HResult=$exception.HResult}
+      $exception=$exception.InnerException
+    }
+    # FullyQualifiedErrorId can contain the exception message, even when it
+    # looks like a canonical identifier. Type and HResult are sufficient here.
+    $record=@{Schema=1;Utc=[datetime]::UtcNow.ToString('o');Stage=$Stage;Exceptions=$exceptions;Script=[IO.Path]::GetFileName($Failure.InvocationInfo.ScriptName);Line=$Failure.InvocationInfo.ScriptLineNumber}
+    Write-DreamSkinUtf8FileAtomically -Path $path -Content ($record|ConvertTo-Json -Depth 5)
+  }catch{}
+}
+
+function Wait-DynamicMediaTask {
+  param($Task,$Operation,[scriptblock]$Report,[ValidateRange(1,600)][int]$TimeoutSeconds=60)
+  $watch=[Diagnostics.Stopwatch]::StartNew()
+  while(-not $Task.IsCompleted){
+    if($watch.Elapsed.TotalSeconds -ge $TimeoutSeconds){
+      try{$Operation.Cancel()}catch{}
+      throw [TimeoutException]::new('媒体读取超时，请检查文件或磁盘后重试。')
+    }
+    if($Report){& $Report '正在准备媒体，请稍候…'}
+    Start-Sleep -Milliseconds 200
+  }
+  return $Task.GetAwaiter().GetResult()
+}
 
 function Wait-DynamicWinRT {
   param($Operation, [type]$ResultType, [switch]$Progress, [scriptblock]$Report)
@@ -23,8 +59,7 @@ function Wait-DynamicWinRT {
   $method = [System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq 'AsTask' -and $_.IsGenericMethod -and $_.GetGenericArguments().Count -eq $arity -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -like 'IAsyncOperation*' } | Select-Object -First 1
   if ($Progress) { $method = $method.MakeGenericMethod($ResultType, [double]) } else { $method = $method.MakeGenericMethod($ResultType) }
   $task = $method.Invoke($null, @($Operation))
-  while (-not $task.IsCompleted) { if ($Report) { & $Report '正在准备媒体，请稍候…' }; Start-Sleep -Milliseconds 200 }
-  return $task.GetAwaiter().GetResult()
+  return Wait-DynamicMediaTask $task $Operation $Report
 }
 
 function Convert-DynamicVideo {
@@ -125,7 +160,8 @@ function New-DynamicPreparedMedia {
     $ready = Join-Path $directory 'background.mp4'
     if(Test-DynamicVideoDirectImport $snapshot){
       if($Report){& $Report '视频格式兼容，快速保存，无需转码…'}
-      Move-Item -LiteralPath $snapshot -Destination $ready
+      try { Move-Item -LiteralPath $snapshot -Destination $ready }
+      catch { Write-DynamicImportFailure $StateRoot 'video-rename' $_;throw }
     }else{Convert-DynamicVideo -SourcePath $snapshot -TargetPath $ready -Report $Report}
     $preview = Join-Path $script:DynamicInstallRoot 'engine/assets/demo-background.png'
     Assert-DreamSkinImageFile -Path $preview

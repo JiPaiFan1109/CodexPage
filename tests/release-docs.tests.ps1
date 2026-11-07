@@ -28,7 +28,7 @@ try{
     Expect-Failure $name '| 2026-11-03 | [9.2.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v9.1.0) | wrong target |'
     Expect-Failure $name 'No release table'
   }
-  & $checker -RepositoryRoot $repo
+  & $checker
   # The real build must reject stale docs before loading installer code or downloading Node.
   Reset-Fixture
   Write-Fixture 'README.md' 'Stale release table'

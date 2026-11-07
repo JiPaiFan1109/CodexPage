@@ -1,6 +1,7 @@
 [CmdletBinding()]
-param([string]$RepositoryRoot=(Split-Path $PSScriptRoot -Parent))
+param([string]$RepositoryRoot)
 $ErrorActionPreference='Stop'
+if(-not $RepositoryRoot){$RepositoryRoot=Split-Path $PSScriptRoot -Parent}
 $version=[IO.File]::ReadAllText((Join-Path $RepositoryRoot 'VERSION')).Trim()
 if($version -notmatch '^\d+\.\d+\.\d+$'){throw 'Invalid VERSION.'}
 $package=[IO.File]::ReadAllText((Join-Path $RepositoryRoot 'package.json')) | ConvertFrom-Json

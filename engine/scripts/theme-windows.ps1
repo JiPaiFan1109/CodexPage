@@ -388,7 +388,9 @@ function Set-DreamSkinActiveTheme {
   Assert-DreamSkinImageFile -Path $source
   $extension = [System.IO.Path]::GetExtension($source).ToLowerInvariant()
   $oldImage = $null
-  try { $oldImage = (Read-DreamSkinTheme -ThemeDirectory $paths.Active).ImagePath } catch {}
+  # Only resolve the old path for cleanup; it will not be rendered or applied.
+  # Keep path/contract checks, while validating the new source and copies below.
+  try { $oldImage = (Read-DreamSkinTheme -ThemeDirectory $paths.Active -SkipImageMetadata).ImagePath } catch {}
   if ($null -eq $Theme) {
     $Theme = [pscustomobject]@{
       schemaVersion = 1
