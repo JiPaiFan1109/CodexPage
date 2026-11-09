@@ -16,12 +16,12 @@ try{
  $script:SkinManager.Source='WallpaperEngine';Update-DynamicManagerNavigation -Animate:$false
  Assert ($controls.LocalNavLabel.Visibility -eq 'Visible' -and $controls.EngineNavLabel.Visibility -eq 'Visible' -and $controls.NavThumbTransform.Y -eq 80 -and $controls.EngineToolbar.Visibility -eq 'Visible') 'Engine navigation hid a label or failed to select its toolbar'
  $script:SkinManager.Filter='Video';Update-DynamicManagerFilterSlider -Animate:$false
- Assert ($controls.FilterThumbTransform.X -eq 0) 'Video thumb is not at first segment'
+ Assert ($controls.FilterThumbTransform.X -eq 108) 'Video thumb is not at right segment'
  $script:SkinManager.Filter='Image';Update-DynamicManagerFilterSlider
  Assert $controls.FilterThumbTransform.HasAnimatedProperties 'Filter transition has no animation'
  $end=[datetime]::UtcNow.AddMilliseconds(350)
  while([datetime]::UtcNow -lt $end){$frame=New-Object Windows.Threading.DispatcherFrame;$null=$w.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::Background,[Action]{$frame.Continue=$false});[Windows.Threading.Dispatcher]::PushFrame($frame)}
- Assert ([math]::Abs($controls.FilterThumbTransform.X-108) -lt 0.1) 'Filter thumb did not reach static segment'
+ Assert ([math]::Abs($controls.FilterThumbTransform.X) -lt 0.1) 'Filter thumb did not reach static segment'
  $script:SkinManager.Source='Local';Update-DynamicManagerNavigation
  Assert $controls.NavThumbTransform.HasAnimatedProperties 'Navigation transition has no animation'
  'PASS connection badges, readable navigation labels and moving selector animations'

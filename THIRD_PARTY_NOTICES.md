@@ -1,4 +1,4 @@
-﻿# Third-party notices
+# Third-party notices
 
 ## Codex Dream Skin
 
@@ -38,6 +38,12 @@ The `appearance/skin-manager.ico` icon is the custom skin-manager artwork previo
 - `docs/media/earth-demo.gif`, `docs/media/earth-demo.mp4`, and `docs/images/earth-preview.png` show the software in operation. Inclusion of these screenshots and short recordings does not imply permission to redistribute the original wallpaper, nor does the project's MIT license relicense the underlying artwork.
 
 Wallpaper availability and usage terms are controlled by its creator and the relevant platforms. No claim is made that the wallpaper is free, public domain, or available under MIT.
+
+## Bundled default videos (3.7.0)
+
+Version 3.7.0 additionally includes three maintainer-selected videos (starry sky, seaside campfire, and Earth), named 默认1, 默认2, and 默认3. On 2026-11-09 the maintainer confirmed that they are original works or that redistribution permission has been obtained. This is the maintainer's declaration, not an independent verification of the underlying license documents. The media is not relicensed under the project's MIT code license.
+
+The selected Earth file is the existing 1920×1080 local-library video, not the original 4K60fps Workshop source described above. All three selected files are copied without re-encoding. Exact hashes and the declaration are recorded in [the bundled media provenance](engine/assets/default-wallpapers/SOURCE.md) and its adjacent manifest. These files are not part of the already-published v3.6.0 assets.
 
 ## Lucide refresh-cw icon
 

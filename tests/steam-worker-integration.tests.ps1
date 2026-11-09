@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $repo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 . (Join-Path $repo 'scripts/media.ps1');Initialize-DynamicMedia $repo
 . (Join-Path $repo 'scripts/wallpaper-library.ps1')
@@ -26,11 +26,11 @@ try{
           if([datetime]::UtcNow -gt $script:qa.Deadline){throw 'Worker integration timed out'}
           if($ui.Busy){return}
           switch($script:qa.Step){
-            0 {Start-DynamicManagerWork EngineImport (Join-Path $root 'steam');$worker=$ui.Worker;Start-DynamicManagerWork EngineImport (Join-Path $root 'steam');Assert ([object]::ReferenceEquals($worker,$ui.Worker)) 'Repeated click started another worker';$script:qa.Step=1}
-            1 {Assert ($ui.Items.Count -eq 1 -and $ui.Controls.ConfirmationOverlay.Visibility -eq 'Visible') 'Compatible files or conversion prompt missing';Complete-DynamicManagerConfirmation $false;Assert (-not $ui.Busy -and $ui.Items.Count -eq 1) 'Skip started conversion or removed files';Complete-DynamicManagerConfirmation $true;Start-DynamicManagerWork EngineImport (Join-Path $root 'steam');$script:qa.Step=2}
-            2 {Assert ($ui.Items.Count -eq 1) 'Deferred item imported without consent';Complete-DynamicManagerConfirmation $true;$script:qa.Step=3}
-            3 {Assert ($ui.Items.Count -eq 2) ('Approved conversion did not reach gallery: '+$ui.Controls.StatusText.Text);Complete-DynamicManagerConfirmation $true;Start-DynamicManagerWork EngineRefresh;$script:qa.Step=4}
-            4 {Assert ($ui.Items.Count -eq 2 -and $ui.Controls.ConfirmationOverlay.Visibility -eq 'Collapsed') 'Refresh duplicated items or prompted for existing cache';$script:qa.Step=5;$script:qa.Timer.Stop();$ui.Window.Close()}
+            0 {Assert ($ui.Items.Count -eq 3) 'Fresh library defaults missing before Steam import';Start-DynamicManagerWork EngineImport (Join-Path $root 'steam');$worker=$ui.Worker;Start-DynamicManagerWork EngineImport (Join-Path $root 'steam');Assert ([object]::ReferenceEquals($worker,$ui.Worker)) 'Repeated click started another worker';$script:qa.Step=1}
+            1 {Assert ($ui.Items.Count -eq 4 -and $ui.Controls.ConfirmationOverlay.Visibility -eq 'Visible') 'Compatible files or conversion prompt missing';Complete-DynamicManagerConfirmation $false;Assert (-not $ui.Busy -and $ui.Items.Count -eq 4) 'Skip started conversion or removed files';Complete-DynamicManagerConfirmation $true;Start-DynamicManagerWork EngineImport (Join-Path $root 'steam');$script:qa.Step=2}
+            2 {Assert ($ui.Items.Count -eq 4) 'Deferred item imported without consent';Complete-DynamicManagerConfirmation $true;$script:qa.Step=3}
+            3 {Assert ($ui.Items.Count -eq 5) ('Approved conversion did not reach gallery: '+$ui.Controls.StatusText.Text);Complete-DynamicManagerConfirmation $true;Start-DynamicManagerWork EngineRefresh;$script:qa.Step=4}
+            4 {Assert ($ui.Items.Count -eq 5 -and $ui.Controls.ConfirmationOverlay.Visibility -eq 'Collapsed') 'Refresh duplicated items or prompted for existing cache';$script:qa.Step=5;$script:qa.Timer.Stop();$ui.Window.Close()}
           }
         }catch{$script:qa.Error=$_.Exception.ToString();$script:qa.Timer.Stop();if(-not $ui.Busy){$ui.Window.Close()}}
       })

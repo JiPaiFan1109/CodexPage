@@ -1,6 +1,11 @@
 ﻿. (Join-Path $PSScriptRoot 'loopback-http.ps1')
 . (Join-Path $PSScriptRoot 'config-utf8.ps1')
 
+# A native launcher can pass PowerShell 7's PSModulePath to Windows PowerShell.
+# Pin the host's built-in Utility module: 5.1 implements Get-FileHash as a function.
+# Global scope keeps its exported functions alive after media initialization returns.
+Import-Module (Join-Path $PSHOME 'Modules/Microsoft.PowerShell.Utility/Microsoft.PowerShell.Utility.psd1') -Global -ErrorAction Stop
+
 $script:DreamSkinStartResultCategories = @(
   'none',
   'cdp-launch-failed',

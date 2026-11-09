@@ -57,6 +57,7 @@ On the first launch each local day, CodexPage checks for updates. Confirm the ce
 
 | Date (Beijing time) | Version | Changes |
 | --- | --- | --- |
+| 2026-11-09 | [3.7.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.7.0) | Animated video thumbnails, reordered media filters, three default videos and startup command fix |
 | 2026-11-07 | [3.6.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.6.0) | Gallery and startup efficiency, bounded preview cache, import diagnostics and accessible control names |
 | 2026-11-05 | [3.5.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.5.0) | Day/night appearance, focus preview, clearer media labels and safer startup recovery |
 | 2026-11-04 | [3.4.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.4.0) | Add daily update notices, one-confirmation download and install, and restore gallery pagination |
@@ -66,7 +67,7 @@ On the first launch each local day, CodexPage checks for updates. Confirm the ce
 | 2026-10-30 | [3.1.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.1) | Use a single CodexPage Start menu entry and remove known legacy shortcuts |
 | 2026-10-28 | [3.1.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0) | Fix monitor directory handling and duplicate-worker upgrade blockage; load the library before connecting |
 
-[3.6.0 release notes](docs/releases/v3.6.0.md) · [Full changelog](CHANGELOG.md)
+[3.7.0 release notes](docs/releases/v3.7.0.md) · [Full changelog](CHANGELOG.md)
 
 ## Media and troubleshooting
 

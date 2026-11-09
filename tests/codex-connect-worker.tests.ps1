@@ -27,6 +27,7 @@ function Invoke-DynamicEngine {
   [IO.File]::WriteAllText((Join-Path $fixture 'media.ps1'),$media,[Text.UTF8Encoding]::new($true))
   [IO.File]::WriteAllText((Join-Path $fixture 'skin-manager.ps1'),(". '"+(Join-Path $repo 'scripts/skin-manager.ps1').Replace("'","''")+"'"),[Text.UTF8Encoding]::new($true))
   [IO.File]::WriteAllText((Join-Path $fixture 'wallpaper-library.ps1'),@'
+function Initialize-DynamicDefaultWallpapers {param($StateRoot,$InstallRoot)}
 function Get-DynamicWallpaperStatus {param($StateRoot);[pscustomobject]@{CurrentId=$null;Error=$null}}
 function Get-DynamicWallpaperItems {param($StateRoot);if([IO.File]::ReadAllText((Join-Path $StateRoot 'mode')) -eq 'library-failure'){throw 'fixture library read denied'};return @([pscustomobject]@{Id='saved-wallpaper'})}
 function Test-DynamicOperationCancelled {param($Exception);while($Exception){if($Exception -is [OperationCanceledException]){return $true};$Exception=$Exception.InnerException};return $false}

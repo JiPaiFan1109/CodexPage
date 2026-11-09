@@ -19,6 +19,10 @@ $root=Join-Path ([IO.Path]::GetTempPath()) ('skin-manager-ui-'+[guid]::NewGuid()
 $script:qa=@{Step=0;Error=$null;Deadline=[datetime]::UtcNow.AddSeconds(100);MediaOpened=$false;CapturePath=$CapturePath}
 $originalWindow=${function:New-DynamicSkinManagerWindow}
 try{
+  # This import/edit scenario starts from a user-cleared library; fresh defaults
+  # are covered independently by default-wallpapers.tests.ps1.
+  $libraryPaths=Get-DynamicWallpaperPaths $root
+  Write-DreamSkinUtf8FileAtomically -Path (Join-Path $libraryPaths.Library 'defaults.json') -Content '{"schema":1,"complete":true,"pending":[]}'
   function New-DynamicSkinManagerWindow {
     $window=& $originalWindow
     $window.ShowActivated=$false

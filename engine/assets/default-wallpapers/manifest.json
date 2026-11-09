@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "items": [
+    {
+      "id": "714afc66e5f17fd0863cb73754724437",
+      "name": "默认1",
+      "size": 49329859,
+      "sha256": "321ca600528f03ac1d4cf283697dd2381dd11a8ecbf5e09bf55fcab0e5e85c2c",
+      "thumbnailSha256": "3408dece735e45a18451632e5248cb08ab87a9d6487804d3eaa7681e2749279c",
+      "importedAtUtc": "2026-11-09T00:00:03Z"
+    },
+    {
+      "id": "0384a8b2e0d4691eee1ddfb180cf0a37",
+      "name": "默认2",
+      "size": 27225627,
+      "sha256": "3c9fd56a0786e65f44202299999cc29cd12fea46f70b6ace071455752c4c69b9",
+      "thumbnailSha256": "f94c97eff2cf50df015c26610bde90d18add75d1a8ddf2c0101ca0801aeea9fe",
+      "importedAtUtc": "2026-11-09T00:00:02Z"
+    },
+    {
+      "id": "d57c78fee293eb653cc604d2bf9fdfdd",
+      "name": "默认3",
+      "size": 100434516,
+      "sha256": "2dbb51acc9dd7c36b872555aeb3c1294e16bac1d837f6a7ce6abeaea6582562b",
+      "thumbnailSha256": "94a85cc9734bc0280533943f5f9abcac6ac8e5efb91e674abade9bf10f0e00bb",
+      "importedAtUtc": "2026-11-09T00:00:01Z"
+    }
+  ]
+}

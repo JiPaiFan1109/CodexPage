@@ -32,7 +32,7 @@ try {
     'docs/images/focus-preview-day.png','docs/images/focus-preview-night.png','docs/images/app-icon.png','docs/images/skin-manager.png','docs/images/skin-manager-v2.0.0.png','docs/windows-application.md','docs/windows-application-validation.md','docs/pre-release-audit.md',
     'scripts/install.ps1','scripts/manage-background.ps1','scripts/media.ps1','scripts/media-tools.ps1','scripts/ffmpeg-runtime.json','scripts/prepare-media-tools.ps1','scripts/node-runtime.json',
     'scripts/wallpaper-library.ps1','scripts/wallpaper-preview.ps1','scripts/wallpaper-engine.ps1','scripts/skin-manager.ps1','scripts/skin-manager.xaml',
-    'scripts/manager-theme.ps1','scripts/manager-theme.cs','scripts/manager-theme-palette.json',
+    'scripts/manager-theme.ps1','scripts/manager-theme.cs','scripts/manager-theme-palette.json','scripts/manager-thumbnails.cs',
     'scripts/manager-launcher.cs','scripts/uninstall-app.ps1','appearance/skin-manager.ico','appearance/chatgpt-app-light.ico','appearance/wallpaper-engine.png','appearance/apply-wallpaper.png','appearance/confirmation-icon.png','appearance/codexpage-wordmark.png',
     'scripts/check-upgrade.ps1',
     'scripts/app-update.ps1','scripts/update-ui.ps1','scripts/finish-update.ps1','scripts/update-progress.ps1','scripts/update-progress.xaml','scripts/update-public-key.xml',
@@ -48,6 +48,18 @@ try {
     'engine/scripts/restore-dream-skin.ps1','engine/scripts/localization-windows.ps1','engine/scripts/injector.mjs',
     'engine/scripts/image-metadata.mjs','engine/scripts/fast-resume.ps1','engine/scripts/config-utf8.ps1','engine/scripts/common-windows.ps1'
   )
+  $files += @('engine/assets/default-wallpapers/manifest.json','engine/assets/default-wallpapers/SOURCE.md')
+  $defaults=Get-Content -LiteralPath (Join-Path $repo 'engine/assets/default-wallpapers/manifest.json') -Raw -Encoding UTF8|ConvertFrom-Json
+  if($defaults.schema -ne 1 -or @($defaults.items).Count -ne 3){throw 'Default wallpaper manifest invalid.'}
+  foreach($entry in $defaults.items){
+    if($entry.id -cnotmatch '^[0-9a-f]{32}$'){throw 'Default wallpaper ID invalid.'}
+    foreach($file in @('wallpaper.mp4','thumbnail.png')){
+      $relative='engine/assets/default-wallpapers/'+$entry.id+'/'+$file
+      $expected=if($file -eq 'wallpaper.mp4'){$entry.sha256}else{$entry.thumbnailSha256}
+      if((Get-FileHash -LiteralPath (Join-Path $repo $relative) -Algorithm SHA256).Hash -ine $expected){throw "Default wallpaper hash mismatch: $relative"}
+      $files += $relative
+    }
+  }
   foreach ($relative in $files) {
     $source = Join-Path $repo $relative
     if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Release source missing: $relative" }

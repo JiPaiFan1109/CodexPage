@@ -176,6 +176,7 @@ namespace DynamicSkin {
     public string Placeholder { get; set; }
     public string CurrentVisibility { get; set; }
     public string PlayVisibility { get; set; }
+    public string VideoPath { get; set; }
     public double CardWidth { get; set; }
     public double CardHeight { get; set; }
     public System.Windows.Media.ImageSource ThumbnailImage { get; set; }
@@ -183,6 +184,10 @@ namespace DynamicSkin {
 }
 '@
   }
+  if(-not ('DynamicSkin.ThumbnailPlayback' -as [type])){
+    Add-Type -Path (Join-Path $PSScriptRoot 'manager-thumbnails.cs') -ReferencedAssemblies @([Windows.Controls.MediaElement].Assembly.Location,[Windows.Media.ImageSource].Assembly.Location,[Windows.DependencyObject].Assembly.Location,[Windows.Markup.IQueryAmbient].Assembly.Location)
+  }
+  [DynamicSkin.ThumbnailPlayback]::Initialize()
   $xaml=[IO.File]::ReadAllText((Join-Path $PSScriptRoot 'skin-manager.xaml'))
   $reader=New-Object Xml.XmlNodeReader ([xml]$xaml)
   try{$window=[Windows.Markup.XamlReader]::Load($reader)}finally{$reader.Close()}
@@ -373,7 +378,7 @@ function Update-DynamicManagerButtons {
     $current=@($ui.Items|Where-Object {$_.Id -eq $ui.Status.CurrentId}|Select-Object -First 1)
     $ui.Controls.CurrentWallpaperName.Text=if($current.Count){$current[0].Name}elseif($ui.Status.CurrentId -or $ui.Status.HasExternalCurrent){'当前壁纸不在此图库'}else{'尚未应用壁纸'}
   }
-  foreach($name in @('LocalNavButton','EngineNavButton','ImageFilter','VideoFilter')){if($ui.Controls[$name]){$ui.Controls[$name].IsEnabled=(-not $ui.Busy)}}
+  foreach($name in @('LocalNavButton','EngineNavButton','ImageFilter','VideoFilter','WallpaperList')){if($ui.Controls[$name]){$ui.Controls[$name].IsEnabled=(-not $ui.Busy)}}
   foreach($name in @('EngineImportButton','EngineFolderButton','EngineRefreshButton')){if($ui.Controls[$name]){$ui.Controls[$name].IsEnabled=(-not $ui.Busy)}}
   if($ui.Controls.CheckUpdateButton){
     $ui.Controls.CheckUpdateButton.IsEnabled=(-not $ui.Busy -and -not $ui.UpdateWorker -and -not $ui.PrepareOnly)
@@ -492,6 +497,7 @@ function Update-DynamicManagerList {
     $card.CardHeight=[Math]::Round($card.CardWidth*0.625)
     if($availableHeight -gt 100){$card.CardHeight=[Math]::Min($card.CardHeight,[Math]::Floor($availableHeight/3)-28)}
     $card.Id=$item.Id;$card.Item=$item;$card.Name=$item.Name;$card.Caption=($kind+' · '+(Format-DynamicWallpaperSize $item.Size))
+    if($item.Kind -eq 'Video' -and $item.IsAvailable){$card.VideoPath=$item.MediaPath}
     $card.PlayVisibility=if($item.Kind -eq 'Video'){'Visible'}else{'Collapsed'}
     $card.Placeholder=$placeholder;$card.ThumbnailImage=Read-DynamicManagerBitmap $item.ThumbnailPath;$card.CurrentVisibility=$visibility
     $card
@@ -596,7 +602,7 @@ function Start-DynamicManagerWork {
         if($restored -eq $false){$message='已取消恢复。';$cancelled=$true}
       }
       'Refresh' { }
-      'LibraryLoad' { }
+      'LibraryLoad' { Initialize-DynamicDefaultWallpapers -StateRoot $StateRoot -InstallRoot $InstallRoot }
       'LibrarySync' { }
       default {throw '未知管理操作。'}
     }}catch{
@@ -960,7 +966,7 @@ function Update-DynamicManagerFilterSlider {
   if(-not $ui.Controls.FilterThumbTransform){return}
   $ui.Controls.FilterThumb.Visibility='Visible'
   if($ui.Filter -eq 'All'){$ui.Controls.FilterThumb.Visibility='Collapsed';return}
-  $x=0;if($ui.Filter -eq 'Image'){$x=108}
+  $x=0;if($ui.Filter -eq 'Video'){$x=108}
   if($ui.FilterTarget -ne $ui.Filter -or -not $Animate){Move-DynamicSelectionThumb $ui.Controls.FilterThumbTransform X $x $Animate}
   $ui.FilterTarget=$ui.Filter
 }

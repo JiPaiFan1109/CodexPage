@@ -29,7 +29,7 @@ try{
  $script:SkinManager=@{Window=$w;Controls=$c;Items=@();Source='Local';Filter='Image';Busy=$false;Selected=$null;Status=[pscustomobject]@{CurrentId=$null;HasExternalCurrent=$false;Error=$null};Connection=[pscustomobject]@{Available=$false};PrepareOnly=$true}
  Update-DynamicManagerFilterSlider -Animate:$false
  Set-DynamicManagerSource WallpaperEngine
- Assert ($script:SkinManager.Filter -eq 'Image' -and $c.FilterThumbTransform.X -eq 108 -and -not $c.FilterThumbTransform.HasAnimatedProperties) 'Source navigation changed or animated media filter'
+ Assert ($script:SkinManager.Filter -eq 'Image' -and $c.FilterThumbTransform.X -eq 0 -and -not $c.FilterThumbTransform.HasAnimatedProperties) 'Source navigation changed or animated media filter'
  Set-DynamicManagerSource Local
  Assert ($script:SkinManager.Filter -eq 'Image') 'Returning to local changed media filter'
  $c.PreviewOverlay.Visibility='Visible'

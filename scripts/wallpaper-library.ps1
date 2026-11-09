@@ -3,6 +3,81 @@ if(Test-Path -LiteralPath (Join-Path $PSScriptRoot 'wallpaper-preview.ps1')) { .
 
 . (Join-Path $PSScriptRoot 'wallpaper-engine.ps1')
 
+function Initialize-DynamicDefaultWallpapers {
+  param([string]$StateRoot,[string]$InstallRoot)
+  $bundle=Join-Path $InstallRoot 'engine/assets/default-wallpapers'
+  $manifest=Join-Path $bundle 'manifest.json'
+  if(-not [IO.File]::Exists($manifest)){return}
+  Invoke-DynamicWallpaperLock $StateRoot {
+    $paths=Get-DynamicWallpaperPaths $StateRoot
+    $marker=Join-Path $paths.Library 'defaults.json'
+    Assert-DreamSkinNoReparseComponents -Path $marker
+    if([IO.File]::Exists($marker)){
+      $state=[IO.File]::ReadAllText($marker)|ConvertFrom-Json
+      if($state.schema -ne 1){throw '默认壁纸初始化记录无效。'}
+      if($state.complete){return}
+    }else{
+      # An existing collection belongs to the user, including unavailable entries.
+      $existing=@([IO.Directory]::EnumerateDirectories($paths.Items)).Count -gt 0 -or [IO.File]::Exists((Join-Path $paths.Library 'order.json'))
+      $state=[pscustomobject]@{schema=1;complete=$existing;pending=@()}
+      if($existing){Write-DreamSkinUtf8FileAtomically -Path $marker -Content ($state|ConvertTo-Json);return}
+    }
+    Assert-DreamSkinNoReparseComponents -Path $manifest
+    $catalog=[IO.File]::ReadAllText($manifest)|ConvertFrom-Json
+    $entries=@($catalog.items)
+    if($catalog.schema -ne 1 -or $entries.Count -ne 3){throw '默认壁纸清单无效。'}
+    foreach($entry in $entries){
+      if($entry.id -cnotmatch '^[0-9a-f]{32}$' -or $entry.sha256 -cnotmatch '^[0-9a-f]{64}$' -or $entry.thumbnailSha256 -cnotmatch '^[0-9a-f]{64}$') {throw '默认壁纸清单校验值无效。'}
+      $null=Assert-DynamicWallpaperName $entry.name
+      if([long]$entry.size -le 0 -or [long]$entry.size -gt 128MB){throw '默认视频大小无效。'}
+    }
+    if(@($entries.id|Select-Object -Unique).Count -ne 3){throw '默认壁纸 ID 重复。'}
+    if(-not [IO.File]::Exists($marker)){
+      $state.pending=@($entries.id)
+      Write-DreamSkinUtf8FileAtomically -Path $marker -Content ($state|ConvertTo-Json)
+    }
+    foreach($id in @($state.pending)){
+      $entry=@($entries|Where-Object id -CEQ $id)
+      if($entry.Count -ne 1){throw '默认壁纸待办记录无效。'}
+      $entry=$entry[0]
+      $destination=Get-DynamicWallpaperDirectory $StateRoot $id
+      if(-not [IO.Directory]::Exists($destination)){
+        $source=Join-Path $bundle $id
+        $stage=Join-Path $paths.Staging ('default-'+$id)
+        Ensure-DreamSkinManagedDirectory -Path $stage -Root $paths.Root
+        # A terminated first run can leave a partial copy. Reuse this owned,
+        # deterministic staging directory instead of accumulating large copies.
+        foreach($leftover in Get-ChildItem -LiteralPath $stage -Force){
+          Assert-DreamSkinNoReparseComponents -Path $leftover.FullName
+          if($leftover.PSIsContainer){throw '默认壁纸暂存目录含意外子目录。'}
+          [IO.File]::Delete($leftover.FullName)
+        }
+        try{
+          foreach($file in @('wallpaper.mp4','thumbnail.png')){
+            $inputPath=Join-Path $source $file
+            Assert-DreamSkinNoReparseComponents -Path $inputPath
+            $expected=if($file -eq 'wallpaper.mp4'){$entry.sha256}else{$entry.thumbnailSha256}
+            $outputPath=Join-Path $stage $file
+            [IO.File]::Copy($inputPath,$outputPath,$false)
+            if((Get-FileHash -LiteralPath $outputPath -Algorithm SHA256).Hash -ine $expected){throw '默认壁纸文件校验失败。'}
+          }
+          if(([IO.FileInfo]::new((Join-Path $stage 'wallpaper.mp4'))).Length -ne [long]$entry.size){throw '默认壁纸大小不符。'}
+          $metadata=[ordered]@{schema='codex-dynamic-skin-wallpaper/1';id=$id;name=$entry.name;kind='Video';mediaFile='wallpaper.mp4';thumbnailFile='thumbnail.png';size=[long]$entry.size;sha256=$entry.sha256;importedAtUtc=$entry.importedAtUtc;sources=@('Local')}
+          Write-DreamSkinUtf8FileAtomically -Path (Join-Path $stage 'item.json') -Content ($metadata|ConvertTo-Json)
+          [IO.Directory]::Move($stage,$destination)
+        }finally{
+          if([IO.Directory]::Exists($stage)){Assert-DreamSkinNoReparseComponents -Path $stage;Remove-Item -LiteralPath $stage -Recurse -Force}
+        }
+      }
+      # Persist after each commit so interrupted first runs can safely resume.
+      $state.pending=@($state.pending|Where-Object {$_ -cne $id})
+      Write-DreamSkinUtf8FileAtomically -Path $marker -Content ($state|ConvertTo-Json)
+    }
+    $state.complete=$true
+    Write-DreamSkinUtf8FileAtomically -Path $marker -Content ($state|ConvertTo-Json)
+  }
+}
+
 function Get-DynamicWallpaperPaths {
   param([string]$StateRoot)
   $root = [IO.Path]::GetFullPath($StateRoot).TrimEnd('\')

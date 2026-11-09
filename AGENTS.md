@@ -1,3 +1,7 @@
+## 2026-11-09 3.7.0 发行验证进行中
+
+用户已授权发布 3.7.0。版本号已更新，尚不代表公开发布。以线上 main 为基线独立提取动态图缩略图、媒体分类顺序、三款默认视频与 Get-FileHash 修复，保留工作区其他未发布试验。原视频不重新编码，仅无损打包。只发布通过 CI 与最终签名包验证的产物，不替换已公开 3.6.0 附件、不安装生产环境、不重启 Codex、不改真实图库。详见 docs/releases/v3.7.0-validation.md，证据 .local-evidence/release-3.7.0/。以下为历史记录。
+
 ## 2026-11-07 3.6.0 已公开发布
 
 用户授权的 3.6.0 检查与 GitHub 发布已完成。公开稳定版与 latest 为 [v3.6.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.6.0)，Release ID 437281964，标签提交 `5097b78cb7f95e7a3d678f43d543968dbdceb8c1`。current/VERSION 与 package.json=3.6.0；本机安装仍为 3.4.0 加 local-ui-patch，不等同于已发布包。main 可追加完成文档，不移动发行标签。
