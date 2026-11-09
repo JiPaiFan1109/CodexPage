@@ -1,3 +1,17 @@
+## 2026-11-09 3.7.0 已公开发布
+
+公开稳定版与 latest 为 [v3.7.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.7.0)，Release ID 438812464，标签提交 `e2cf7a59e0117c54ed8d8924a76b243d831b69d5`。current/VERSION 与 package.json=3.7.0；本机安装仍为 3.6.0 加 local-hash-module-patch，不等同于已发布包。工作区另有隐藏窗口连接试验，本版未纳入，后续不得用完整 current 文件覆盖已核对的发行源码。main 可追加完成文档，不移动发行标签。
+
+本次包括视频缩略图静音循环播放、左图片右视频及对应筛选逻辑、首次空图库默认1/默认2/默认3，以及 Windows PowerShell Utility 模块加载修复。三个视频用户已确认原创或具有再分发授权，原件共 176,990,002 字节，不重新编码，仅无损打包；安装资源与首次图库各保留一份。已有图库、用户改名和删除保留，默认壁纸不自动应用。缩略图尊重减少动态效果，最小化、不可见、忙碌及卸载时释放资源；解码内存不在静态位图 64 MiB 缓存预算内。
+
+唯一公开最终产物 `.local-evidence/release-3.7.0/cloud-final/`。安装包 201,157,901 字节，SHA256 `96ff28583a656911ece21dda666ccacc703ac9fb56ed4c1de158f00cacbba1af`。十附件与远端大小/digest 一致，91 项包清单、74 项安装清单及 ZIP/源码核对通过。公开下载、旧客户端 RSA 签名、旧发现地址与旧安装链接复验通过；公开 3.6.0 标签和十附件未改变。
+
+57 项 Node、147 个 Windows 测试脚本（145 个源码脚本加最终包及旧客户端公告）、190 个发行 PowerShell 文件解析通过，发行提交 [CI 42573436568](https://github.com/JiPaiFan1109/CodexPage/actions/runs/42573436568) 成功。本机首轮两项失败：视频恢复播放固定等待断言，以及导入测试未计入三个默认条目；修改为等待实际状态及正确数量后复验通过，原始日志保留。首轮云端 CI 42571605736 的导航测试在减少动态效果环境中仍强制要求动画，已本机复现并修正测试，开启/关闭动画分别通过；产品代码未因此更改。采用首次完整源码回归加相关修正复验，不声称本机所有脚本在最终提交一次性重跑。最终包默认素材初始化/精确哈希、隔离新装、签名更新、占用拒绝、取消/失败/正常卸载、开始菜单及 3.6.0→3.7.0 升级通过，任务/夜间偏好/图库保留；CI 另验实际管理器启动。
+
+未安装维护者生产环境、未重启生产 Codex、未修改真实壁纸库；六个生产监测文件起止哈希一致。界面预验证截图位于 `.local-evidence/gallery-defaults-20261109/`；验证尺寸、日夜和预览范围见 docs/gallery-defaults-2026-11-09.md。未覆盖全天驻留、12 路高分辨率视频长期负载、所有 GPU/物理多屏/屏幕阅读器、断电满盘；自然导入访问拒绝根因仍未知。安装器无项目 Authenticode 签名，更新清单沿用 RSA。
+
+证据见发行目录 publication-gate.json、cloud-lifecycle-results.json、cloud-payload-verified.json、final-defaults-verified.json、cloud-public-verified.json、previous-release-verified.json。以下为历史记录。
+
 ## 2026-11-09 3.7.0 发行验证进行中
 
 用户已授权发布 3.7.0。版本号已更新，尚不代表公开发布。以线上 main 为基线独立提取动态图缩略图、媒体分类顺序、三款默认视频与 Get-FileHash 修复，保留工作区其他未发布试验。原视频不重新编码，仅无损打包。只发布通过 CI 与最终签名包验证的产物，不替换已公开 3.6.0 附件、不安装生产环境、不重启 Codex、不改真实图库。详见 docs/releases/v3.7.0-validation.md，证据 .local-evidence/release-3.7.0/。以下为历史记录。
