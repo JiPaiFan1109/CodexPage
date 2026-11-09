@@ -18,11 +18,13 @@ try{
  $script:SkinManager.Filter='Video';Update-DynamicManagerFilterSlider -Animate:$false
  Assert ($controls.FilterThumbTransform.X -eq 108) 'Video thumb is not at right segment'
  $script:SkinManager.Filter='Image';Update-DynamicManagerFilterSlider
- Assert $controls.FilterThumbTransform.HasAnimatedProperties 'Filter transition has no animation'
+ Assert ($controls.FilterThumbTransform.HasAnimatedProperties -eq (Test-DynamicManagerMotionEnabled)) 'Filter transition ignores motion preference'
+ if(-not (Test-DynamicManagerMotionEnabled)){Assert ($controls.FilterThumbTransform.X -eq 0) 'Reduced-motion filter did not settle immediately'}
  $end=[datetime]::UtcNow.AddMilliseconds(350)
  while([datetime]::UtcNow -lt $end){$frame=New-Object Windows.Threading.DispatcherFrame;$null=$w.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::Background,[Action]{$frame.Continue=$false});[Windows.Threading.Dispatcher]::PushFrame($frame)}
  Assert ([math]::Abs($controls.FilterThumbTransform.X) -lt 0.1) 'Filter thumb did not reach static segment'
  $script:SkinManager.Source='Local';Update-DynamicManagerNavigation
- Assert $controls.NavThumbTransform.HasAnimatedProperties 'Navigation transition has no animation'
- 'PASS connection badges, readable navigation labels and moving selector animations'
+ Assert ($controls.NavThumbTransform.HasAnimatedProperties -eq (Test-DynamicManagerMotionEnabled)) 'Navigation transition ignores motion preference'
+ if(-not (Test-DynamicManagerMotionEnabled)){Assert ($controls.NavThumbTransform.Y -eq 0) 'Reduced-motion navigation did not settle immediately'}
+ 'PASS connection badges, readable navigation labels and selectors respecting motion preference'
 }finally{$w.Close();$script:SkinManager=$null}
