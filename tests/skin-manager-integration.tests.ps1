@@ -101,7 +101,8 @@ try{
             }
             6 {
               Assert ($ui.Source -eq 'WallpaperEngine' -and $ui.Controls.WallpaperList.Items.Count -eq 1) 'Engine import did not display engine gallery'
-              Assert ($ui.Controls.ConfirmationOverlay.Visibility -eq 'Visible' -and $ui.Controls.ConfirmAcceptButton.Content -eq '知道了') 'Batch import did not show categorized report'
+              Assert ($ui.Controls.ConfirmationOverlay.Visibility -eq 'Visible' -and $ui.Controls.ConfirmAcceptButton.Content -eq '关闭') 'Batch import did not show a dismissible report'
+              Assert ($ui.Controls.ConfirmationTitle.Text -eq '壁纸导入结果' -and $ui.Controls.ConfirmationMessage.Text -like '*新增 1 张*未能导入 0 张*') 'Batch import report did not reflect the outcome'
               Complete-DynamicManagerConfirmation $true
               Assert ($ui.Controls.ConfirmationOverlay.Visibility -eq 'Collapsed') 'Batch report did not close after acknowledgement'
               Assert ($ui.Controls.EnginePanel.Visibility -eq 'Collapsed' -and $ui.Controls.EngineNavLabel.Visibility -eq 'Visible') 'Engine landing obscures imported wallpapers'
