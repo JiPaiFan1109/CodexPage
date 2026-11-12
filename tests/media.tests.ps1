@@ -37,7 +37,13 @@ try {
   try { New-DynamicPreparedMedia -SourcePath $invalid -Kind Image -StateRoot $state; throw 'Expected failure' } catch { Assert ($_.Exception.Message -ne 'Expected failure') 'Invalid image accepted' }
   $large = Join-Path $root '大视频.mp4'
   $stream = [IO.File]::Create($large); $stream.SetLength(2GB + 1); $stream.Dispose()
-  try { New-DynamicPreparedMedia -SourcePath $large -Kind Video -StateRoot $state; throw 'Expected failure' } catch { Assert ($_.Exception.Message -match '2048') 'Size limit was not enforced before processing' }
+  try {
+    New-DynamicPreparedMedia -SourcePath $large -Kind Video -StateRoot $state
+    throw 'Expected failure'
+  } catch {
+    $failure=Get-DynamicUserFailure $_ Import
+    Assert ($failure.Code -eq 'file-too-large' -and $failure.Message -like '*2048 MiB*') 'Size limit was not enforced before processing or explained with the configured limit'
+  }
   Assert ((Get-Content $video -Raw) -eq '{"old":true}') 'Preparation failure changed active video'
   $originalConvert = ${function:Convert-DynamicVideo}
   try {

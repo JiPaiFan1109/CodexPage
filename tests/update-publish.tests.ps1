@@ -27,7 +27,7 @@ try{
   # Exercise the full publisher with real signed local assets and only the remote CLI replaced.
   $fixtureScripts=Join-Path $root 'scripts';[IO.Directory]::CreateDirectory($fixtureScripts)|Out-Null
   $sourceScripts=Join-Path $PSScriptRoot '../scripts'
-  foreach($name in @('app-update.ps1','get-release-assets.ps1','publish-release-assets.ps1')){Copy-Item (Join-Path $sourceScripts $name) $fixtureScripts}
+  foreach($name in @('app-update.ps1','user-messages.ps1','user-messages.json','get-release-assets.ps1','publish-release-assets.ps1')){Copy-Item (Join-Path $sourceScripts $name) $fixtureScripts}
   $rsa=[Security.Cryptography.RSACryptoServiceProvider]::new(2048);$rsa.PersistKeyInCsp=$false
   try{
     [IO.File]::WriteAllText((Join-Path $fixtureScripts 'update-public-key.xml'),$rsa.ToXmlString($false))
