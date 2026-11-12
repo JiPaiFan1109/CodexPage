@@ -5,12 +5,12 @@ function Assert($ok,$message){if(-not $ok){throw $message}}
 $window=New-DynamicSkinManagerWindow
 try{
   $controls=@{};foreach($name in @('ConfirmCancelButton','ConfirmationCancelColumn','ConfirmationGapColumn','ConfirmationMessage','ConfirmationTitle','ConfirmAcceptButton','ConfirmationOverlay','ConfirmationScroll')){$controls[$name]=$window.FindName($name)}
-  $script:SkinManager=@{Busy=$false;Controls=$controls}
+  $script:SkinManager=@{Busy=$false;Controls=$controls;Window=$window}
   Remove-Item Function:Start-DynamicManagerWork
   function global:Start-DynamicManagerWork {param($Operation,$Argument);$global:DeferredOperation=$Operation;$global:DeferredArgument=$Argument}
   $pending=[pscustomobject]@{Projects=@('one','two');NeedsDownload=$true;Imported=1;Existing=0}
   Show-DynamicSteamConversionConfirmation $pending 'Imported one'
-  Assert ($controls.ConfirmationMessage.Text -match '下载体积和解压占用取决于实际获取的版本' ) 'Variable download size is not disclosed'
+  Assert ($controls.ConfirmationMessage.Text -like '*联网下载转换工具*占用额外磁盘空间*' -and $controls.ConfirmAcceptButton.Content -eq '下载并转换') 'The dialog must explain download and disk use before consent'
   if($RenderDirectory){
     [void][IO.Directory]::CreateDirectory([IO.Path]::GetFullPath($RenderDirectory))
     foreach($size in @(@(1440,840),@(900,525))){
@@ -21,9 +21,10 @@ try{
   }
   Complete-DynamicManagerConfirmation $false
   Assert (-not $global:DeferredOperation) 'Skip started conversion'
+  Assert ($controls.ConfirmationMessage.Text -like '*已跳过 2 项*已导入的壁纸保留*') 'Skip must report the skipped count and preserve imports'
   $pending.NeedsDownload=$false
   Show-DynamicSteamConversionConfirmation $pending 'Imported one'
-  Assert ($controls.ConfirmationMessage.Text -notmatch '需要下载并校验转换器') 'Cached converter requests download'
+  Assert ($controls.ConfirmationMessage.Text -notlike '*联网下载*' -and $controls.ConfirmAcceptButton.Content -eq '转换并导入') 'Cached converter requests download'
   Complete-DynamicManagerConfirmation $true
   Assert ($global:DeferredOperation -eq 'EngineConvert' -and (ConvertFrom-Json $global:DeferredArgument).Count -eq 2) 'Consent did not pass pending subset'
   'PASS skip does not convert, existing tools omit download, consent starts exact pending subset'
