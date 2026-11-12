@@ -1311,6 +1311,7 @@ function Set-DynamicEngineSearchState {
   $ui.Controls.EngineRefreshButton.Visibility=if(@($ui.EngineRoots).Count){'Visible'}else{'Collapsed'}
   if($Searching){
     $ui.Controls.EngineSearchStatus.Text='正在查找本机壁纸…'
+    $ui.Controls.EngineSearchStatus.ToolTip=$ui.Controls.EngineSearchStatus.Text
     if(Test-DynamicManagerMotionEnabled){
       $animation=[Windows.Media.Animation.DoubleAnimation]::new(0,360,[Windows.Duration]::new([timespan]::FromMilliseconds(900)))
       $animation.RepeatBehavior=[Windows.Media.Animation.RepeatBehavior]::Forever
@@ -1321,5 +1322,6 @@ function Set-DynamicEngineSearchState {
   }else{
     $ui.EngineRoots=@();$ui.Controls.EngineRefreshButton.Visibility='Collapsed';$ui.Controls.EngineFolderButton.Visibility='Visible'
     $ui.Controls.EngineSearchStatus.Text='未找到本机壁纸。请点击“选择壁纸目录”，选择已下载壁纸所在的文件夹。'
+    $ui.Controls.EngineSearchStatus.ToolTip=$ui.Controls.EngineSearchStatus.Text
   }
 }

@@ -35,11 +35,11 @@ try {
   Assert ($controls.EngineSearchSpinner.Visibility -eq 'Visible') 'Search must retain a visible loading indicator'
   Assert ($controls.EngineSearchRotation.HasAnimatedProperties -eq (Test-DynamicManagerMotionEnabled)) 'Search animation must respect the Windows motion preference'
   Set-DynamicEngineSearchState -Roots @('D:\Steam\steamapps\workshop\content\431960')
-  Assert ($controls.EngineSearchSpinner.Visibility -eq 'Collapsed' -and $controls.EngineSearchStatus.Text -like 'D:\Steam*') 'Found path must replace spinner'
+  Assert ($controls.EngineSearchSpinner.Visibility -eq 'Collapsed' -and $controls.EngineSearchStatus.Text -eq '已找到 1 个壁纸文件夹' -and $controls.EngineSearchStatus.ToolTip -like 'D:\Steam*') 'Found folder count must replace spinner and preserve the path in the tooltip'
   Assert ($controls.EngineFolderButton.Visibility -eq 'Collapsed' -and $controls.EngineRefreshButton.Visibility -eq 'Visible') 'Located path must hide folder picker and offer refresh'
   Assert ($script:SkinManager.EngineRoots.Count -eq 1) 'Refresh must remember the located directory'
   Set-DynamicEngineSearchState
-  Assert ($controls.EngineSearchStatus.Text -eq '定位本地夹失败，请手动选择wallpaper地址') 'Failed search must explain manual recovery'
+  Assert ($controls.EngineSearchStatus.Text -like '*未找到本机壁纸*选择壁纸目录*' -and $controls.EngineSearchStatus.ToolTip -eq $controls.EngineSearchStatus.Text) 'Failed search must explain manual recovery without showing an outdated path'
   Assert ($controls.EngineFolderButton.Visibility -eq 'Visible' -and $controls.EngineRefreshButton.Visibility -eq 'Collapsed') 'Failed search must offer manual recovery instead of refresh'
   Update-DynamicManagerButtons
   Assert (-not $controls.ApplyButton.IsEnabled) 'No selection must disable apply'
