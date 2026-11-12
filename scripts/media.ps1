@@ -1,4 +1,5 @@
-﻿function Initialize-DynamicMedia {
+﻿. (Join-Path $PSScriptRoot 'user-messages.ps1')
+function Initialize-DynamicMedia {
   param([Parameter(Mandatory)][string]$InstallRoot)
   $script:DynamicInstallRoot = [IO.Path]::GetFullPath($InstallRoot)
   $engineScripts = Join-Path $script:DynamicInstallRoot 'engine/scripts'
@@ -46,7 +47,7 @@ function Wait-DynamicMediaTask {
       try{$Operation.Cancel()}catch{}
       throw [TimeoutException]::new('媒体读取超时，请检查文件或磁盘后重试。')
     }
-    if($Report){& $Report '正在准备媒体，请稍候…'}
+    if($Report){& $Report '正在读取文件，请稍候…'}
     Start-Sleep -Milliseconds 200
   }
   return $Task.GetAwaiter().GetResult()
@@ -97,7 +98,7 @@ function Convert-DynamicWindowsVideo {
   $task = $method.MakeGenericMethod([double]).Invoke($null, @($operation))
   while (-not $task.IsCompleted) {
     if ((Get-Item -LiteralPath $TargetPath).Length -gt 128MB) { $operation.Cancel(); throw '转换后视频超过 128 MiB，请缩短视频后重试。' }
-    if ($Report) { & $Report '正在转换为静音 H.264 MP4（1080p / 30 fps）…' }
+    if ($Report) { & $Report '正在转换视频，完成后以静音方式播放…' }
     Start-Sleep -Milliseconds 200
   }
   $task.GetAwaiter().GetResult()
@@ -123,7 +124,7 @@ function New-DynamicPreparedMedia {
   if([IO.Path]::GetExtension($source) -in @('.gif','.apng')){$Kind='Video'}
   $limit = 10MB; if ($Kind -eq 'Video') { $limit = 2GB }
   $file = Get-Item -LiteralPath $source -ErrorAction Stop
-  if ($file.PSIsContainer -or $file.Length -le 0 -or $file.Length -gt $limit) { throw "媒体文件必须为 1 字节至 $($limit / 1MB) MiB。" }
+  Assert-DynamicImportFileSize $file $limit
   Assert-DreamSkinNoReparseComponents -Path $source
   $ext = $file.Extension.ToLowerInvariant()
   if ($Kind -eq 'Image' -and $ext -notin @('.png','.jpg','.jpeg','.webp','.bmp','.tif','.tiff','.avif')) { throw '图片支持 PNG、JPEG、WebP、BMP、TIFF、AVIF。' }
@@ -159,7 +160,7 @@ function New-DynamicPreparedMedia {
   else {
     $ready = Join-Path $directory 'background.mp4'
     if(Test-DynamicVideoDirectImport $snapshot){
-      if($Report){& $Report '视频格式兼容，快速保存，无需转码…'}
+      if($Report){& $Report '正在保存视频，无需转换…'}
       try { Move-Item -LiteralPath $snapshot -Destination $ready }
       catch { Write-DynamicImportFailure $StateRoot 'video-rename' $_;throw }
     }else{Convert-DynamicVideo -SourcePath $snapshot -TargetPath $ready -Report $Report}

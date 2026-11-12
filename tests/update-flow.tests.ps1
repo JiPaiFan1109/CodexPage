@@ -71,7 +71,7 @@ try{
   [IO.File]::WriteAllText((Join-Path $root 'installed-files.json'),(@{schema=1;version='0.4.0';files=$inventory}|ConvertTo-Json -Depth 4))
   $installMessages=[Collections.Generic.List[string]]::new()
   Invoke-DynamicUpdateInstall $root $stage '0.4.0' 0 {param($Message)$installMessages.Add($Message)}
-  Assert ($installMessages.Count -ge 3 -and $installMessages[-1] -eq '正在确认安装结果…') 'Installer did not report its actual stages'
+  Assert ($installMessages.Count -ge 3 -and $installMessages[-1] -eq '正在检查安装结果…') 'Installer did not report its actual stages'
   Assert ((Get-Content (Join-Path $root 'VERSION')) -eq '0.4.0') 'Installer was not run'
   Assert ((Get-Content (Join-Path $root 'wallpaper.txt')) -eq 'keep') 'Updater changed user files'
   $arguments=Get-Content (Join-Path $root 'args.txt') -Encoding UTF8

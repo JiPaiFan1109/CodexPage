@@ -57,6 +57,7 @@ CodexPage 壁纸库界面。图中为原创演示素材，不随应用预置。
 
 | 日期（北京时间） | 版本 | 更新内容 |
 | --- | --- | --- |
+| 2026-11-12 | [3.8.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.8.0) | 改进提示文案、重试操作和可复制的问题信息 |
 | 2026-11-09 | [3.7.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.7.0) | 动态视频缩略图、媒体分类顺序、三款默认视频与启动命令修复 |
 | 2026-11-07 | [3.6.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.6.0) | 图库与后台效率、预览缓存预算、导入诊断和可访问名称 |
 | 2026-11-05 | [3.5.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.5.0) | 日夜模式、专注预览、图片与视频标签统一，以及启动与壁纸切换可靠性修复 |
@@ -67,7 +68,7 @@ CodexPage 壁纸库界面。图中为原创演示素材，不随应用预置。
 | 2026-10-30 | [3.1.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.1) | 开始菜单统一为 CodexPage 单入口，清理已知旧快捷方式 |
 | 2026-10-28 | [3.1.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0) | 修复后台目录污染与重复后台升级阻塞，先加载壁纸库再连接 |
 
-[3.7.0 发布说明](docs/releases/v3.7.0.md) · [完整更新记录](CHANGELOG.md)
+[3.8.0 发布说明](docs/releases/v3.8.0.md) · [完整更新记录](CHANGELOG.md)
 
 ## 素材与常见问题
 

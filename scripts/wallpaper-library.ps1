@@ -339,7 +339,7 @@ function Import-DynamicWallpaper {
   Assert-DreamSkinNoReparseComponents -Path $SourcePath
   $sourceInfo=Get-Item -LiteralPath $SourcePath -ErrorAction Stop
   $sourceLimit=10MB;if($Kind -eq 'Video'){$sourceLimit=2GB}
-  if($sourceInfo.PSIsContainer -or $sourceInfo.Length -le 0 -or $sourceInfo.Length -gt $sourceLimit){throw '媒体大小超出导入限制。'}
+  Assert-DynamicImportFileSize $sourceInfo $sourceLimit
   $sourceHash=(Get-FileHash -LiteralPath $SourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
   foreach($existing in Get-DynamicWallpaperItems $StateRoot){
     if($existing.IsAvailable -and -not $existing.External -and -not $existing.SourceBound -and $existing.Kind -eq $Kind){

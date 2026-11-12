@@ -1,4 +1,4 @@
-#ifndef SourceRoot
+﻿#ifndef SourceRoot
   #error SourceRoot is required; use scripts/build-app.ps1
 #endif
 #ifndef AppVersion
@@ -133,7 +133,7 @@ begin
   Result := '';
   if not UpdateGateHeld then begin
     if not ForceDirectories(ExpandConstant('{app}')) then begin
-      Result := '无法创建安装目录，请检查权限。';
+      Result := '无法在所选位置安装 CodexPage。请重新运行安装程序并使用默认安装位置。';
       Exit;
     end;
     { A monitor may briefly hold a shared lease during its poll. Allow it to finish. }
@@ -143,7 +143,7 @@ begin
       Sleep(100);
     end;
     if UpdateGate = THandle(-1) then begin
-      Result := 'CodexPage 正在运行或另一个安装尚未完成，请关闭管理器后重试。';
+      Result := 'CodexPage 仍在运行，或另一项安装尚未结束。请关闭 CodexPage，并等其他安装完成后再试。';
       Exit;
     end;
     UpdateGateHeld := True;
@@ -153,10 +153,12 @@ begin
   if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Params, '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then
     Result := '无法完成安装前检查，本次安装未替换文件。请重新运行安装程序。'
   else if ExitCode <> 0 then begin
-    if LoadStringFromFile(ExpandConstant('{tmp}\upgrade-check-result.txt'), BlockReason) and (Length(BlockReason) > 0) then
-      Result := UTF8Decode(BlockReason)
+    if LoadStringFromFile(ExpandConstant('{tmp}\upgrade-check-result.txt'), BlockReason) and (Length(BlockReason) > 0) then begin
+      Log(UTF8Decode(BlockReason));
+      Result := '暂时无法安全开始安装，本次尚未替换程序文件。请关闭 CodexPage 后重新运行安装程序；若仍失败，请联系作者。';
+    end
     else
-      Result := '无法完成后台检查，本次安装未替换文件。请退出相关程序后重试。';
+      Result := '暂时无法安全开始安装，本次尚未替换程序文件。请关闭 CodexPage 后重新运行安装程序。';
   end;
 end;
 
@@ -170,10 +172,10 @@ begin
   Params := '-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy RemoteSigned -File "' + ExpandConstant('{app}\scripts\uninstall-app.ps1') + '"';
   if UninstallSilent then Params := Params + ' -Silent';
   if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Params, '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then
-    RaiseException('无法启动外观恢复，卸载已停止，应用和壁纸库均保留。');
+    RaiseException('卸载已停止。请先打开 CodexPage，在“管理与更新”中恢复原始外观，完成后再卸载。');
   if ExitCode = 2 then Abort;
   if ExitCode <> 0 then
-    RaiseException('外观恢复未完成，卸载已停止。请先在 CodexPage 恢复原始外观后重试。');
+    RaiseException('卸载已停止，因为还未恢复 Codex 的原始外观。请在 CodexPage 的“管理与更新”中恢复原始外观，完成后再卸载。');
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);

@@ -23,6 +23,14 @@ foreach($size in @(@(1440,840),@(900,525))){
   }
 }
 # Exercise the real modal lifecycle off-screen without activating a desktop window.
+foreach($purpose in @('Restore','Close')){
+  $purposeWindow=New-DreamSkinRestartDialog $message -Purpose $purpose
+  try{
+    $expected=if($purpose -eq 'Restore'){'恢复并重启'}else{'关闭并恢复'}
+    Assert ($purposeWindow.FindName('ConfirmAcceptButton').Content -eq $expected) 'Restore/close action must describe the actual consequence'
+    Assert ($purposeWindow.FindName('ConfirmCancelButton').IsDefault) 'Restore must also default to keeping current work'
+  }finally{$purposeWindow.Close()}
+}
 $script:factory=${function:New-DreamSkinRestartDialog}
 $script:choice='timeout'
 function New-DreamSkinRestartDialog {

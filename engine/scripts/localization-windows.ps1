@@ -35,20 +35,20 @@ function Get-DreamSkinText {
   $resolved = Resolve-DreamSkinLanguage -Language $Language
   $catalog = @{
     'en-US' = @{
-      RestartPrompt = 'The wallpaper connection is not ready. You can keep working and reconnect later from CodexPage. Restarting now may interrupt unsaved input and running tasks. Save your work before continuing.'
-      MultipleInstancesPrompt = 'Dream Skin and another Codex profile are both open. To keep Dream Skin as the only active Codex session, both windows must close and Dream Skin must restart. Unsaved input and running tasks may be interrupted. Continue?'
-      LaunchCancelled = 'Dream Skin launch was cancelled; Codex was not changed.'
-      RestoreClose = 'Restore the original appearance? This requires restarting Codex.'
-      RestoreCloseNoRelaunch = 'Restore will close Codex and remove Dream Skin plus its CDP session. Continue?'
-      RestoreCancelled = 'Restore was cancelled; no state or configuration was changed.'
+      RestartPrompt = 'Codex needs to restart to connect the wallpaper. Save unsent text and wait for running tasks to finish before continuing. You can also reconnect later from CodexPage.'
+      MultipleInstancesPrompt = 'Two separate Codex sessions are open. Continuing will close these windows and reopen Codex. Save unsent text and wait for running tasks to finish, or choose Not now.'
+      LaunchCancelled = 'Connection cancelled. Codex was not changed.'
+      RestoreClose = 'Restoring the original appearance will stop using the custom wallpaper and restart Codex. Your wallpaper library will be kept. Save unsent text and wait for running tasks to finish before continuing.'
+      RestoreCloseNoRelaunch = 'Restoring the original appearance will close Codex. Save unsent text and wait for running tasks to finish before continuing. Codex will not reopen automatically after this step.'
+      RestoreCancelled = 'Restore cancelled. The previous appearance was kept.'
     }
     'zh-CN' = @{
-      RestartPrompt = '壁纸连接尚未就绪。你可以继续工作，稍后从 CodexPage 重新连接。现在重启可能中断未保存的输入和正在运行的任务，请先保存工作。'
-      MultipleInstancesPrompt = 'Dream Skin 与另一套 Codex 配置实例正在同时运行。若要只保留 Dream Skin，需要关闭两套窗口并重新启动 Dream Skin；未发送的输入和运行中的任务可能中断。是否继续？'
-      LaunchCancelled = '已取消启动 Dream Skin；Codex 未发生改变。'
-      RestoreClose = '确定恢复到原始外观吗？此操作需要重启 Codex。'
-      RestoreCloseNoRelaunch = '恢复操作将关闭 Codex，并移除 Dream Skin 及其 CDP 会话。是否继续？'
-      RestoreCancelled = '已取消恢复；状态和配置均未改变。'
+      RestartPrompt = '需要重启 Codex 才能继续连接。请先保存未发送的内容，并等正在运行的任务结束。也可以稍后从 CodexPage 重新连接。'
+      MultipleInstancesPrompt = '检测到两套独立的 Codex 窗口。继续连接需要关闭这些窗口并重新打开 Codex，未发送的内容和正在运行的任务可能中断。请处理完后再继续。'
+      LaunchCancelled = '已取消连接，Codex 未发生改变。'
+      RestoreClose = '将停止使用自定义壁纸并重启 Codex，壁纸库会保留。请先保存未发送的内容，并等正在运行的任务结束。'
+      RestoreCloseNoRelaunch = '恢复原始外观需要关闭 Codex。请先保存未发送的内容，并等正在运行的任务结束。此步骤完成后不会自动重新打开 Codex。'
+      RestoreCancelled = '已取消恢复，原有外观未改变。'
     }
   }
   $value = $catalog[$resolved][$Key]

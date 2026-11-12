@@ -15,6 +15,7 @@ param(
   [switch]$SkipBackgroundTask
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'user-messages.ps1')
 
 function Assert-DynamicSkinTree {
   param([string]$Path)
@@ -111,7 +112,8 @@ function Copy-DynamicSkinLegacyStateToStage {
       [IO.File]::WriteAllText((Join-Path $stage 'video-theme.json'),($config|ConvertTo-Json -Compress),$utf8)
       $videoMigrated=$true
     }catch{
-      Write-Warning "Legacy dynamic video was not migrated: $($_.Exception.Message)"
+      $null=Write-DynamicMessageDiagnostic $target (Get-DynamicUserFailure $_.Exception Install)
+      Write-Warning '旧版本的视频壁纸未能保留。安装后请重新导入并应用该视频。'
     }
   }
   return [pscustomobject]@{
@@ -182,7 +184,7 @@ function Install-DynamicSkin {
           Copy-Item -LiteralPath $localIcon -Destination (Join-Path $iconDirectory 'chatgpt-app-light.ico') -Force
           $icon = Join-Path $root 'icons/chatgpt-app-light.ico'
         }
-      } catch { Write-Warning 'Official local Codex icon unavailable; using a Windows icon.' }
+      } catch { Write-Warning '暂时无法读取 Codex 图标，已使用默认图标，可继续使用。' }
     }
     New-Item -ItemType Directory -Path $backup -Force | Out-Null
     foreach ($entry in Get-ChildItem -LiteralPath $stage) {
@@ -238,11 +240,13 @@ function Install-DynamicSkin {
   }
   $backgroundModule=Join-Path $root 'engine/scripts/background-task.ps1'
   if(-not $SkipBackgroundTask -and (Test-Path -LiteralPath $backgroundModule)){
-    try{. $backgroundModule;$null=Enable-DreamSkinBackgroundTask $root -Start}catch{Write-Warning ('Background registration failed: '+$_.Exception.Message)}
+    try{. $backgroundModule;$null=Enable-DreamSkinBackgroundTask $root -Start}catch{$null=Write-DynamicMessageDiagnostic $root (Get-DynamicUserFailure $_.Exception Install);Write-Warning '自动恢复壁纸未能开启。请打开 CodexPage，点击左下角 Codex 图标重新连接。'}
   }
-  Write-Output "Installed CodexPage at $root. Backup: $backup"
+  Write-Output 'CodexPage 已安装。请使用桌面快捷方式打开，导入并应用壁纸。'
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
-  Install-DynamicSkin -SourceRoot (Split-Path $PSScriptRoot -Parent) -InstallRoot $InstallRoot -DesktopPath $DesktopPath -SkipShortcuts:$SkipShortcuts -SkipBackgroundTask:$SkipBackgroundTask
+  . (Join-Path $PSScriptRoot 'user-messages.ps1')
+  try{Install-DynamicSkin -SourceRoot (Split-Path $PSScriptRoot -Parent) -InstallRoot $InstallRoot -DesktopPath $DesktopPath -SkipShortcuts:$SkipShortcuts -SkipBackgroundTask:$SkipBackgroundTask}
+  catch{$failure=Get-DynamicUserFailure $_.Exception Install;$null=Write-DynamicMessageDiagnostic $InstallRoot $failure;[Console]::Error.WriteLine($failure.Message);exit 1}
 }

@@ -44,7 +44,7 @@ try{
   $script:mode='AllDenied'
   $errorMessage=''
   try{Get-DynamicAppUpdate $fixtureRoot $fixtureRoot -Manual}catch{$errorMessage=Get-DynamicUpdateFailureMessage $_.Exception}
-  Assert ($errorMessage -match '403' -and $errorMessage -notmatch 'GetResponse') 'Forbidden error must be understandable'
+  Assert ($errorMessage -match '请稍后重试' -and $errorMessage -notmatch '403|GetResponse') 'Forbidden error must be understandable'
   Assert (Test-Path (Join-Path $fixtureRoot 'logs/update-error.log')) 'Transport failure must retain a diagnostic stage'
   Assert ([IO.File]::ReadAllText((Join-Path $fixtureRoot 'VERSION')) -eq '1.1.0') 'Check must not modify the installed version'
   'PASS API 403 fallback, signatures, tamper rejection, skip and throttle, diagnostic stage and readable failure'

@@ -38,7 +38,7 @@ try{
   Complete-Fixture Check $false $manifest '' ''
   Assert ($controls.UpdateBanner.Visibility -eq 'Visible' -and $controls.UpdateNoticeContent.Visibility -eq 'Visible') 'Automatic discovery must open the notice'
   Assert ($controls.UpdateNotes.Text.Length -gt 500 -and $controls.UpdateNotes.Parent.MaxHeight -eq 210) 'Long notes must be bounded and scrollable'
-  Assert ($controls.SkipUpdateButton.IsEnabled -and $controls.InstallUpdateButton.Content -eq '确认更新') 'Discovery must offer skip and consent'
+  Assert ($controls.SkipUpdateButton.IsEnabled -and $controls.InstallUpdateButton.Content -eq '下载并更新') 'Discovery must offer skip and consent'
   $controls.SkipUpdateButton.RaiseEvent([Windows.RoutedEventArgs]::new($click))
   Assert ((Read-DynamicUpdateState $root).SkippedVersion -eq '3.5.0' -and $controls.UpdateBanner.Visibility -eq 'Collapsed') 'Skip must persist and close'
   Complete-Fixture Check $true $manifest '' ''
@@ -46,10 +46,10 @@ try{
   Complete-Fixture Check $true $null '' ''
   Assert ($controls.UpdateDialogHeading.Text -eq '已是最新版本' -and $controls.LaterUpdateButton.Visibility -eq 'Visible') 'Manual no-update must explain its result'
   Complete-Fixture Check $true $null '' 'offline fixture'
-  Assert ($controls.UpdateDialogHeading.Text -eq '更新未完成' -and $controls.UpdateDialogHint.Text -match 'offline fixture') 'Manual error must be visible in the dialog'
-  $controls.LaterUpdateButton.RaiseEvent([Windows.RoutedEventArgs]::new($click))
+  Assert ($controls.ConfirmationOverlay.Visibility -eq 'Visible' -and $controls.ConfirmationMessage.Text -match '请' -and $controls.ConfirmationMessage.Text -notmatch 'offline fixture' -and $controls.ConfirmAcceptButton.Content -eq '重新检查') 'Manual error must be actionable without exposing a raw exception'
+  Complete-DynamicManagerConfirmation $false
   Complete-Fixture Check $false $null '' 'automatic offline fixture'
-  Assert ($controls.UpdateBanner.Visibility -eq 'Collapsed') 'Automatic offline checks must not interrupt the user'
+  Assert ($controls.UpdateBanner.Visibility -eq 'Collapsed' -and $controls.ConfirmationOverlay.Visibility -eq 'Collapsed') 'Automatic offline checks must not interrupt the user'
   $ui.AvailableUpdate=$manifest
   Set-DynamicUpdateProgress '正在下载更新… 37%'
   Assert ($controls.UpdateNoticeContent.Visibility -eq 'Collapsed' -and $controls.UpdateProgress.Value -eq 37 -and $controls.SkipUpdateButton.Visibility -eq 'Collapsed') 'Progress must replace the announcement'
@@ -59,7 +59,8 @@ try{
   Complete-Fixture Download $false $manifest 'cancelled-stage' '' $true
   Assert (-not $script:handedOff -and $controls.UpdateDialogHeading.Text -eq '已取消下载') 'Cancellation must never install a ready payload'
   Complete-Fixture Download $false $manifest '' 'hash mismatch fixture'
-  Assert (-not $script:handedOff -and $controls.UpdateDialogHeading.Text -eq '更新未完成') 'Failed verification must never install'
+  Assert (-not $script:handedOff -and $controls.ConfirmationOverlay.Visibility -eq 'Visible' -and $controls.ConfirmAcceptButton.Content -eq '重新下载') 'Failed verification must never install'
+  Complete-DynamicManagerConfirmation $false
   Complete-Fixture Download $false $manifest 'verified-stage' ''
   Assert ($script:handedOff -eq 'verified-stage') 'One consent must automatically hand off a verified payload'
   'PASS modal discovery, skip, manual results, offline behavior, long notes, measured progress, cancellation and automatic handoff'

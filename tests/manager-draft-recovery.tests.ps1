@@ -37,7 +37,7 @@ try{
     Start-DynamicManagerWork Delete $ids[0]
     Close-DynamicCodexPreview
     Assert ($ui.Filter -eq 'All' -and $ui.Source -eq 'Local' -and -not $ui.Worker -and $controls.PreviewOverlay.Visibility -eq 'Visible') 'Navigation or mutation bypasses pending save'
-    Assert ($controls.PreviewNotice.Visibility -eq 'Visible' -and $controls.PreviewNotice.Text -match '保存失败') 'Save error is hidden'
+    Assert ($controls.PreviewNotice.Visibility -eq 'Visible' -and $controls.PreviewNotice.Text -match '未能保存') 'Save error is hidden'
     Register-DynamicManagerClosingGuard $window
     $window.Close()
     Assert ($controls.ConfirmationOverlay.Visibility -eq 'Visible' -and $ui.PendingOpacity.Value -eq 82) 'Closing silently discards a failed save'

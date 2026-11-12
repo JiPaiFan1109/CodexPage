@@ -66,7 +66,7 @@ function Initialize-DynamicManagerTheme {
       $saveState.Pending=$false;$saveState.Failed=$false
     }catch{
       $saveState.Failed=$true
-      if($script:SkinManager -and $script:SkinManager.Window -eq $Window){Show-DynamicManagerToast '外观已切换，但未能保存；下次打开可能恢复原模式。' Error}
+      if($script:SkinManager -and $script:SkinManager.Window -eq $Window){Show-DynamicManagerToast '已切换外观，但未能记住本次选择。下次打开可能恢复之前的模式，请重新选择。' Error}
     }
   }.GetNewClosure()
   $timer.Add_Tick($save)

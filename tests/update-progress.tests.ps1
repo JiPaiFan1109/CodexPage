@@ -49,9 +49,10 @@ function Invoke-DynamicUpdateInstall {
 }
 '@
   [IO.File]::WriteAllText((Join-Path $root 'finish-update.ps1'),$fixture,[Text.UTF8Encoding]::new($true))
+  foreach($dependency in @('user-messages.ps1','user-messages.json')){Copy-Item (Join-Path $repo ('scripts/'+$dependency)) $root}
   $unwritableReady=Join-Path $root 'missing-parent/ui-ready'
   $failed=Show-DynamicUpdateInstallProgress $root $root '1.0.2' 0 $unwritableReady
-  Assert (-not $failed.Success -and $failed.Message -match '无法启动更新') 'Ready write failure must return and release the progress window'
+  Assert (-not $failed.Success -and $failed.Message -match '请' -and $failed.Message -notmatch 'missing-parent') 'Ready write failure must return and release the progress window'
   $ready=Join-Path $root 'ui-ready'
   $result=Show-DynamicUpdateInstallProgress $root $root '1.0.2' 0 $ready
   Assert ($result.Success -and (Test-Path $ready)) 'Successful helper must signal ready and return success'
@@ -87,7 +88,7 @@ function Invoke-DynamicUpdateInstall {
   })
   $observer.Start()
   $result=Show-DynamicUpdateInstallProgress $root $root '1.0.2' 0 $ready
-  Assert (-not $result.Success -and $result.Message -match '测试安装失败') ('Failure must not display success: '+($result|ConvertTo-Json -Compress))
+  Assert (-not $result.Success -and $result.Message -match '请' -and $result.Message -notmatch '测试安装失败') ('Failure must not display success: '+($result|ConvertTo-Json -Compress))
   Assert ($script:testWindow.FindName('InstallProgress').Visibility -eq 'Collapsed') 'Failure must stop the progress animation'
   'PASS measured download progress, indeterminate verification, detached UI success, failure, ready handshake and return action'
 }finally{

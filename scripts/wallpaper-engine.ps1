@@ -1,4 +1,5 @@
-﻿# Local media only: scene/web/application projects are never executed.
+﻿. (Join-Path $PSScriptRoot 'user-messages.ps1')
+# Local media only: scene/web/application projects are never executed.
 function Get-DynamicWallpaperEngineRoots {
   param([string[]]$SteamRoots)
   if(-not $SteamRoots){
@@ -185,10 +186,10 @@ function Import-DynamicWallpaperEngine {
   $directories=@()
   if($PSBoundParameters.ContainsKey('ProjectDirectories')){
     foreach($path in $ProjectDirectories){
-      try{$directories+=Get-Item -LiteralPath $path -ErrorAction Stop}catch{$result.Failed++;$result.Details+=($path+'：源目录不可用。')}
+      try{$directories+=Get-Item -LiteralPath $path -ErrorAction Stop}catch{$result.Failed++;$result.Details+=([IO.Path]::GetFileName($path)+'：文件夹无法打开，请重新选择壁纸目录。')}
     }
   }else{
-    foreach($root in $Roots|Sort-Object -Unique){$directories+=@(Get-DynamicWallpaperEngineProjects $root -OnError {param($path,$message);$result.Failed++;$result.Details+=($path+'：'+$message)})}
+    foreach($root in $Roots|Sort-Object -Unique){$directories+=@(Get-DynamicWallpaperEngineProjects $root -OnError {param($path,$message);$result.Failed++;$failure=Get-DynamicUserFailure $message EngineImport;$null=Write-DynamicMessageDiagnostic $StateRoot $failure;$result.Details+=([IO.Path]::GetFileName($path)+'：'+$failure.Message)})}
   }
   foreach($directory in $directories){
       if($visited.ContainsKey($directory.FullName)){continue};$visited[$directory.FullName]=$true
@@ -203,7 +204,7 @@ function Import-DynamicWallpaperEngine {
         if($project.title){$label=[string]$project.title}
         $previewOnly=[string]$project.type -in @('scene','web') -and [bool]$project.preview
         if([string]$project.type -notin @('video','image') -and -not $previewOnly){
-          $result.Skipped++;$result.Details+=($label+'：不支持 '+$project.type+' 类型，需要 Wallpaper Engine 渲染。');continue
+          $result.Skipped++;$result.Details+=($label+'：暂不能导入 CodexPage，请继续在 Wallpaper Engine 中使用，或选择图片、视频壁纸。');continue
         }
         $media=Resolve-DynamicSteamProjectFile $directory.FullName ([string]$project.file) -PackedScene:($previewOnly -and $project.type -eq 'scene')
         $kind='Image';if($project.type -eq 'video' -or [IO.Path]::GetExtension($media) -in @('.gif','.apng')){$kind='Video'}
@@ -240,15 +241,15 @@ function Import-DynamicWallpaperEngine {
             $import=Import-DynamicSteamCache $inputMedia $inputKind $StateRoot $label $Report -SourceFiles $sourceFiles -Mode $mode
           }
         }
-        if($previewOnly){$result.Previews++;$result.Details+=($label+'：仅导入项目预览素材，未还原完整场景、网页或互动效果。')}
+        if($previewOnly){$result.Previews++;$result.Details+=($label+'：仅导入了预览素材，未保留完整动画或互动效果。')}
         elseif(-not $direct -and -not $import.AlreadyExists){$result.Converted++}
         $result.SelectedId=$import.Item.Id
         if($import.AlreadyExists){$result.Existing++}else{
           $result.Imported++
           if(-not $previewOnly){try{$null=Rename-DynamicWallpaper $StateRoot $import.Item.Id $label}catch{}}
         }
-      }catch{$result.Failed++;$result.Details+=($label+'：'+$_.Exception.Message)}
+      }catch{$result.Failed++;$failure=Get-DynamicUserFailure $_.Exception EngineImport;$null=Write-DynamicMessageDiagnostic $StateRoot $failure;$result.Details+=($label+'：'+$failure.Message)}
   }
-  try{$null=Remove-DynamicStaleSteamCache $StateRoot}catch{$result.Details+=('旧缓存清理暂缓：'+$_.Exception.Message)}
+  try{$null=Remove-DynamicStaleSteamCache $StateRoot}catch{$null=Write-DynamicMessageDiagnostic $StateRoot (Get-DynamicUserFailure $_.Exception EngineImport)}
   return $result
 }

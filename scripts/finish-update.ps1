@@ -5,7 +5,7 @@ $ErrorActionPreference='Stop'
 
 function Invoke-DynamicUpdateInstall {
   param([string]$Root,[string]$Stage,[string]$TargetVersion,[int]$ParentId,[scriptblock]$Report)
-  if($Report){& $Report '正在校验更新包…'}
+  if($Report){& $Report '正在检查安装文件…'}
   $manifest=Read-DynamicSignedUpdate (Join-Path $Stage 'update.json') (Join-Path $Stage 'update.sig') (Join-Path $Stage 'update-public-key.xml') $TargetVersion
   if(-not(Test-DynamicNewVersion $TargetVersion ([IO.File]::ReadAllText((Join-Path $Root 'VERSION')).Trim()))){throw '已安装此版本或更新版本，取消重复升级。'}
   $setup=Join-Path $Stage 'setup.exe'
@@ -41,7 +41,7 @@ function Invoke-DynamicUpdateInstall {
       $exitCode=$process.ExitCode
     }finally{$process.Dispose()}
     if($exitCode -ne 0){throw ((Get-DynamicSetupFailureMessage -Code $exitCode -LogPath (Join-Path $Stage 'install.log'))+' 安装日志：'+(Join-Path $Stage 'install.log'))}
-    if($Report){& $Report '正在确认安装结果…'}
+    if($Report){& $Report '正在检查安装结果…'}
     Assert-DynamicInstalledUpdate $Root $TargetVersion
   }finally{$lock.Dispose()}
 }
@@ -72,7 +72,7 @@ if($MyInvocation.InvocationName -ne '.'){
     . (Join-Path $PSScriptRoot 'update-progress.ps1')
     $result=Show-DynamicUpdateInstallProgress $InstallRoot $PSScriptRoot $Version $ManagerProcessId $ReadyPath
     $success=[bool]$result.Success;$message=[string]$result.Message
-  }catch{$message='更新未完成：'+$_.Exception.Message}
+  }catch{Write-DynamicUpdateFailure $PSScriptRoot 'install' $_.Exception;$message=Get-DynamicUserErrorMessage $_.Exception Update}
   try{Save-DynamicUpdateResult $InstallRoot @{Success=$success;Message=$message;Version=$Version;CompletedUtc=[datetime]::UtcNow.ToString('o')}}
   catch{Write-DynamicUpdateFailure $PSScriptRoot 'result-write' $_.Exception}
   # Result persistence and launching are independent: a full/read-only disk must not prevent recovery.
@@ -85,7 +85,7 @@ if($MyInvocation.InvocationName -ne '.'){
   catch{
     $success=$false
     Write-DynamicUpdateFailure $PSScriptRoot 'manager-start' $_.Exception
-    $message='安装流程已结束，但管理器未能就绪。请手动打开或修复安装。日志：'+$PSScriptRoot
+    $message='安装流程已结束，但 CodexPage 未能正常打开。请从开始菜单手动打开；若仍失败，请重新下载安装。'
     try{Save-DynamicUpdateResult $InstallRoot @{Success=$false;Message=$message}}catch{}
     Add-Type -AssemblyName PresentationFramework
     [Windows.MessageBox]::Show($message,'CodexPage')|Out-Null

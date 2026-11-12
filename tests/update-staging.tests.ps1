@@ -8,7 +8,7 @@ try{
   [IO.Directory]::CreateDirectory((Join-Path $root 'appearance'))|Out-Null
   Copy-Item (Join-Path $repo 'appearance/codexpage-wordmark.png') (Join-Path $root 'appearance')
   [IO.File]::WriteAllText((Join-Path $root 'VERSION'),'1.0.1')
-  foreach($name in @('app-update.ps1','finish-update.ps1','update-progress.ps1','update-progress.xaml')){Copy-Item (Join-Path $repo ('scripts/'+$name)) (Join-Path $root 'scripts')}
+  foreach($name in @('app-update.ps1','finish-update.ps1','update-progress.ps1','update-progress.xaml','user-messages.ps1','user-messages.json')){Copy-Item (Join-Path $repo ('scripts/'+$name)) (Join-Path $root 'scripts')}
   [IO.File]::WriteAllText((Join-Path $root 'scripts/update-public-key.xml'),$rsa.ToXmlString($false))
   $setup=Join-Path $root 'fixture.exe';[IO.File]::WriteAllText($setup,'test update payload')
   $script:fixtureSetup=$setup
@@ -24,10 +24,10 @@ try{
   }
   $messages=[Collections.Generic.List[string]]::new()
   $stage=Save-DynamicAppUpdate $root $manifest {param($Message)$messages.Add($Message)}
-  foreach($name in @('setup.exe','update.json','update.sig','app-update.ps1','finish-update.ps1','update-progress.ps1','update-progress.xaml','update-public-key.xml')){
+  foreach($name in @('setup.exe','update.json','update.sig','app-update.ps1','finish-update.ps1','update-progress.ps1','update-progress.xaml','user-messages.ps1','user-messages.json','update-public-key.xml')){
     if(-not(Test-Path (Join-Path $stage $name))){throw ('Staged helper dependency missing: '+$name)}
   }
-  if($messages[-1] -ne '正在校验更新包…'){throw 'Verification stage must follow download completion'}
+  if($messages[-1] -ne '下载完成，正在检查安装文件…'){throw 'Verification stage must follow download completion'}
   if((Get-FileHash (Join-Path $stage 'codexpage-wordmark.png')).Hash -ne (Get-FileHash (Join-Path $root 'appearance/codexpage-wordmark.png')).Hash){throw 'Detached update window lost its wordmark'}
   if([IO.File]::ReadAllText((Join-Path $root 'VERSION')) -ne '1.0.1'){throw 'Download changed the running install'}
   $firstStage=$stage

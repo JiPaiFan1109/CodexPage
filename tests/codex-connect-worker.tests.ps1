@@ -46,7 +46,9 @@ function Test-DynamicOperationCancelled {param($Exception);while($Exception){if(
     Complete-DynamicManagerWork
     if($mode -eq 'library-failure'){
       Assert (-not $script:SkinManager.Busy -and $null -eq $script:SkinManager.Worker -and $window.FindName('GalleryCount').Text -eq '未加载') 'Library failure must release work and must not report an empty collection'
-      Assert ($controls.EmptyTitle.Text -like '*读取失败*' -and -not $script:SkinManager.StartupConnectionPending) 'Library failure must retain readable error and stop automatic connection'
+      Assert ($controls.EmptyTitle.Text -eq '暂时无法读取壁纸库' -and -not $script:SkinManager.StartupConnectionPending) 'Library failure must retain readable error and stop automatic connection'
+      Assert ($controls.ConfirmAcceptButton.Content -eq '重新读取') 'Library failure must offer an explicit retry'
+      Complete-DynamicManagerConfirmation $false
       if($script:SkinManager.ToastTimer){$script:SkinManager.ToastTimer.Stop()}
       continue
     }
@@ -69,9 +71,10 @@ function Test-DynamicOperationCancelled {param($Exception);while($Exception){if(
       Assert ($controls.ConfirmationOverlay.Visibility -eq 'Collapsed') 'Healthy/preview startup unexpectedly invoked the engine'
     }elseif($mode -eq 'failure'){
       Assert (-not $script:SkinManager.Connection.Connected -and $controls.ConnectionLabel.Text -eq '已找到Codex') 'Failure reverted to misleading missing-install state'
-      Assert ($controls.ConfirmationOverlay.Visibility -eq 'Visible' -and $controls.ConfirmationTitle.Text -eq 'Codex 连接未完成') 'Connection failure details were not displayed'
-      Assert ($controls.OpenButton.ToolTip -like '*换肤连接*') 'Connection failure reason was discarded'
-      Complete-DynamicManagerConfirmation $true
+      Assert ($controls.ConfirmationOverlay.Visibility -eq 'Visible' -and $controls.ConfirmationTitle.Text -eq '连接 Codex未完成') 'Connection failure details were not displayed'
+      Assert ($controls.OpenButton.ToolTip -like '*暂时无法连接 Codex*') 'Connection failure reason was discarded'
+      Assert ($controls.ConfirmAcceptButton.Content -eq '重新连接') 'Connection failure must offer an explicit retry'
+      Complete-DynamicManagerConfirmation $false
     }else{
       Assert ($controls.StatusText.Text -eq '已取消连接。' -and $controls.ConfirmationOverlay.Visibility -eq 'Collapsed') 'Cancellation was presented as a failure'
     }

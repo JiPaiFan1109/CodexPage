@@ -1,4 +1,5 @@
-﻿function New-DynamicUpdateProgressWindow {
+﻿. (Join-Path $PSScriptRoot 'user-messages.ps1')
+function New-DynamicUpdateProgressWindow {
   Add-Type -AssemblyName PresentationFramework
   $reader=[Xml.XmlReader]::Create((Join-Path $PSScriptRoot 'update-progress.xaml'))
   try{$window=[Windows.Markup.XamlReader]::Load($reader)}finally{$reader.Dispose()}
@@ -24,11 +25,12 @@ function Show-DynamicUpdateInstallProgress {
   $body={
     param($Stage,$Root,$TargetVersion,$ParentId,$Queue)
     $ErrorActionPreference='Stop'
+    . (Join-Path $Stage 'user-messages.ps1')
     . (Join-Path $Stage 'finish-update.ps1')
     try{
       Invoke-DynamicUpdateInstall $Root $Stage $TargetVersion $ParentId {param($Message)$Queue.Enqueue([string]$Message)}
       [pscustomobject]@{Success=$true;Message=('已更新至 '+$TargetVersion+'。壁纸收藏和设置已保留。')}
-    }catch{[pscustomobject]@{Success=$false;Message=('更新未完成：'+$_.Exception.Message)}}
+    }catch{$failure=Get-DynamicUserFailure $_.Exception Update;$details=Write-DynamicMessageDiagnostic $Root $failure;[pscustomobject]@{Success=$false;Message=$failure.Message;Details=$details}}
   }
   $null=$worker.AddScript($body.ToString()).AddArgument($Stage).AddArgument($Root).AddArgument($TargetVersion).AddArgument($ParentId).AddArgument($queue)
   $state=@{Done=$false;Result=$null;Async=$null;CompletedAt=$null}
@@ -40,12 +42,13 @@ function Show-DynamicUpdateInstallProgress {
       if($ReadyPath){[IO.File]::WriteAllText($ReadyPath,'ready')}
       $state.Async=$worker.BeginInvoke();$timer.Start()
     }catch{
-      $state.Result=[pscustomobject]@{Success=$false;Message=('无法启动更新：'+$_.Exception.Message)}
+      $failure=Get-DynamicUserFailure $_.Exception Update;$state.Result=[pscustomobject]@{Success=$false;Message=$failure.Message;Details=(Write-DynamicMessageDiagnostic $Root $failure)}
       $state.Done=$true
       $window.Close()
     }
   }.GetNewClosure())
   $window.Add_Closing({param($sender,$e) if(-not $state.Done){$e.Cancel=$true;$sender.WindowState='Minimized'}}.GetNewClosure())
+  $window.FindName('CopyInstallProblem').Add_Click({try{[Windows.Clipboard]::SetText($window.FindName('InstallProblemDetails').Text);$window.FindName('CopyInstallProblem').Content='已复制'}catch{$window.FindName('CopyInstallProblem').Content='复制失败，可选中文字复制'}}.GetNewClosure())
   $button.Add_Click({
     if($state.Done){$window.Close()}
     else{
@@ -73,15 +76,16 @@ function Show-DynamicUpdateInstallProgress {
       }
       if($worker.HadErrors -and $result.Success){throw ([string]$worker.Streams.Error[0])}
       $state.Result=$result
-    }catch{$state.Result=[pscustomobject]@{Success=$false;Message=('更新未完成：'+$_.Exception.Message)}}
-    $state.Done=$true;$state.CompletedAt=[datetime]::UtcNow;$button.Content='返回管理中心';$button.Visibility='Collapsed'
+    }catch{$failure=Get-DynamicUserFailure $_.Exception Update;$state.Result=[pscustomobject]@{Success=$false;Message=$failure.Message;Details=(Write-DynamicMessageDiagnostic $Root $failure)}}
+    $state.Done=$true;$state.CompletedAt=[datetime]::UtcNow;$button.Content='返回 CodexPage';$button.Visibility='Collapsed'
     $bar.IsIndeterminate=$false
     if($state.Result.Success){
       $bar.Value=100;$window.FindName('UpdateHeading').Text='更新完成'
       $status.Text='已更新至 '+$TargetVersion;$detail.Text='正在重新打开 CodexPage…'
     }else{
       $bar.Visibility='Collapsed';$window.FindName('UpdateHeading').Text='更新未完成'
-      $status.Text=$state.Result.Message;$detail.Text='返回 CodexPage 后可重试更新。';$button.Visibility='Visible'
+      $status.Text=$state.Result.Message;$detail.Text='关闭此窗口后会尝试打开 CodexPage；如无法打开，请重新下载安装。';$button.Content='关闭';$button.Visibility='Visible'
+      if($state.Result.Details){$window.FindName('InstallProblemDetails').Text=$state.Result.Details;$window.FindName('InstallProblemExpander').Visibility='Visible'}
     }
   }.GetNewClosure())
   try{$null=$window.ShowDialog();return $state.Result}

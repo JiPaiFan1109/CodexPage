@@ -1364,7 +1364,7 @@ function Stop-DreamSkinCodex {
 }
 
 function New-DreamSkinRestartDialog {
-  param([string]$Message)
+  param([string]$Message,[ValidateSet('Restart','Restore','Close')][string]$Purpose='Restart')
   $ErrorActionPreference='Stop'
   Add-Type -AssemblyName PresentationFramework
   $root=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
@@ -1378,13 +1378,13 @@ function New-DreamSkinRestartDialog {
   $markup='<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="CodexPage" SizeToContent="WidthAndHeight" WindowStartupLocation="CenterScreen" WindowStyle="None" AllowsTransparency="True" ResizeMode="NoResize" Background="Transparent" Foreground="#172134" FontFamily="Microsoft YaHei UI, Segoe UI" FontSize="15">'+($resources.Replace(' xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"',''))+$panel+'</Window>'
   $window=[Windows.Markup.XamlReader]::Parse($markup)
   $english=$Message -notmatch '[\u4e00-\u9fff]'
-  $window.FindName('ConfirmationTitle').Text=if($english){'Restart Codex?'}else{'重新启动 Codex？'}
+  $window.FindName('ConfirmationTitle').Text=if($Purpose -eq 'Restore'){if($english){'Restore the original appearance?'}else{'恢复 Codex 原始外观？'}}elseif($Purpose -eq 'Close'){if($english){'Close Codex and restore?'}else{'关闭 Codex 并恢复原始外观？'}}else{if($english){'Restart Codex?'}else{'重新启动 Codex？'}}
   $window.FindName('ConfirmationMessage').Text=$Message
   $cancel=$window.FindName('ConfirmCancelButton')
-  $cancel.Content=if($english){'Not now'}else{'暂不重启'}
+  $cancel.Content=if($english){'Not now'}elseif($Purpose -eq 'Restart'){'暂不重启'}else{'取消'}
   $cancel.IsDefault=$true
   $accept=$window.FindName('ConfirmAcceptButton')
-  $accept.Content=if($english){'Restart now'}else{'重启 Codex'}
+  $accept.Content=if($Purpose -eq 'Restore'){if($english){'Restore and restart'}else{'恢复并重启'}}elseif($Purpose -eq 'Close'){if($english){'Close and restore'}else{'关闭并恢复'}}else{if($english){'Restart now'}else{'重启 Codex'}}
   $asset=Join-Path $root 'appearance/codexpage-wordmark.png'
   $window.FindName('ConfirmationWordmark').Source=[Windows.Media.Imaging.BitmapFrame]::Create([uri]$asset)
   $window.Tag=@{Accepted=$false;Closing=$false;Timer=$null;CloseTimer=$null}
@@ -1423,13 +1423,13 @@ function New-DreamSkinRestartDialog {
 }
 
 function Confirm-DreamSkinRestart {
-  param([string]$Message,[ValidateRange(0,300)][int]$TimeoutSeconds=0)
+  param([string]$Message,[ValidateRange(0,300)][int]$TimeoutSeconds=0,[ValidateSet('Restart','Restore','Close')][string]$Purpose='Restart')
   $dialog=$null;$mutex=$null;$owned=$false
   try {
     $mutex=New-Object Threading.Mutex($false,'Local\CodexPage.RestartConfirmation')
     try{$owned=$mutex.WaitOne(0)}catch [Threading.AbandonedMutexException]{$owned=$true}
     if(-not $owned){return $false}
-    $dialog=New-DreamSkinRestartDialog -Message $Message
+    $dialog=New-DreamSkinRestartDialog -Message $Message -Purpose $Purpose
     if($TimeoutSeconds -gt 0){
       $timer=New-Object Windows.Threading.DispatcherTimer
       $timer.Interval=[TimeSpan]::FromSeconds($TimeoutSeconds)

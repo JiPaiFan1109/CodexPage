@@ -35,7 +35,7 @@ try {
     'scripts/manager-theme.ps1','scripts/manager-theme.cs','scripts/manager-theme-palette.json','scripts/manager-thumbnails.cs',
     'scripts/manager-launcher.cs','scripts/uninstall-app.ps1','appearance/skin-manager.ico','appearance/chatgpt-app-light.ico','appearance/wallpaper-engine.png','appearance/apply-wallpaper.png','appearance/confirmation-icon.png','appearance/codexpage-wordmark.png',
     'scripts/check-upgrade.ps1',
-    'scripts/app-update.ps1','scripts/update-ui.ps1','scripts/finish-update.ps1','scripts/update-progress.ps1','scripts/update-progress.xaml','scripts/update-public-key.xml',
+    'scripts/user-messages.ps1','scripts/user-messages.json','scripts/app-update.ps1','scripts/update-ui.ps1','scripts/finish-update.ps1','scripts/update-progress.ps1','scripts/update-progress.xaml','scripts/update-public-key.xml',
     'engine/VERSION',
     'engine/assets/demo-background.png','engine/assets/theme.json',
     'engine/assets/selectors.json','engine/assets/safe-css-validator.mjs','engine/assets/safe-css-policy.json',

@@ -37,7 +37,7 @@ function Get-DynamicMediaTool {
     $path=Join-Path $cache ('bin/'+$Name+'.exe')
     if(-not (Test-DynamicMediaRuntime $cache)){
       if($Optional){return $null}
-      if($Report){& $Report '正在从上游下载或修复媒体组件并校验（约 80 MB），请保持联网'}
+      if($Report){& $Report '正在下载转换工具，请保持联网…'}
       try{$null=& (Join-Path $script:DynamicInstallRoot 'scripts/prepare-media-tools.ps1') -Destination $cache}
       catch{throw ('媒体组件下载失败，可稍后重试；原壁纸未改动。'+$_.Exception.Message)}
     }
@@ -89,7 +89,7 @@ namespace CodexPage {
       if($stderr.IsFaulted){$null=$stderr.GetAwaiter().GetResult()}
       if($watch.Elapsed.TotalSeconds -gt $TimeoutSeconds){throw '媒体处理超时，已停止；没有截断或保存半成品。'}
       if($OutputPath -and (Test-Path -LiteralPath $OutputPath) -and (Get-Item -LiteralPath $OutputPath).Length -gt $OutputLimit){throw '转换结果超过大小上限，请缩短视频或降低源图尺寸。'}
-      if($Report -and $watch.Elapsed.TotalSeconds -ge $nextReport){& $Report ('正在转换媒体 · 已用 '+[int]$watch.Elapsed.TotalSeconds+' 秒');$nextReport=$watch.Elapsed.TotalSeconds+1}
+      if($Report -and $watch.Elapsed.TotalSeconds -ge $nextReport){& $Report ('正在转换，已用 '+[int]$watch.Elapsed.TotalSeconds+' 秒');$nextReport=$watch.Elapsed.TotalSeconds+1}
     }
     $output=$stdout.GetAwaiter().GetResult();$errorText=$stderr.GetAwaiter().GetResult()
     if($process.ExitCode -ne 0){

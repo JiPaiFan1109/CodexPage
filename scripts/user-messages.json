@@ -1,0 +1,467 @@
+﻿[
+  {
+    "Code": "C07-characters",
+    "Pattern": "壁纸名称不能含控制字符|壁纸名称含无效字符",
+    "Message": "名称中有无法识别的字符或换行。请删除这些字符，或重新输入名称后保存。"
+  },
+  {
+    "Code": "D12-security",
+    "Pattern": "FFmpeg archive SHA256|上游没有可校验的媒体组件",
+    "Message": "下载的转换工具未通过安全检查，已停止使用。请稍后重试。"
+  },
+  {
+    "Code": "D12-network",
+    "Pattern": "媒体组件下载失败",
+    "Message": "转换工具未能下载。请检查网络后重试。"
+  },
+  {
+    "Code": "D07-dimensions",
+    "Pattern": "媒体没有可用画面，或尺寸超过安全上限",
+    "Message": "无法读取媒体画面，或画面尺寸过大。请确认文件能正常打开，降低分辨率后重新导入。"
+  },
+  {
+    "Code": "E08-security",
+    "Pattern": "媒体路径越出项目目录|媒体路径无效",
+    "Message": "无法安全读取这张壁纸，已停止导入。请重新选择完整的壁纸文件夹。"
+  },
+  {
+    "Code": "B11-backup",
+    "Pattern": "No pre-install config backup",
+    "Message": "找不到恢复所需的备份。请在“关于软件”中联系作者。"
+  },
+  {
+    "Code": "B11-open",
+    "Pattern": "Codex cannot be reopened",
+    "Message": "Codex 未能重新打开。请从开始菜单手动打开 Codex。"
+  },
+  {
+    "Code": "A02",
+    "Pattern": "安装文件不完整|CodexPage 启动失败|STA 模式|Invalid update token",
+    "Message": "CodexPage 无法启动。请重新打开；若仍失败，请从项目发布页重新下载安装。"
+  },
+  {
+    "Code": "A03",
+    "Pattern": "CodexPage 正在更新",
+    "Message": "CodexPage 正在更新。请等更新完成后再打开。"
+  },
+  {
+    "Code": "A04",
+    "Pattern": "未找到可用的 Codex|连接检测组件|未找到Codex|手动指定 Codex",
+    "Message": "暂时无法找到 Codex。请确认已安装并能正常打开 Codex，再点击左下角 Codex 图标选择它的快捷方式。"
+  },
+  {
+    "Code": "A05",
+    "Pattern": "商店注册信息|未找到当前 Windows 用户",
+    "Message": "暂时无法读取 Codex 的安装信息。请先用当前 Windows 账户打开 Codex，再返回重试。"
+  },
+  {
+    "Code": "A07",
+    "Pattern": "所选文件|所选 Codex|文件不存在，请重新选择",
+    "Message": "无法使用所选文件打开 Codex。请重新选择平时用来打开 Codex 的快捷方式。"
+  },
+  {
+    "Code": "A11",
+    "Pattern": "renderer-verification-failed|壁纸已经生效|等待窗口显示|尚未确认壁纸生效|壁纸待验证|显示 Codex 窗口|已连接 Codex",
+    "Message": "暂时无法确认壁纸已显示。请先切换到 Codex 查看；若没有显示，请回到 CodexPage，点击左下角 Codex 图标重新连接。"
+  },
+  {
+    "Code": "A12",
+    "Pattern": "cdp-launch-failed|未能启动换肤版 Codex",
+    "Message": "未能打开 Codex。请先从任务栏或开始菜单打开 Codex，再回到这里重新连接。"
+  },
+  {
+    "Code": "A13",
+    "Pattern": "cdp-direct-access-denied|Windows 阻止了换肤启动",
+    "Message": "Windows 阻止了 CodexPage 打开 Codex。请先手动打开 Codex，再回到这里重新连接。"
+  },
+  {
+    "Code": "A14",
+    "Pattern": "cdp-endpoint-unavailable|未能建立 Codex 换肤连接",
+    "Message": "暂时无法连接 Codex。请确认 Codex 已打开，再点击左下角 Codex 图标重试。"
+  },
+  {
+    "Code": "A15",
+    "Pattern": "port-unavailable|换肤连接端口不可用",
+    "Message": "暂时无法建立壁纸连接。请稍后点击左下角 Codex 图标重试。"
+  },
+  {
+    "Code": "A16",
+    "Pattern": "state-reconciliation-failed|无法安全确认此前的运行状态",
+    "Message": "暂时无法重新连接 Codex。请先保存未发送的内容，等正在运行的任务结束，再关闭 Codex 并重新连接。"
+  },
+  {
+    "Code": "A17",
+    "Pattern": "injector-start-failed|internal-start-failure|换肤后台未能启动|换肤启动未完成",
+    "Message": "壁纸功能未能启动。请重新打开 CodexPage 后再连接；若仍失败，请在“关于软件”中联系作者。"
+  },
+  {
+    "Code": "A18",
+    "Pattern": "superseded|较新的换肤操作取代",
+    "Message": "已改为处理你最新选择的壁纸。请等待这次操作完成。"
+  },
+  {
+    "Code": "A19",
+    "Pattern": "多个独立的 Codex 壁纸连接",
+    "Message": "检测到多个独立的 Codex 窗口，暂时无法确定要连接哪一个。请保存内容并结束任务，只保留需要设置壁纸的窗口后重试。"
+  },
+  {
+    "Code": "A20",
+    "Pattern": "另一个(壁纸|背景)管理操作|Another Codex Dream Skin.*operation|Another Codex Dream Skin operation",
+    "Message": "另一项壁纸操作正在进行。请等它结束后再试。"
+  },
+  {
+    "Code": "B08",
+    "Pattern": "旧配置已恢复，但重新应用失败",
+    "Message": "新壁纸未能应用，之前的壁纸也未能重新显示。请先打开 Codex 查看当前外观，再返回 CodexPage 重新应用壁纸或恢复原始外观。"
+  },
+  {
+    "Code": "B09",
+    "Pattern": "应用操作失败|^应用失败：|^恢复未完成：",
+    "Message": "壁纸操作未完成。请确认 Codex 已打开，再重试；若仍失败，请在“关于软件”中联系作者。"
+  },
+  {
+    "Code": "B10",
+    "Pattern": "Codex did not close|Codex could not be stopped safely",
+    "Message": "Codex 尚未关闭。请先保存未发送的内容并等任务结束，手动关闭 Codex 后再试。"
+  },
+  {
+    "Code": "B11",
+    "Pattern": "No pre-install config backup|Codex cannot be reopened|saved Codex path is still active|Multiple Codex package versions",
+    "Message": "暂时无法恢复原始外观。请先保存内容并手动关闭 Codex 后重试；若仍失败，请在“关于软件”中联系作者。"
+  },
+  {
+    "Code": "B14",
+    "Pattern": "预览模式|草稿预览",
+    "Message": "当前是预览模式，不能修改 Codex 的壁纸。请打开正常安装的 CodexPage 后操作。"
+  },
+  {
+    "Code": "C01",
+    "Pattern": "壁纸库读取失败|已保存的文件仍保留",
+    "Message": "暂时无法读取壁纸库。请关闭并重新打开 CodexPage 后再试。"
+  },
+  {
+    "Code": "C02",
+    "Pattern": "默认(壁纸|视频)",
+    "Message": "自带壁纸未能添加到壁纸库。请重新打开 CodexPage；若仍失败，请重新下载安装。"
+  },
+  {
+    "Code": "C03",
+    "Pattern": "不可用壁纸|壁纸元数据|壁纸透明度|背景强度无效|壁纸文件路径|壁纸校验值|壁纸大小无效",
+    "Message": "这张壁纸的保存信息无法读取。请重新导入原文件；原有条目可在确认不再使用后删除。"
+  },
+  {
+    "Code": "C04",
+    "Pattern": "壁纸目录不能是重解析点|壁纸目录含未知子目录",
+    "Message": "为避免改动其他文件，无法处理这个壁纸文件夹。请重新导入原文件；若仍失败，请联系作者。"
+  },
+  {
+    "Code": "C05",
+    "Pattern": "壁纸文件丢失|壁纸文件内容已改变",
+    "Message": "找不到这张壁纸，或文件已被修改。请重新导入原文件。"
+  },
+  {
+    "Code": "C06",
+    "Pattern": "Steam 壁纸引用无效|Steam 源文件已改变或丢失|Steam 源文件内容已改变",
+    "Message": "这张 Wallpaper Engine 壁纸的文件已变化或找不到了。请确认它已下载完成，再在此页点击“刷新”。"
+  },
+  {
+    "Code": "C07",
+    "Pattern": "壁纸名称(不能|含|长度)",
+    "Message": "壁纸名称不能为空，且不能超过 120 个字符。请修改名称后保存。"
+  },
+  {
+    "Code": "C08",
+    "Pattern": "壁纸 ID 无效|壁纸已被移除",
+    "Message": "这张壁纸已不可用。请重新打开 CodexPage，再选择壁纸操作。"
+  },
+  {
+    "Code": "C09",
+    "Pattern": "仅可调整可用的图片壁纸",
+    "Message": "这项调整只适用于图片。请选择一张可用的图片壁纸。"
+  },
+  {
+    "Code": "C10",
+    "Pattern": "无法确认当前背景|读取当前背景失败",
+    "Message": "暂时无法确认当前正在使用的壁纸。为避免误删，已暂停删除操作。请重新打开 CodexPage 后再试。"
+  },
+  {
+    "Code": "C11",
+    "Pattern": "请先应用其他壁纸|视频背景仍引用",
+    "Message": "这张壁纸正在使用。请先换一张壁纸，或在“管理与更新”中恢复原始外观，再删除。"
+  },
+  {
+    "Code": "C14",
+    "Pattern": "交换失败",
+    "Message": "未能调整壁纸顺序。请稍后再试；若仍失败，请重新打开 CodexPage。"
+  },
+  {
+    "Code": "C15",
+    "Pattern": "当前视频背景配置|当前视频丢失|当前视频在保存",
+    "Message": "当前视频未能保存到壁纸库。请从原文件重新导入。"
+  },
+  {
+    "Code": "D01",
+    "Pattern": "媒体大小超出|媒体文件必须|媒体超过大小限制|准备后的媒体|媒体为空或超过",
+    "Message": "文件为空或超过本次导入的大小限制。请查看文件大小，选择较小且有内容的文件后重新导入。"
+  },
+  {
+    "Code": "D02",
+    "Pattern": "图片支持 PNG|不支持此媒体扩展名|此媒体格式暂不支持",
+    "Message": "暂不支持这种文件格式。图片可选择 PNG、JPG；视频可尝试导出为 MP4 后重新导入。"
+  },
+  {
+    "Code": "D03",
+    "Pattern": "媒体读取超时",
+    "Message": "读取文件用时过长，导入未完成。请确认文件能正常打开；如果在移动硬盘或网络位置，请先复制到本机后再导入。"
+  },
+  {
+    "Code": "D04",
+    "Pattern": "无法读取视频时长|Windows 无法解码|媒体没有可用画面|请先导出为 H.264 MP4",
+    "Message": "无法读取这段视频。请确认它能正常播放；也可重新导出为 MP4（H.264）后导入。"
+  },
+  {
+    "Code": "D05",
+    "Pattern": "视频过长|视频帧数过多",
+    "Message": "视频太长，无法在当前限制内导入。请缩短视频后再试；程序不会自动截掉后半段。"
+  },
+  {
+    "Code": "D06",
+    "Pattern": "无法核实视频画面|无法确定(视频画面|媒体)时长",
+    "Message": "无法读取视频的完整时长，已停止转换。请重新导出视频后再导入。"
+  },
+  {
+    "Code": "D07",
+    "Pattern": "图片尺寸超过安全上限",
+    "Message": "图片或视频尺寸过大。请降低分辨率后重新导入。"
+  },
+  {
+    "Code": "D08",
+    "Pattern": "^APNG ",
+    "Message": "这张动图无法读取。请重新下载，或导出为 GIF、MP4 后再导入。"
+  },
+  {
+    "Code": "D09",
+    "Pattern": "多页图片",
+    "Message": "这个图片文件包含多页。请把需要的一页另存为 PNG 或 JPG，再导入。"
+  },
+  {
+    "Code": "D10",
+    "Pattern": "媒体大小在复制前|准备好的媒体已改变",
+    "Message": "文件在导入过程中被修改，导入已停止。请等其他程序保存完成后重新导入。"
+  },
+  {
+    "Code": "D11",
+    "Pattern": "媒体暂存目录|导入暂存位置|真实操作必须|恢复操作不能使用仅连接模式",
+    "Message": "无法准备操作所需的文件。请从正常安装的 CodexPage 重试；若仍失败，请联系作者。"
+  },
+  {
+    "Code": "D12",
+    "Pattern": "媒体组件下载失败|上游没有可校验|FFmpeg archive SHA256",
+    "Message": "转换工具未能下载或未通过安全检查，已停止使用。请检查网络后重试；若仍失败，请稍后再试。"
+  },
+  {
+    "Code": "D13",
+    "Pattern": "媒体组件缓存不完整|无法启动媒体转换|FFmpeg distribution is incomplete|Downloaded media runtime is incomplete",
+    "Message": "转换工具暂时无法使用。请重新打开 CodexPage 后再导入；若仍失败，请在“关于软件”中联系作者。"
+  },
+  {
+    "Code": "D14",
+    "Pattern": "等待媒体组件下载超时",
+    "Message": "转换工具仍未准备好。请等其他下载结束后再试；若一直没有进展，请重新打开 CodexPage。"
+  },
+  {
+    "Code": "D15",
+    "Pattern": "媒体处理超时|媒体转换失败",
+    "Message": "转换未完成。请尝试较短的视频或较小的图片，再重新导入。"
+  },
+  {
+    "Code": "D16",
+    "Pattern": "转换结果超过大小|转换后视频超过",
+    "Message": "转换后的文件仍超过大小限制。视频请缩短时长，图片请降低分辨率，再重新导入。"
+  },
+  {
+    "Code": "D17",
+    "Pattern": "转换结果未通过|媒体转换未生成",
+    "Message": "转换后的文件无法使用，未将它加入壁纸库。请重新导出原文件后再导入。"
+  },
+  {
+    "Code": "E01",
+    "Pattern": "定位本地夹失败|未找到本地 Wallpaper Engine",
+    "Message": "未找到本机的 Wallpaper Engine 壁纸。请点击“选择壁纸目录”，选择已下载壁纸所在的文件夹。"
+  },
+  {
+    "Code": "E03",
+    "Pattern": "选择 Wallpaper Engine 安装目录|已定位的目录不可用|源目录不可用",
+    "Message": "之前选择的文件夹无法打开。请重新点击“选择壁纸目录”。"
+  },
+  {
+    "Code": "E06",
+    "Pattern": "需要 Wallpaper Engine 渲染|此项目没有可用的预览素材|：不支持",
+    "Message": "这张壁纸没有可导入的预览图或视频。请继续在 Wallpaper Engine 中使用，或选择图片、视频壁纸。"
+  },
+  {
+    "Code": "E07",
+    "Pattern": "此视频需要转码",
+    "Message": "这段视频需要转换后才能使用。请通过右上角“导入壁纸”选择该文件。"
+  },
+  {
+    "Code": "E08",
+    "Pattern": "Steam 源文件大小|媒体路径无效|媒体路径越出|项目媒体文件不存在|项目描述文件过大",
+    "Message": "无法读取这张 Wallpaper Engine 壁纸。请确认它已下载完成，再重新选择壁纸文件夹。"
+  },
+  {
+    "Code": "E09",
+    "Pattern": "Steam 源文件在转换时改变",
+    "Message": "壁纸文件在转换时发生变化，导入已停止。请等下载或修改完成后点击“刷新”。"
+  },
+  {
+    "Code": "F05",
+    "Pattern": "无法读取预览",
+    "Message": "暂时无法预览这张壁纸。请确认原文件能正常打开，再重新导入。"
+  },
+  {
+    "Code": "F09",
+    "Pattern": "清晰度保存失败，调整已保留",
+    "Message": "背景强度未能保存，本次调整暂时保留在窗口中。请再次点击“返回图库”重试保存。"
+  },
+  {
+    "Code": "G01",
+    "Pattern": "无法创建安装目录",
+    "Message": "无法在所选位置安装 CodexPage。请重新运行安装程序，使用默认安装位置；若仍失败，请联系作者。"
+  },
+  {
+    "Code": "G02",
+    "Pattern": "CodexPage 正在运行或另一个安装",
+    "Message": "CodexPage 仍在运行，或另一项安装尚未结束。请先关闭 CodexPage；若有安装窗口，请等它完成后再试。"
+  },
+  {
+    "Code": "G03",
+    "Pattern": "无法完成安装前检查|无法完成后台检查",
+    "Message": "暂时无法安全开始安装，本次尚未替换程序文件。请关闭 CodexPage 后重新运行安装程序；若仍失败，请联系作者。"
+  },
+  {
+    "Code": "G04",
+    "Pattern": "不支持覆盖安装旧版本|此更新不比当前版本新|已安装此版本或更新版本",
+    "Message": "当前已安装相同或更新的版本，无需安装这个版本。请关闭安装窗口。"
+  },
+  {
+    "Code": "G06",
+    "Pattern": "无法启动外观恢复|外观恢复未完成|静默卸载|卸载已停止",
+    "Message": "卸载已停止，因为还未恢复 Codex 的原始外观。请在 CodexPage 的“管理与更新”中恢复原始外观，完成后再卸载。"
+  },
+  {
+    "Code": "G11",
+    "Pattern": "更新服务器暂时限制|暂时找不到更新文件|更新服务器暂时不可用|GitHub 发布页下载安装",
+    "Message": "暂时无法下载更新，请稍后重试。也可从 GitHub 项目发布页重新下载安装。"
+  },
+  {
+    "Code": "G11-404",
+    "Pattern": "",
+    "Message": "暂时找不到更新文件，请稍后重试。"
+  },
+  {
+    "Code": "G11-500",
+    "Pattern": "",
+    "Message": "更新服务暂时不可用，请稍后重试。"
+  },
+  {
+    "Code": "G12",
+    "Pattern": "无法连接更新服务器",
+    "Message": "暂时无法连接更新服务。请检查网络后重试。"
+  },
+  {
+    "Code": "G13",
+    "Pattern": "更新清单过大|更新签名无效|更新清单格式或来源无效|无法确认稳定版本|Invalid stable version",
+    "Message": "无法确认这次更新是否可信，已停止更新。请稍后重试，或从 GitHub 项目发布页重新下载安装。"
+  },
+  {
+    "Code": "G14",
+    "Pattern": "更新包校验失败",
+    "Message": "下载的更新文件不完整或已变化，已停止安装。请重新下载更新。"
+  },
+  {
+    "Code": "G15",
+    "Pattern": "更新下载地址或大小|更新下载超过大小或时间",
+    "Message": "下载用时过长或文件不符合要求，已停止下载。请稍后重试，或从 GitHub 项目发布页重新下载安装。"
+  },
+  {
+    "Code": "G18",
+    "Pattern": "安装窗口未能启动|安装窗口已退出|管理器尚有未保存|正在启动安装程序",
+    "Message": "无法打开更新窗口，更新还未开始。请重试；如果有未保存的背景强度调整，请先返回预览保存。"
+  },
+  {
+    "Code": "G19",
+    "Pattern": "CodexPage 尚未退出|CodexPage 仍在运行|另一个更新仍在进行",
+    "Message": "更新尚未开始。请关闭 CodexPage，并等其他更新完成后重试。"
+  },
+  {
+    "Code": "G22",
+    "Pattern": "安装程序无法初始化",
+    "Message": "安装程序未能启动。请重新下载安装包后再试。"
+  },
+  {
+    "Code": "G23",
+    "Pattern": "安装已取消，尚未开始",
+    "Message": "已取消安装，本次尚未替换程序文件。"
+  },
+  {
+    "Code": "G24",
+    "Pattern": "安装准备发生错误",
+    "Message": "安装准备未完成。请重新下载安装包后再试；若仍失败，请联系作者。"
+  },
+  {
+    "Code": "G25",
+    "Pattern": "写入安装文件失败",
+    "Message": "未能写入安装文件。请确认安装磁盘有可用空间，关闭 CodexPage 后重新运行安装程序。"
+  },
+  {
+    "Code": "G26",
+    "Pattern": "文件安装已中止|安装程序被中断",
+    "Message": "安装未完成，程序可能暂时无法使用。请重新运行当前版本或更新版本的安装包完成安装。"
+  },
+  {
+    "Code": "G27",
+    "Pattern": "安装前检查未通过|安装程序未完成|安装未完成（代码",
+    "Message": "安装前检查未通过。请关闭 CodexPage 后重新运行安装程序；若仍失败，请联系作者。"
+  },
+  {
+    "Code": "G28",
+    "Pattern": "系统需要重启才能继续",
+    "Message": "需要重启 Windows 才能继续安装。请先保存工作，重启电脑后再运行安装程序。"
+  },
+  {
+    "Code": "G29",
+    "Pattern": "安装后的版本校验|安装文件清单",
+    "Message": "安装后的文件不完整或与预期版本不一致。请重新下载安装包并安装。"
+  },
+  {
+    "Code": "G31",
+    "Pattern": "管理器启动未确认|安装流程已结束，但管理器",
+    "Message": "安装流程已结束，但 CodexPage 未能正常打开。请从开始菜单手动打开；若仍失败，请重新下载安装。"
+  },
+  {
+    "Code": "G32",
+    "Pattern": "更新状态路径无效|更新检查未返回结果|安装程序未返回结果|更新未完成|无法启动更新|安装日志：|关闭后可手动重试|返回 CodexPage 后可重试",
+    "Message": "更新未完成。请返回 CodexPage 重试；如果无法打开，请从 GitHub 项目发布页重新下载安装。"
+  },
+  {
+    "Code": "H03",
+    "Pattern": "Refusing to replace an existing directory that is not a media component cache|Node.js|PowerShell security|runtime.*(missing|signature|signed)|LICENSE is missing|The Node.js|PowerShell security module|Wallpaper launcher is missing|runtime.*(missing|incomplete|signature)",
+    "Message": "CodexPage 的必要文件无法使用，已停止操作。请从项目发布页重新下载安装。"
+  },
+  {
+    "Code": "file-empty",
+    "Pattern": "",
+    "Message": "文件为空，无法导入。请选择有内容的图片或视频。"
+  },
+  {
+    "Code": "file-is-folder",
+    "Pattern": "",
+    "Message": "所选项目是文件夹。请选择一张图片或一个视频文件。"
+  },
+  {
+    "Code": "file-too-large",
+    "Pattern": "",
+    "Message": "文件过大，请选择较小的文件后重新导入。"
+  }
+]

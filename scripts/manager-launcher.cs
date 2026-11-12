@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -17,11 +17,11 @@ namespace CodexDynamicSkin {
     static int Main(string[] args) {
       bool created;
       using (var mutex = new Mutex(true, "CodexDynamicSkinManager", out created)) {
-        if (!created) { MessageBox.Show("CodexPage 已经打开。", "CodexPage"); return 0; }
+        if (!created) { MessageBox.Show("CodexPage 已打开。请从任务栏切换到已有窗口。", "CodexPage"); return 0; }
         try {
           string root = AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
           string script = Path.Combine(root, "scripts", "manage-background.ps1");
-          if (!File.Exists(script)) throw new FileNotFoundException("安装文件不完整，请重新安装 CodexPage。", script);
+          if (!File.Exists(script)) throw new FileNotFoundException("安装文件不完整，请从项目发布页重新下载安装 CodexPage。", script);
           string arguments = "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy RemoteSigned -File \"" + script + "\" -InstallRoot \"" + root + "\"";
           if (args.Length == 2 && args[0] == "--update-ready") {
             Guid token;
@@ -37,11 +37,12 @@ namespace CodexDynamicSkin {
           info.WindowStyle = ProcessWindowStyle.Hidden;
           using (var process = Process.Start(info)) {
             process.WaitForExit();
-            if (process.ExitCode != 0) throw new Exception("CodexPage 启动失败，请重新安装；如果仍然失败，请检查安装目录中的日志。");
+            if (process.ExitCode != 0) throw new Exception("CodexPage 无法启动。请重新打开；若仍失败，请从项目发布页重新下载安装。");
           }
           return 0;
         } catch (Exception error) {
-          MessageBox.Show(error.Message, "CodexPage", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+          try { string logs = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs"); Directory.CreateDirectory(logs); File.AppendAllText(Path.Combine(logs, "manager-launcher.log"), DateTime.UtcNow.ToString("o") + " " + error.ToString() + Environment.NewLine); } catch { }
+          MessageBox.Show("CodexPage 无法启动。请重新打开；若仍失败，请从项目发布页重新下载安装。", "CodexPage", MessageBoxButtons.OK, MessageBoxIcon.Warning);
           return 1;
         } finally { mutex.ReleaseMutex(); }
       }

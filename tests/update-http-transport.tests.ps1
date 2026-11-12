@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
 . (Join-Path $repo 'scripts/app-update.ps1')
 . (Join-Path $repo 'scripts/update-ui.ps1')
@@ -20,7 +20,7 @@ try{
   $caught=$null
   try{Receive-DynamicUpdateFile ('http://127.0.0.1:'+$port+'/denied') $target 1024}catch{$caught=$_.Exception}
   if(-not $caught -or (Get-DynamicUpdateHttpStatus $caught) -ne 403){throw 'Real HTTP 403 was not preserved through GetResponse wrappers'}
-  if((Get-DynamicUpdateFailureMessage $caught) -notmatch '403'){throw 'Transport message lost the useful error'}
+  if((Get-DynamicUpdateFailureMessage $caught) -notmatch '请稍后重试'){throw 'Transport message lost the useful error'}
   if(Test-Path $target){throw 'Failed download left a payload'}
   $null=$server.EndInvoke($serverAsync)
 }finally{
@@ -31,7 +31,7 @@ function Update-DynamicManagerButtons {}
 . (Join-Path $repo 'scripts/skin-manager.ps1')
 $window=New-DynamicSkinManagerWindow
 $controls=@{}
-foreach($name in @('UpdateText','UpdateBanner','UpdateDialogHeading','UpdateNoticeContent','UpdateProgressContent','SkipUpdateButton','InstallUpdateButton','LaterUpdateButton','UpdateDialogHint')){$controls[$name]=$window.FindName($name)}
+foreach($match in [regex]::Matches([IO.File]::ReadAllText((Join-Path $repo 'scripts/skin-manager.xaml')),'x:Name="([^"]+)"')){$name=$match.Groups[1].Value;$controls[$name]=$window.FindName($name)}
 function Update-DynamicManagerButtons {}
 $worker=[PowerShell]::Create();$runspace=[RunspaceFactory]::CreateRunspace();$runspace.Open();$worker.Runspace=$runspace
 $null=$worker.AddScript('$e=[Net.WebException]::new("Forbidden");$e.Data["UpdateHttpStatus"]=403;throw $e')
@@ -40,6 +40,7 @@ while(-not $async.IsCompleted){Start-Sleep -Milliseconds 10}
 $timer=[pscustomobject]@{};$timer|Add-Member ScriptMethod Stop {}
 $script:SkinManager=@{Window=$window;UpdateQueue=[Collections.Concurrent.ConcurrentQueue[string]]::new();UpdateAsync=$async;UpdateWorker=$worker;UpdateRunspace=$runspace;UpdateTimer=$timer;UpdateOperation='Check';UpdateManual=$true;Controls=$controls}
 Complete-DynamicUpdateWork
-if($script:SkinManager.Controls.UpdateText.Text -notmatch '403' -or $script:SkinManager.Controls.UpdateText.Text -match 'GetResponse|EndInvoke'){throw 'UI exposed the technical exception instead of useful guidance'}
+if($controls.ConfirmationMessage.Text -notmatch '请稍后重试' -or $controls.ConfirmationMessage.Text -match 'GetResponse|EndInvoke|403'){throw 'UI exposed the technical exception instead of useful guidance'}
+if($controls.ConfirmationOverlay.Visibility -ne 'Visible' -or $controls.ConfirmAcceptButton.Content -ne '重新检查'){throw 'Failed update check needs a persistent retry action'}
 $window.Close()
 'PASS real HTTP 403 transport, cleanup and actual worker-to-UI readable error propagation'

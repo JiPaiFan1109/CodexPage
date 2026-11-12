@@ -85,7 +85,7 @@ try {
     } else {
       Get-DreamSkinText -Key 'RestoreClose' -Language $language
     }
-    $forceAuthorized = Confirm-DreamSkinRestart -Message $restartMessage
+    $forceAuthorized = Confirm-DreamSkinRestart -Message $restartMessage -Purpose $(if($NoRelaunch){'Close'}else{'Restore'})
     if (-not $forceAuthorized) {
       Write-Host (Get-DreamSkinText -Key 'RestoreCancelled' -Language $language)
       if ($ResultToken) {

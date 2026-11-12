@@ -1,4 +1,5 @@
-﻿# Update metadata is authenticated independently of GitHub using the bundled RSA key.
+﻿. (Join-Path $PSScriptRoot 'user-messages.ps1')
+# Update metadata is authenticated independently of GitHub using the bundled RSA key.
 function Test-DynamicNewVersion {
   param([string]$Candidate,[string]$Current)
   foreach($value in @($Candidate,$Current)){if($value -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$'){throw 'Invalid stable version'}}
@@ -85,14 +86,7 @@ function Get-DynamicUpdateHttpStatus {
 
 function Get-DynamicUpdateFailureMessage {
   param($Exception)
-  $status=Get-DynamicUpdateHttpStatus $Exception
-  if($status -eq 403 -or $status -eq 429){return ('更新服务器暂时限制了访问（'+$status+'），请稍后重试，也可从 GitHub 发布页下载安装。')}
-  if($status -eq 404){return '暂时找不到更新文件，请稍后重试。'}
-  if($status -ge 500){return '更新服务器暂时不可用，请稍后重试。'}
-  for($currentException=$Exception;$null -ne $currentException;$currentException=$currentException.InnerException){
-    if($currentException -is [Net.WebException]){return '无法连接更新服务器，请检查网络后重试。'}
-  }
-  return [string]$Exception.Message
+  return Get-DynamicUserErrorMessage $Exception Update
 }
 
 function Write-DynamicUpdateFailure {
@@ -239,10 +233,10 @@ function Save-DynamicAppUpdate {
       Get-ChildItem -LiteralPath $cache -Filter '*.exe' -File | Where-Object {$_.Name -match '^[a-f0-9]{64}\.exe$' -and $_.FullName -ne $cached} | Sort-Object LastWriteTimeUtc -Descending | Select-Object -Skip 1 | Remove-Item -Force
     }finally{$cacheGuard.Dispose()}
     Assert-DynamicUpdateNotCancelled
-    if($Report){& $Report '正在校验更新包…'}
+    if($Report){& $Report '下载完成，正在检查安装文件…'}
     Assert-DynamicUpdateFile $setup $verified
     Assert-DynamicUpdateNotCancelled
-    foreach($name in @('app-update.ps1','finish-update.ps1','update-progress.ps1','update-progress.xaml','update-public-key.xml')){Copy-Item -LiteralPath (Join-Path $InstallRoot ('scripts/'+$name)) -Destination $temp}
+    foreach($name in @('user-messages.ps1','user-messages.json','app-update.ps1','finish-update.ps1','update-progress.ps1','update-progress.xaml','update-public-key.xml')){Copy-Item -LiteralPath (Join-Path $InstallRoot ('scripts/'+$name)) -Destination $temp}
     $wordmark=Join-Path $InstallRoot 'appearance/codexpage-wordmark.png'
     if(Test-Path -LiteralPath $wordmark){Copy-Item -LiteralPath $wordmark -Destination $temp}
     Assert-DynamicUpdateNotCancelled
@@ -283,7 +277,12 @@ function Get-DynamicSetupFailureMessage {
       if($matches.Count){$reason=$matches[$matches.Count-1].Groups[1].Value.Trim()}
     }catch{}finally{if($stream){$stream.Dispose()}}
   }
-  return ('安装未完成（代码 '+$Code+'）。'+$reason)
+  $failure=Get-DynamicUserFailure $reason Install
+  if($failure.Code -eq 'unknown'){
+    $codeMap=@{1='G22';2='G23';3='G24';4='G25';5='G26';6='G26';7='G27';8='G28'}
+    if($codeMap.ContainsKey($Code)){return ((Get-DynamicMessageCatalog)|Where-Object Code -eq $codeMap[$Code]|Select-Object -First 1).Message}
+  }
+  return $failure.Message
 }
 
 function Assert-DynamicInstalledUpdate {

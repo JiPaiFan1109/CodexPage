@@ -1,4 +1,5 @@
-﻿. (Join-Path $PSScriptRoot 'manager-theme.ps1')
+﻿. (Join-Path $PSScriptRoot 'user-messages.ps1')
+. (Join-Path $PSScriptRoot 'manager-theme.ps1')
 function Get-DynamicVisibleWallpapers {
   param($Items,[ValidateSet('All','Image','Video')][string]$Filter,[ValidateSet('All','Local','WallpaperEngine')][string]$Source='All')
   @($Items | Where-Object {
@@ -29,14 +30,14 @@ function Get-DynamicCodexConnection {
     }else{
       $reason='detection-unavailable';$errorDetail='连接检测组件不可用，请重新安装壁纸软件。'
     }
-    $message='已安装 Codex '+$version+'，尚未建立壁纸连接。'
-    if($reason -eq 'endpoint-unavailable'){$message='已安装 Codex '+$version+'，此前的壁纸连接已不可用。'}
-    if($reason -eq 'session-changed'){$message='已安装 Codex '+$version+'，Codex 会话已变化，需要重新连接。'}
-    if($errorDetail){$message+=' 检测详情：'+$errorDetail}
+    $message='已安装 Codex '+$version+'，点击左下角 Codex 图标即可连接。'
+    if($reason -eq 'endpoint-unavailable'){$message='已安装 Codex '+$version+'，与 Codex 的连接已断开，请点击左下角 Codex 图标重新连接。'}
+    if($reason -eq 'session-changed'){$message='已安装 Codex '+$version+'，与 Codex 的连接已断开，请点击左下角 Codex 图标重新连接。'}
+    if($errorDetail){$message=Get-DynamicUserErrorMessage $errorDetail Open}
     if($connected){$message='连接成功 · Codex '+$version}
     [pscustomobject]@{Available=$true;Connected=$connected;Version=$version;Message=$message;Executable=$codex.Executable;Error=$errorDetail;Reason=$reason}
   }catch{
-    [pscustomobject]@{Available=$false;Connected=$false;Version=$null;Message=('未找到可用的 Codex。检测详情：'+$_.Exception.Message);Executable=$null;Error=$_.Exception.Message;Reason='install-unavailable'}
+    [pscustomobject]@{Available=$false;Connected=$false;Version=$null;Message=(Get-DynamicUserErrorMessage $_.Exception Locate);Executable=$null;Error=$_.Exception.Message;Reason='install-unavailable'}
   }
 }
 
@@ -55,7 +56,7 @@ function Start-DynamicCodexConnectionWork {
   if($ui.Busy){return}
   if(-not $ui.Connection.Available -and -not $ui.PrepareOnly){
     try { Show-DynamicCodexLocateDialog }
-    catch { Show-DynamicManagerConfirmation -Title '无法定位 Codex' -Message $_.Exception.Message -Action {} -AcceptText '知道了' -NoticeOnly }
+    catch { Show-DynamicManagerFailure $_.Exception Locate }
     return
   }
   if($ui.PrepareOnly -or $ui.Connection.Connected){Start-DynamicManagerWork Refresh;return}
@@ -63,30 +64,30 @@ function Start-DynamicCodexConnectionWork {
 }
 
 function Show-DynamicCodexLocateDialog {
-  Show-DynamicManagerConfirmation -Title '定位 Codex' -Message '请选择用于启动 Codex 的快捷方式，或 Codex 安装目录中的 ChatGPT.exe。' -AcceptText '选择文件' -Action {Select-DynamicCodexFile}
+  Show-DynamicManagerConfirmation -Title '选择 Codex' -Message '请选择平时用来打开 Codex 的快捷方式。也可选择 Codex 安装文件夹中的 ChatGPT.exe。' -AcceptText '选择文件' -Action {Select-DynamicCodexFile}
 }
 
 function Select-DynamicCodexFile {
   $ui=$script:SkinManager
   Add-Type -AssemblyName PresentationFramework
   $dialog=New-Object Microsoft.Win32.OpenFileDialog
-  $dialog.Title='定位 Codex'
+  $dialog.Title='选择 Codex'
   $dialog.Filter='Codex 快捷方式或程序|*.lnk;*.exe|快捷方式|*.lnk|程序文件|ChatGPT.exe'
   $dialog.Multiselect=$false
   $dialog.CheckFileExists=$true
   $dialog.DereferenceLinks=$false
   $dialog.InitialDirectory=[Environment]::GetFolderPath('StartMenu')
-  $dialogInstruction='请选择用于启动 Codex 的快捷方式，或 Codex 安装目录中的 ChatGPT.exe。'
+  $dialogInstruction='请选择平时用来打开 Codex 的快捷方式。也可选择 Codex 安装文件夹中的 ChatGPT.exe。'
   try {
     if($dialog.ShowDialog($ui.Window) -ne $true){return}
     try {
       $install=Resolve-DreamSkinCodexManualSelection -Path $dialog.FileName
       Write-DreamSkinManualCodexSelection -StateRoot $ui.StateRoot -Install $install | Out-Null
-      $ui.Connection=[pscustomobject]@{Available=$true;Connected=$false;Version=$install.Version;Message='已定位 Codex，尚未建立壁纸连接。';Executable=$install.Executable;Error=$null;Reason='manual-selection'}
+      $ui.Connection=[pscustomobject]@{Available=$true;Connected=$false;Version=$install.Version;Message='已定位 Codex，点击左下角 Codex 图标即可连接。';Executable=$install.Executable;Error=$null;Reason='manual-selection'}
       Update-DynamicManagerConnectionBadge
       Start-DynamicManagerWork Open
     } catch {
-      Show-DynamicManagerConfirmation -Title '无法定位 Codex' -Message ($dialogInstruction+"`n`n"+$_.Exception.Message) -Action {} -AcceptText '知道了' -NoticeOnly
+      Show-DynamicManagerFailure $_.Exception Locate
     }
   } finally { $dialog=$null }
 }
@@ -97,7 +98,7 @@ function Connect-DynamicCodex {
   $connection=Get-DynamicCodexConnection -StateRoot $StateRoot
   if($connection.Available -and (Test-DreamSkinExternalSourceMissing -StateRoot $StateRoot)){
     Invoke-DynamicEngine -StateRoot $StateRoot
-    $connection.Message='Steam 壁纸源文件已移除，已打开 Codex 初始外观。'
+    $connection.Message='找不到正在使用的 Wallpaper Engine 壁纸，已打开 Codex 的原始外观。请在 Wallpaper Engine 中重新下载这张壁纸，再回到这里导入。'
     return [pscustomobject]@{Connection=$connection;Cancelled=$false;Error=$null}
   }
   $cancelled=$false;$failure=$null
@@ -106,13 +107,12 @@ function Connect-DynamicCodex {
     try{Invoke-DynamicEngine -StateRoot $StateRoot}
     catch{
       if(Test-DynamicOperationCancelled $_.Exception){$cancelled=$true}
-      else{$failure=Get-DynamicManagerErrorMessage $_.Exception}
+      else{$failure=$_.Exception}
     }
     $connection=Get-DynamicCodexConnection -StateRoot $StateRoot
-    if(-not $cancelled -and -not $failure -and -not $connection.Connected){$failure=$connection.Message+' 请重试；仍失败时请查看安装目录中的日志。'}
-    if($failure){$failure+="`n启动日志目录："+(Join-Path $StateRoot 'logs')}
+    if(-not $cancelled -and -not $failure -and -not $connection.Connected){$failure=[Exception]::new('应用失败：cdp-endpoint-unavailable')}
   }
-  if($failure){$connection.Message=$failure}
+  if($failure){$connection.Message=Get-DynamicUserErrorMessage $failure Open}
   [pscustomobject]@{Connection=$connection;Cancelled=$cancelled;Error=$failure}
 }
 
@@ -128,25 +128,33 @@ function Get-DynamicManagerActionState {
 }
 
 function Get-DynamicManagerErrorMessage {
-  param([System.Exception]$Exception)
-  while($null -ne $Exception.InnerException){$Exception=$Exception.InnerException}
-  $message=$Exception.Message
-  $reasons=@{
-    'cdp-launch-failed'='未能启动换肤版 Codex，请保存工作并关闭 Codex，再从 CodexPage 重试。'
-    'cdp-direct-access-denied'='Windows 阻止了换肤启动。请查看启动日志中的拒绝访问详情，并提供日志供排查。'
-    'cdp-endpoint-unavailable'='未能建立 Codex 换肤连接，请保存工作并关闭 Codex，再点击图标重试；仍失败时请提供启动日志供排查。'
-    'port-unavailable'='换肤连接端口不可用，请稍后重试。'
-    'state-reconciliation-failed'='无法安全确认此前的运行状态，请关闭 Codex 后重试。'
-    'injector-start-failed'='换肤后台未能启动，请重试；仍失败时请查看安装目录中的日志。'
-    'renderer-verification-failed'='未能确认壁纸已经生效，请重新打开 Codex 后重试。'
-    'superseded'='本次操作已被较新的换肤操作取代。'
-    'internal-start-failure'='换肤启动未完成，请查看安装目录中的日志后重试。'
+  param([System.Exception]$Exception,[string]$Operation='Open')
+  return Get-DynamicUserErrorMessage $Exception $Operation
+}
+
+function Show-DynamicManagerFailure {
+  param($ErrorObject,[string]$Operation='Open')
+  $ui=$script:SkinManager
+  if($ui.Busy){return}
+  $failure=Get-DynamicUserFailure $ErrorObject $Operation
+  if($failure.Cancelled -or $failure.Code -eq 'A18'){Show-DynamicManagerToast $failure.Message Info;return}
+  $details=Write-DynamicMessageDiagnostic $ui.StateRoot $failure
+  $action=$null;$accept='关闭'
+  switch($Operation){
+    'Open' {$action={Start-DynamicCodexConnectionWork};$accept='重新连接'}
+    'Locate' {$action={Select-DynamicCodexFile};$accept='重新选择'}
+    'LibraryLoad' {$action={Start-DynamicManagerWork LibraryLoad};$accept='重新读取'}
+    'EngineLocate' {$action={Start-DynamicManagerWork EngineLocate};$accept='重新查找'}
+    'SaveOpacity' {$action={Save-DynamicManagerOpacity};$accept='重试保存'}
+    'Check' {$action={Start-DynamicUpdateWork Check -Manual};$accept='重新检查'}
+    'Download' {$action={Start-DynamicUpdateWork Download};$accept='重新下载'}
   }
-  foreach($category in $reasons.Keys){
-    $message=$message.Replace(('应用失败：'+$category),$reasons[$category])
-    $message=$message.Replace(('恢复未完成：'+$category),('恢复未完成：'+$reasons[$category]))
-  }
-  return $message
+  if($failure.Code -eq 'A11'){$failure.Title='暂时无法确认壁纸已显示';$failure.Message='请先切换到 Codex 查看壁纸；若没有显示，请返回这里点击“重新连接”。'}
+  Show-DynamicManagerConfirmation -Title $failure.Title -Message $failure.Message -Action $action -AcceptText $accept -NoticeOnly:($null -eq $action)
+  if($action){$ui.Controls.ConfirmCancelButton.Content='稍后处理'}
+  $box=$ui.Window.FindName('ProblemDetails');$expander=$ui.Window.FindName('ProblemExpander')
+  if($box -and $expander){$box.Text=$details;$expander.Visibility='Visible'}
+  $ui.Controls.StatusText.Text=$failure.Message;$ui.Controls.StatusText.Visibility='Visible'
 }
 
 function New-DynamicSkinManagerWindow {
@@ -249,11 +257,11 @@ function Register-DynamicManagerClosingGuard {
   $Window.Add_Closing({
     param($sender,$eventArgs)
     $ui=$script:SkinManager
-    if($ui.Busy -and -not $ui.UpdateClosing -and $ui.PendingOperation -notin @('LibraryLoad','Refresh','EngineLocate')){$eventArgs.Cancel=$true;$ui.Controls.StatusText.Text='正在保存或应用更改，暂时不能中断。可最小化窗口，完成后即可关闭。';return}
+    if($ui.Busy -and -not $ui.UpdateClosing -and $ui.PendingOperation -notin @('LibraryLoad','Refresh','EngineLocate')){$eventArgs.Cancel=$true;$ui.Controls.StatusText.Text='正在保存或应用更改，请完成后再关闭。你可以先最小化窗口。';return}
     if(-not (Test-DynamicManagerDraftSaved)){
       $ui.UpdateClosing=$false
       $eventArgs.Cancel=$true
-      Show-DynamicManagerConfirmation -Title '调整尚未保存' -Message '清晰度保存失败。返回后可重试关闭来保存，或放弃本次调整并关闭；原有壁纸和已保存设置会保留。' -AcceptText '放弃调整并关闭' -Action {
+      Show-DynamicManagerConfirmation -Title '调整尚未保存' -Message '背景强度尚未保存。返回后可再次尝试保存；放弃后，本次调整不会保留，原有壁纸和已保存设置会保留。' -AcceptText '放弃调整并关闭' -Action {
         $script:SkinManager.PendingOpacity=$null
         $script:SkinManager.Window.Close()
       }
@@ -370,13 +378,18 @@ function Update-DynamicManagerButtons {
   $ui.Controls.OpenButton.IsEnabled=(-not $ui.Busy)
   if($ui.PrepareOnly){$ui.Controls.ApplyButton.IsEnabled=([bool]$ui.Selected -and $ui.Selected.IsAvailable -and -not $ui.Busy)}
   if($ui.Controls.ContextApplyButton){$ui.Controls.ContextApplyButton.IsEnabled=$ui.Controls.ApplyButton.IsEnabled}
+  foreach($name in @('ApplyButton','DeleteButton','PreviewButton')){
+    $button=$ui.Controls[$name];if(-not $button){continue}
+    $hint=if($ui.Busy){'正在处理，请完成后再操作。'}elseif(-not $ui.Selected){'请先选择一张壁纸。'}elseif($name -eq 'DeleteButton' -and $ui.Status.Error){'暂时无法确认正在使用的壁纸，请重新打开 CodexPage 后再试。'}elseif($name -eq 'DeleteButton' -and $ui.Status.CurrentId -eq $ui.Selected.Id){'正在使用这张壁纸，请先更换壁纸或恢复原始外观。'}elseif(-not $ui.Selected.IsAvailable){'文件不可用，请重新导入原文件。'}elseif($name -eq 'ApplyButton' -and -not $ui.Connection.Available){'请先点击左下角 Codex 图标选择 Codex。'}else{switch($name){'ApplyButton'{'应用到 Codex'}'DeleteButton'{'从壁纸库删除'}'PreviewButton'{'预览壁纸'}}}
+    $button.ToolTip=$hint;[Windows.Controls.ToolTipService]::SetShowOnDisabled($button,$true);[Windows.Automation.AutomationProperties]::SetHelpText($button,$hint)
+  }
   if($ui.Controls.ContextPreviewButton){$ui.Controls.ContextPreviewButton.IsEnabled=([bool]$ui.Selected -and $ui.Selected.IsAvailable -and -not $ui.Busy)}
   if($ui.Controls.PreviewButton){$ui.Controls.PreviewButton.IsEnabled=([bool]$ui.Selected -and $ui.Selected.IsAvailable -and -not $ui.Busy)}
   if($ui.Controls.ClosePreviewButton){$ui.Controls.ClosePreviewButton.IsEnabled=(-not $ui.Busy)}
   if($ui.Controls.WallpaperOpacitySlider){$ui.Controls.WallpaperOpacitySlider.IsEnabled=(-not $ui.Busy)}
   if($ui.Controls.CurrentWallpaperName){
     $current=@($ui.Items|Where-Object {$_.Id -eq $ui.Status.CurrentId}|Select-Object -First 1)
-    $ui.Controls.CurrentWallpaperName.Text=if($current.Count){$current[0].Name}elseif($ui.Status.CurrentId -or $ui.Status.HasExternalCurrent){'当前壁纸不在此图库'}else{'尚未应用壁纸'}
+    $ui.Controls.CurrentWallpaperName.Text=if($current.Count){$current[0].Name}elseif($ui.Status.CurrentId -or $ui.Status.HasExternalCurrent){'当前壁纸不在此列表中'}else{'尚未应用壁纸'}
   }
   foreach($name in @('LocalNavButton','EngineNavButton','ImageFilter','VideoFilter','WallpaperList')){if($ui.Controls[$name]){$ui.Controls[$name].IsEnabled=(-not $ui.Busy)}}
   foreach($name in @('EngineImportButton','EngineFolderButton','EngineRefreshButton')){if($ui.Controls[$name]){$ui.Controls[$name].IsEnabled=(-not $ui.Busy)}}
@@ -406,8 +419,8 @@ function Update-DynamicManagerSelection {
   $item=$ui.Selected
   if(-not $item){
     $ui.Controls.SelectedName.Text='尚未选择壁纸';$ui.Controls.SelectedName.ToolTip=$null
-    $ui.Controls.SelectedDetails.Text='从下方选择壁纸，或导入新的图片与视频。';$ui.Controls.PreviewPlaceholder.Text='选择一张壁纸'
-    $ui.Controls.SelectedStatus.Text='SELECTED WALLPAPER'
+    $ui.Controls.SelectedDetails.Text='请先从壁纸库选择一张壁纸，也可点击右上角“导入壁纸”。';$ui.Controls.PreviewPlaceholder.Text='选择一张壁纸'
+    $ui.Controls.SelectedStatus.Text='已选中'
     foreach($field in @('SelectedFormat','SelectedSize','SelectedImportedAt')){$ui.Controls[$field].Text='—'}
   }else{
     $ui.Controls.SelectedName.Text=$item.Name;$ui.Controls.SelectedName.ToolTip=$item.Name
@@ -416,14 +429,14 @@ function Update-DynamicManagerSelection {
     $ui.Controls.SelectedFormat.Text=$kind+' · '+$format
     $ui.Controls.SelectedSize.Text=Format-DynamicWallpaperSize $item.Size
     $ui.Controls.SelectedImportedAt.Text=$item.ImportedAtUtc.ToLocalTime().ToString('yyyy.MM.dd')
-    $ui.Controls.SelectedStatus.Text='SELECTED WALLPAPER'
-    $ui.Controls.SelectedDetails.Text='仅预览，尚未应用。点击“应用壁纸”后生效。'
-    if($ui.Status.CurrentId -eq $item.Id){$ui.Controls.SelectedStatus.Text='CURRENT WALLPAPER';$ui.Controls.SelectedDetails.Text='当前正在使用这张壁纸。'}
+    $ui.Controls.SelectedStatus.Text='已选中'
+    $ui.Controls.SelectedDetails.Text='这里只显示预览，点击“应用壁纸”后才会更换 Codex 的壁纸。'
+    if($ui.Status.CurrentId -eq $item.Id){$ui.Controls.SelectedStatus.Text='正在使用';$ui.Controls.SelectedDetails.Text='当前正在使用这张壁纸。'}
     $ui.Controls.PreviewPlaceholder.Text='预览暂不可用'
-    if(-not $item.IsAvailable){$ui.Controls.PreviewNotice.Text=$item.Error;$ui.Controls.PreviewNotice.Visibility='Visible'}
+    if(-not $item.IsAvailable){$ui.Controls.PreviewNotice.Text=Get-DynamicUserErrorMessage $item.Error Preview;$ui.Controls.PreviewNotice.Visibility='Visible'}
     elseif($item.Kind -eq 'Video'){
       $ui.Controls.PreviewImage.Source=Read-DynamicManagerBitmap $item.ThumbnailPath
-      $ui.Controls.PreviewNotice.Text='静音循环预览，播放不会改变当前背景。'
+      $ui.Controls.PreviewNotice.Text='静音循环预览，不会更换当前壁纸。'
     }else{
       $ui.SyncOpacity=$true
       try{
@@ -434,13 +447,13 @@ function Update-DynamicManagerSelection {
     $ui.Controls.PreviewShade.Opacity=0.6*[Math]::Min(1.0,$value/50.0)
         $ui.Controls.OpacityPanel.Visibility='Visible'
       }finally{$ui.SyncOpacity=$false}
-      $ui.Controls.PreviewNotice.Text='50% 为原图基准 · 自动保存'
+      $ui.Controls.PreviewNotice.Text='50% 对应原图效果，调整会自动保存'
       $path=$item.MediaPath;$width=1600
       if($ui.Controls.PreviewOverlay.Visibility -ne 'Visible' -and $item.ThumbnailPath){$path=$item.ThumbnailPath;$width=640}
       $bitmap=Read-DynamicManagerBitmap $path $width
-      if(-not $bitmap){$bitmap=Read-DynamicManagerBitmap $item.ThumbnailPath;$ui.Controls.PreviewNotice.Text='完整预览受限，已尝试显示缩略图。'}
+      if(-not $bitmap){$bitmap=Read-DynamicManagerBitmap $item.ThumbnailPath;$ui.Controls.PreviewNotice.Text='无法显示完整预览，当前显示缩略图。'}
       $ui.Controls.PreviewImage.Source=$bitmap
-      if(-not $bitmap){$ui.Controls.PreviewPlaceholder.Visibility='Visible';$ui.Controls.PreviewNotice.Text='无法读取预览，请检查原文件。';$ui.Controls.PreviewNotice.Visibility='Visible'}
+      if(-not $bitmap){$ui.Controls.PreviewPlaceholder.Visibility='Visible';$ui.Controls.PreviewNotice.Text='暂时无法预览这张壁纸。请确认原文件能正常打开，再重新导入。';$ui.Controls.PreviewNotice.Visibility='Visible'}
     }
   }
   Update-DynamicManagerButtons
@@ -506,8 +519,8 @@ function Update-DynamicManagerList {
   $selection=@($views|Where-Object Id -eq $SelectedId)
   if($selection.Count){$ui.Controls.WallpaperList.SelectedItem=$selection[0]}else{$ui.Controls.WallpaperList.SelectedIndex=-1}
   $ui.Controls.EmptyState.Visibility='Collapsed'
-  if(-not $views.Count){$ui.Controls.EmptyState.Visibility='Visible';$ui.Controls.EmptyTitle.Text='你的壁纸收藏，从这里开始';if($ui.Items.Count){$ui.Controls.EmptyTitle.Text='此分类还没有壁纸'}}
-  $hint=$ui.Window.FindName('EmptyHint');if($hint){$hint.Text='导入图片或视频，选中后悬停预览。'}
+  if(-not $views.Count){$ui.Controls.EmptyState.Visibility='Visible';$ui.Controls.EmptyTitle.Text='壁纸库还没有内容';if($ui.Items.Count){$ui.Controls.EmptyTitle.Text='此分类没有壁纸'}}
+  $hint=$ui.Window.FindName('EmptyHint');if($hint){$hint.Text='点击“导入壁纸”添加图片或视频。点击已选中的分类可显示全部。'}
   foreach($name in @('All','Image','Video')){
     if(-not $ui.Controls[($name+'Filter')]){continue}
     $ui.Controls[($name+'Filter')].BorderBrush=[Windows.Media.Brushes]::Transparent
@@ -529,7 +542,7 @@ function Start-DynamicManagerWork {
   if($ui.Busy){return}
   if(-not (Test-DynamicManagerDraftSaved)){return}
   Stop-DynamicManagerPreview
-  $ui.Busy=$true;$ui.Controls.WorkProgress.Visibility='Visible';$ui.Controls.StatusText.Text='正在处理…'
+  $ui.Busy=$true;$ui.Controls.WorkProgress.Visibility='Visible';$ui.Controls.StatusText.Text='正在'+(Get-DynamicOperationLabel $Operation)+'…'
   $ui.Controls.StatusText.Visibility='Visible'
   $ui.PendingOperation=$Operation
   if($Operation -eq 'LibraryLoad'){
@@ -561,9 +574,9 @@ function Start-DynamicManagerWork {
       'Import' {
         $kind='Video';if([IO.Path]::GetExtension($Argument).ToLowerInvariant() -in @('.png','.jpg','.jpeg','.webp','.bmp','.tif','.tiff','.avif')){$kind='Image'}
         $result=Import-DynamicWallpaper $Argument $kind $StateRoot $report;$selected=$result.Item.Id
-        $message='已保存到壁纸库，点击应用后生效。';if($result.AlreadyExists){$message='壁纸已存在，已选中原有项目。'}
+        $message='已导入壁纸。选中后点击“应用壁纸”即可使用。';if($result.AlreadyExists){$message='这张壁纸已在库中，已为你选中。'}
       }
-      'EngineLocate' {$engineRoots=@(Get-DynamicWallpaperEngineRoots);$message='目录定位完成。'}
+      'EngineLocate' {$engineRoots=@(Get-DynamicWallpaperEngineRoots);$message='壁纸文件夹查找完成。'}
       {$_ -in @('EngineImport','EngineRefresh','EngineConvert')} {
         $roots=@($KnownEngineRoots);if($Argument -and $Operation -ne 'EngineConvert'){$roots=@($Argument)}
         if($roots.Count){$roots=@($roots|Where-Object {Test-Path -LiteralPath $_ -PathType Container});if(-not $roots.Count){throw '已定位的目录不可用，请重新选择壁纸目录。'}}
@@ -578,17 +591,17 @@ function Start-DynamicManagerWork {
           }
         }
         $selected=$batch.SelectedId;if($Operation -eq 'EngineRefresh'){$selected=$null};$engineRoots=@($batch.Roots)
-        $message=('导入 {0}，已存在 {1}，不支持 {2}，失败 {3}。' -f $batch.Imported,$batch.Existing,$batch.Skipped,$batch.Failed)
+        $message=('本次导入完成：新增 {0} 张，已有 {1} 张，暂不支持 {2} 张，未能导入 {3} 张。' -f $batch.Imported,$batch.Existing,$batch.Skipped,$batch.Failed)
         if($batch.Converted){$batch.Details=@(('已自动转换 '+$batch.Converted+' 项，原文件保留。'))+$batch.Details}
-        if($batch.Previews){$message+=(' 预览素材 '+$batch.Previews+' 项。')}
-        if(-not $batch.Roots.Count){$message='未找到本地 Wallpaper Engine 壁纸，请选择壁纸目录。'}
+        if($batch.Previews){$message+=(' 其中仅为预览素材的有 '+$batch.Previews+' 项。')}
+        if(-not $batch.Roots.Count){$message='未找到本机的 Wallpaper Engine 壁纸。请点击“选择壁纸目录”，选择已下载壁纸所在的文件夹。'}
         if($Operation -in @('EngineImport','EngineConvert')){$engineReport=$message+"`n"+($batch.Details -join "`n")}
       }
       'Swap' {Switch-DynamicWallpaperOrder $StateRoot $Argument $Name;$selected=$Argument;$message='壁纸位置已交换。'}
       'Apply' {Use-DynamicWallpaper $StateRoot $Argument {Invoke-DynamicEngine -StateRoot $StateRoot}|Out-Null;$selected=$Argument;$message='壁纸已应用。'}
       'Rename' {Rename-DynamicWallpaper $StateRoot $Argument $Name|Out-Null;$selected=$Argument;$message='名称已保存。'}
       'Delete' {Remove-DynamicWallpaper $StateRoot $Argument;$message='壁纸已从库中删除。'}
-      'SaveCurrent' {$result=Save-DynamicCurrentWallpaper $StateRoot $report;$selected=$result.Item.Id;Set-DynamicCurrentImportPromptDismissed $StateRoot;$message='当前背景已保存到壁纸库。'}
+      'SaveCurrent' {$result=Save-DynamicCurrentWallpaper $StateRoot $report;$selected=$result.Item.Id;Set-DynamicCurrentImportPromptDismissed $StateRoot;$message='当前壁纸已保存到壁纸库。'}
       'DismissPrompt' {Set-DynamicCurrentImportPromptDismissed $StateRoot}
       'Open' {
         $attempt=Connect-DynamicCodex -StateRoot $StateRoot
@@ -598,7 +611,7 @@ function Start-DynamicManagerWork {
       }
       'Restore' {
         $restored=Restore-DynamicWallpaperAppearance $StateRoot {Invoke-DynamicEngine -StateRoot $StateRoot -Restore}
-        $message='当前为原始外观，壁纸收藏仍保留。'
+        $message='已恢复原始外观，壁纸库已保留。'
         if($restored -eq $false){$message='已取消恢复。';$cancelled=$true}
       }
       'Refresh' { }
@@ -607,12 +620,12 @@ function Start-DynamicManagerWork {
       default {throw '未知管理操作。'}
     }}catch{
       if(-not (Test-DynamicOperationCancelled $_.Exception)){throw}
-      $selected=$Argument;$message='已取消操作，原有外观未改变。';$cancelled=$true
+      $selected=$Argument;$message='已取消操作。';$cancelled=$true
     }
     $items=@(Get-DynamicWallpaperItems $StateRoot)
     $status=Get-DynamicWallpaperStatus $StateRoot -Items $items
     if($Operation -in @('Apply','Restore')){$connection=Get-DynamicCodexConnection -StateRoot $StateRoot}
-    if($status.Error){$message='读取当前背景失败：'+$status.Error}
+    if($status.Error){$message=Get-DynamicUserErrorMessage ('读取当前背景失败：'+$status.Error) LibraryLoad}
     if($PrepareOnly){$message='预览模式 · '+$message}
     [pscustomobject]@{Items=$items;Status=$status;Connection=$connection;SelectedId=$selected;Message=$message;EngineReport=$engineReport;EngineRoots=$engineRoots;ConversionPrompt=$conversionPrompt;Cancelled=$cancelled;ConnectionError=$connectionError}
   }
@@ -625,7 +638,7 @@ function Complete-DynamicManagerWork {
   $message=$null
   while($ui.Queue.TryDequeue([ref]$message)){$ui.Controls.StatusText.Text=$message}
   if(-not $ui.Async.IsCompleted){return}
-  $ui.Timer.Stop();$importReport=$null;$conversionPrompt=$null;$connectionFailure=$null;$startupNext=$null
+  $ui.Timer.Stop();$importReport=$null;$conversionPrompt=$null;$connectionFailure=$null;$workFailure=$null;$startupNext=$null
   try {
     $results=$ui.Worker.EndInvoke($ui.Async)
     if($ui.Worker.HadErrors){throw $ui.Worker.Streams.Error[0].Exception}
@@ -643,7 +656,7 @@ function Complete-DynamicManagerWork {
     if($ui.PendingOperation -eq 'EngineRefresh'){Show-DynamicManagerToast $result.Message Info}
     if($result.Cancelled){Show-DynamicManagerToast $result.Message Info}
     elseif($ui.PendingOperation -eq 'Open'){
-      if($result.ConnectionError){$connectionFailure=$result.ConnectionError;Show-DynamicManagerToast '连接未完成，请查看详细原因。' Error}
+      if($result.ConnectionError){$connectionFailure=$result.ConnectionError}
       elseif($ui.Connection.Connected){Show-DynamicManagerToast ('连接成功 · Codex '+$ui.Connection.Version) Success}
     }
     elseif($ui.PendingOperation -eq 'Apply' -and -not $result.Status.Error){Show-DynamicManagerToast '壁纸已应用' Success}
@@ -659,13 +672,11 @@ function Complete-DynamicManagerWork {
     if($ui.PendingOperation -eq 'LibraryLoad'){
       $ui.StartupConnectionPending=$false
       $count=$ui.Window.FindName('GalleryCount');if($count){$count.Text='未加载'}
-      $ui.Controls.EmptyState.Visibility='Visible';$ui.Controls.EmptyTitle.Text='壁纸库读取失败，请重新打开管理中心'
-      $hint=$ui.Window.FindName('EmptyHint');if($hint){$hint.Text='已保存的文件仍保留，请查看下方错误详情'}
+      $ui.Controls.EmptyState.Visibility='Visible';$ui.Controls.EmptyTitle.Text='暂时无法读取壁纸库'
+      $hint=$ui.Window.FindName('EmptyHint');if($hint){$hint.Text='请关闭并重新打开 CodexPage 后再试'}
     }
     if($ui.PendingOperation -in @('EngineLocate','EngineImport','EngineRefresh','EngineConvert')){Set-DynamicEngineSearchState}
-    $errorMessage=Get-DynamicManagerErrorMessage $_.Exception
-    $ui.Controls.StatusText.Text='操作未完成：'+$errorMessage
-    Show-DynamicManagerToast ('操作未完成：'+$errorMessage) Error
+    $workFailure=$_.Exception
   }finally{
     Set-DynamicConnectionChecking $false
     $ui.Worker.Dispose();$ui.Runspace.Dispose();$ui.Worker=$null;$ui.Runspace=$null;$ui.Async=$null
@@ -673,7 +684,8 @@ function Complete-DynamicManagerWork {
   }
   if($conversionPrompt){Show-DynamicSteamConversionConfirmation $conversionPrompt $importReport}
   elseif($null -ne $importReport){Show-DynamicImportResult $importReport}
-  if($connectionFailure){Show-DynamicManagerConfirmation -Title 'Codex 连接未完成' -Message $connectionFailure -Action {} -AcceptText '知道了' -NoticeOnly}
+  if($connectionFailure){Show-DynamicManagerFailure $connectionFailure Open}
+  elseif($workFailure){Show-DynamicManagerFailure $workFailure $ui.PendingOperation}
   if($startupNext){Start-DynamicManagerWork $startupNext}
 }
 
@@ -738,7 +750,7 @@ function Open-DynamicManagerAboutLink {
   param([ValidateSet('GitHub','Email')][string]$Target)
   $uri=if($Target -eq 'GitHub'){'https://github.com/JiPaiFan1109/CodexPage'}else{'mailto:jipaifanyyds@gmail.com'}
   try{Start-Process -FilePath $uri -ErrorAction Stop|Out-Null}
-  catch{Show-DynamicManagerToast '无法打开默认应用，请手动使用关于软件中的地址。' Info}
+  catch{Show-DynamicManagerConfirmation -Title '无法打开默认应用' -Message '请在“关于软件”中复制项目地址或邮箱，再用浏览器或邮件应用打开。' -Action {} -AcceptText '关闭' -NoticeOnly}
 }
 function Show-DynamicSkinManager {
   param([string]$InstallRoot,[string]$StateRoot,[switch]$PrepareOnly,[switch]$OwnProcess)
@@ -772,6 +784,10 @@ function Show-DynamicSkinManager {
     . (Join-Path $InstallRoot 'engine/scripts/multi-instance.ps1') -StateRoot $script:SkinManager.StateRoot
     Start-DreamSkinInstanceMonitor -StateRoot $script:SkinManager.StateRoot
   }
+  $window.FindName('CopyProblemButton').Add_Click({
+    try{[Windows.Clipboard]::SetText($script:SkinManager.Window.FindName('ProblemDetails').Text);$script:SkinManager.Window.FindName('CopyProblemButton').Content='已复制'}
+    catch{$script:SkinManager.Window.FindName('CopyProblemButton').Content='复制失败，可选中文字复制'}
+  })
   $controls.ConfirmAcceptButton.Add_Click({Complete-DynamicManagerConfirmation $true})
   $controls.ConfirmCancelButton.Add_Click({Complete-DynamicManagerConfirmation $false})
   $controls.ConfirmCloseButton.Add_Click({Complete-DynamicManagerConfirmation $false})
@@ -779,13 +795,15 @@ function Show-DynamicSkinManager {
   $controls.EngineNavButton.Add_Click({Set-DynamicManagerSource WallpaperEngine;if(-not $script:SkinManager.EngineLocated -and -not $script:SkinManager.Busy){Start-DynamicManagerWork EngineLocate}})
   $controls.SettingsButton.Add_Click({$panel=$script:SkinManager.Controls.SettingsPanel;if($panel.Visibility -eq 'Visible'){$panel.Visibility='Collapsed'}else{$panel.Visibility='Visible'}})
   $controls.AboutButton.Add_Click({Set-DynamicManagerAboutVisible $true})
+  $window.FindName('CopyProjectAddress').Add_Click({try{[Windows.Clipboard]::SetText('https://github.com/JiPaiFan1109/CodexPage');$script:SkinManager.Window.FindName('CopyProjectAddress').Content='已复制项目地址'}catch{$script:SkinManager.Window.FindName('CopyProjectAddress').Content='复制失败，请重试'}})
+  $window.FindName('CopyAuthorEmail').Add_Click({try{[Windows.Clipboard]::SetText('jipaifanyyds@gmail.com');$script:SkinManager.Window.FindName('CopyAuthorEmail').Content='已复制邮箱'}catch{$script:SkinManager.Window.FindName('CopyAuthorEmail').Content='复制失败，请重试'}})
   $controls.AboutCloseButton.Add_Click({Set-DynamicManagerAboutVisible $false})
   $controls.AboutDoneButton.Add_Click({Set-DynamicManagerAboutVisible $false})
   $controls.AboutGithubButton.Add_Click({Open-DynamicManagerAboutLink GitHub})
   $controls.AboutEmailButton.Add_Click({Open-DynamicManagerAboutLink Email})
   $controls.EngineImportButton.Add_Click({
     $ui=$script:SkinManager
-    Show-DynamicManagerConfirmation '导入本地壁纸？' '先导入可直接使用的壁纸，保留原文件。若有需要转换的文件，将在导入完成后询问。场景与网页仅导入标注的预览素材。' {Start-DynamicManagerWork EngineImport} -AcceptText '确认导入'
+    Show-DynamicManagerConfirmation '导入本地壁纸？' '图片和兼容视频可直接加入；需要转换时会再询问。场景和网页壁纸只能使用其中可读取的预览图或视频，无法保留完整互动效果。原文件保留。' {Start-DynamicManagerWork EngineImport} -AcceptText '开始导入'
   })
   $controls.EngineRefreshButton.Add_Click({if(-not $script:SkinManager.Busy){Start-DynamicManagerWork EngineRefresh}})
   $controls.EngineFolderButton.Add_Click({
@@ -845,12 +863,12 @@ function Show-DynamicSkinManager {
   $controls.DeleteButton.Add_Click({
     $ui=$script:SkinManager
     $id=$ui.Selected.Id
-    Show-DynamicManagerConfirmation -Title ('删除“'+$ui.Selected.Name+'”？') -Message '只删除库中的副本，原文件会保留。' -AcceptText '确认删除' -Action {Stop-DynamicManagerPreview;Start-DynamicManagerWork Delete $id}.GetNewClosure()
+    Show-DynamicManagerConfirmation -Title ('删除“'+$ui.Selected.Name+'”？') -Message $(if($ui.Selected.External){'仅从壁纸库列表移除，不删除 Wallpaper Engine 中的文件。'}else{'将删除库中的副本，导入前的原文件保留。'}) -AcceptText '删除壁纸' -Action {Stop-DynamicManagerPreview;Start-DynamicManagerWork Delete $id}.GetNewClosure()
   })
   $controls.OpenButton.Add_Click({Start-DynamicCodexConnectionWork})
   $controls.RestoreButton.Add_Click({Start-DynamicManagerWork Restore})
   $controls.PreviewVideo.Add_MediaEnded({$video=$script:SkinManager.Controls.PreviewVideo;$video.Position=[timespan]::Zero;$video.Play()})
-  $controls.PreviewVideo.Add_MediaFailed({Stop-DynamicManagerPreview;$script:SkinManager.Controls.PreviewNotice.Text='本机无法播放此预览。文件仍保留，可尝试应用壁纸。';$script:SkinManager.Controls.PreviewNotice.Visibility='Visible'})
+  $controls.PreviewVideo.Add_MediaFailed({Stop-DynamicManagerPreview;$script:SkinManager.Controls.PreviewNotice.Text='暂时无法播放预览。你可以尝试应用壁纸；若在 Codex 中也无法播放，请重新导入兼容的视频。';$script:SkinManager.Controls.PreviewNotice.Visibility='Visible'})
   Register-DynamicManagerClosingGuard $window
   $window.Add_ContentRendered({
     if($script:DynamicUpdateReadyToken -match '^[a-f0-9]{32}$'){
@@ -889,7 +907,9 @@ function Save-DynamicManagerOpacity {
     $ui.Controls.PreviewNotice.Text='已保存'
     $ui.Controls.PreviewNotice.Visibility='Collapsed'
   }catch{
-    $ui.Controls.PreviewNotice.Text='清晰度保存失败，调整已保留。请检查文件或权限后重试关闭预览：'+$_.Exception.Message
+    $failure=Get-DynamicUserFailure $_.Exception SaveOpacity
+    $null=Write-DynamicMessageDiagnostic $ui.StateRoot $failure
+    $ui.Controls.PreviewNotice.Text='背景强度未能保存，本次调整暂时保留在窗口中。请再次点击“返回图库”重试保存。'
     $ui.Controls.PreviewNotice.Visibility='Visible'
   }
 }
@@ -1041,8 +1061,8 @@ function Update-DynamicManagerConnectionBadge {
     if($ui.Connection.Available){$ui.Controls.ConnectionLabel.Text='已找到Codex';$ui.Controls.ConnectionDetail.Text='连接未建立'}
     if($ui.Connection.Connected){$ui.Controls.ConnectionLabel.Text='连接成功';$ui.Controls.ConnectionDetail.Text='Codex '+$ui.Connection.Version}
   }
-  $action='点击图标重新检测'
-  if(-not $ui.Connection.Available -and -not $ui.PrepareOnly){$action='点击图标手动指定 Codex 快捷方式或 ChatGPT.exe。'}
+  $action='点击左下角 Codex 图标重新检查'
+  if(-not $ui.Connection.Available -and -not $ui.PrepareOnly){$action='点击左下角 Codex 图标选择 Codex 的快捷方式。'}
   if($ui.Connection.Available -and -not $ui.Connection.Connected -and -not $ui.PrepareOnly){$action='点击图标建立连接；需要重启时会先征求确认。'}
   $ui.Controls.OpenButton.ToolTip=$ui.Connection.Message+"`n"+$action
 }
@@ -1079,6 +1099,9 @@ function Show-DynamicManagerConfirmation {
   if($ui.Window -is [Windows.Window] -and $ui.Controls.ConfirmationOverlay.Visibility -ne 'Visible'){
     $ui.ConfirmationPreviousFocus=[Windows.Input.FocusManager]::GetFocusedElement($ui.Window)
   }
+  if($ui.Controls.ToastPanel){$ui.Controls.ToastPanel.Visibility='Collapsed'}
+  if($ui.ToastTimer){$ui.ToastTimer.Stop()}
+  $details=$ui.Window.FindName('ProblemExpander');if($details){$details.IsExpanded=$false;$details.Visibility='Collapsed';$ui.Window.FindName('ProblemDetails').Text='';$ui.Window.FindName('CopyProblemButton').Content='复制问题信息'}
   $ui.Controls.ConfirmCancelButton.Content='取消'
   $ui.Controls.ConfirmCancelButton.Visibility='Visible'
   $ui.Controls.ConfirmationCancelColumn.Width=[Windows.GridLength]::new(1,[Windows.GridUnitType]::Star)
@@ -1105,22 +1128,22 @@ function Show-DynamicManagerConfirmation {
 function Show-DynamicSteamConversionConfirmation {
   param($Pending,[string]$ImportReport)
   $count=@($Pending.Projects).Count
-  $message=('已导入 {0} 项，已有 {1} 项。另有 {2} 项需要转换后才能导入。' -f $Pending.Imported,$Pending.Existing,$count)
-  $title='转换剩余壁纸？';$accept='转换并导入'
+  $message=('已导入 {0} 张，已有 {1} 张。还有 {2} 张壁纸需要转换后才能导入。转换后会占用额外磁盘空间，原文件保留。' -f $Pending.Imported,$Pending.Existing,$count)
+  $title='转换其余壁纸？';$accept='转换并导入'
   if($Pending.NeedsDownload){
-    $title='下载转换器并继续？';$accept='下载并转换'
-    $message+=' 需要下载并校验转换器，下载体积和解压占用取决于实际获取的版本；下载后可重复使用。'
+    $title='下载转换工具并继续？';$accept='下载并转换'
+    $message+=' 需要联网下载转换工具，下载和解压会占用额外磁盘空间；下载后可重复使用。'
   }
   $message+=' 跳过不会影响已经导入的壁纸。'
   $projects=ConvertTo-Json -InputObject @($Pending.Projects) -Compress
   $cancelReport=$ImportReport+"`n"+('已跳过 {0} 项待转换壁纸，已导入的壁纸保留。' -f $count)
   Show-DynamicManagerConfirmation -Title $title -Message $message -AcceptText $accept -Action {Start-DynamicManagerWork EngineConvert $projects}.GetNewClosure() -CancelAction {Show-DynamicImportResult $cancelReport}.GetNewClosure()
-  $script:SkinManager.Controls.ConfirmCancelButton.Content='跳过'
+  $script:SkinManager.Controls.ConfirmCancelButton.Content='暂不转换'
 }
 
 function Show-DynamicImportResult {
   param([string]$Report)
-  Show-DynamicManagerConfirmation -Title '壁纸导入结果' -Message $Report -Action {} -AcceptText '知道了' -NoticeOnly
+  Show-DynamicManagerConfirmation -Title '壁纸导入结果' -Message $Report -Action {} -AcceptText '关闭' -NoticeOnly
 }
 function Complete-DynamicManagerConfirmation {
   param([bool]$Accepted)
@@ -1146,15 +1169,15 @@ function Show-DynamicManagerToast {
   $ui.Controls.ToastIconBorder.Background=[Windows.Media.BrushConverter]::new().ConvertFromString($color)
   $ui.Controls.ToastPanel.Visibility='Visible'
   if(-not $ui.ToastTimer){$ui.ToastTimer=New-Object Windows.Threading.DispatcherTimer;$ui.ToastTimer.Interval=[timespan]::FromSeconds(5);$ui.ToastTimer.Add_Tick({$script:SkinManager.Controls.ToastPanel.Visibility='Collapsed';$script:SkinManager.ToastTimer.Stop()})}
-  $ui.ToastTimer.Stop();$ui.ToastTimer.Start()
+  $ui.ToastTimer.Stop();if($Kind -ne 'Error'){$ui.ToastTimer.Start()}
 }
 function Confirm-DynamicWallpaperApply {
   $ui=$script:SkinManager
   if(-not $ui.Selected -or $ui.PrepareOnly -or $ui.Busy){return}
   $id=$ui.Selected.Id
-  Show-DynamicManagerConfirmation -Title '应用这张壁纸？' -Message '保存当前工作后继续，可能需要重启 Codex。' -AcceptText '确认应用' -Action {
+  Show-DynamicManagerConfirmation -Title '应用这张壁纸？' -Message '将更换 Codex 的壁纸。如需重启，会先询问你。' -AcceptText '应用壁纸' -Action {
     Save-DynamicManagerOpacity
-    if($ui.PendingOpacity){Show-DynamicManagerToast '清晰度保存失败，请重试后再应用壁纸。' Error;return}
+    if($ui.PendingOpacity){Show-DynamicManagerToast '背景强度尚未保存。请先返回预览并重试保存，再应用壁纸。' Error;return}
     Start-DynamicManagerWork Apply $id
   }.GetNewClosure()
 }
@@ -1268,7 +1291,7 @@ function Initialize-DynamicManagerDrag {
     $ui=$script:SkinManager;$ui.SuppressPreview=$true;$ui.DragGesture=$null;$e.Handled=$true
     $region=Get-DynamicDragRegion $e.OriginalSource
     if($region.Kind -ne 'Card' -or -not $e.Data.GetDataPresent('CodexWallpaperId')){return}
-    try{Invoke-DynamicManagerCardSwap ([string]$e.Data.GetData('CodexWallpaperId')) ([string]$region.Card.Content.Id)}catch{Show-DynamicManagerToast ('交换失败：'+$_.Exception.Message) Error}
+    try{Invoke-DynamicManagerCardSwap ([string]$e.Data.GetData('CodexWallpaperId')) ([string]$region.Card.Content.Id)}catch{Show-DynamicManagerFailure $_.Exception Swap}
   })
 }
 
@@ -1287,16 +1310,16 @@ function Set-DynamicEngineSearchState {
   $ui.Controls.EngineFolderButton.Visibility='Collapsed'
   $ui.Controls.EngineRefreshButton.Visibility=if(@($ui.EngineRoots).Count){'Visible'}else{'Collapsed'}
   if($Searching){
-    $ui.Controls.EngineSearchStatus.Text='正在定位本地壁纸目录…'
+    $ui.Controls.EngineSearchStatus.Text='正在查找本机壁纸…'
     if(Test-DynamicManagerMotionEnabled){
       $animation=[Windows.Media.Animation.DoubleAnimation]::new(0,360,[Windows.Duration]::new([timespan]::FromMilliseconds(900)))
       $animation.RepeatBehavior=[Windows.Media.Animation.RepeatBehavior]::Forever
       $rotation.BeginAnimation([Windows.Media.RotateTransform]::AngleProperty,$animation)
     }
   }elseif($Roots.Count){
-    $ui.EngineRoots=@($Roots);$ui.Controls.EngineSearchStatus.Text=($Roots -join '；');$ui.Controls.EngineRefreshButton.Visibility='Visible'
+    $ui.EngineRoots=@($Roots);$ui.Controls.EngineSearchStatus.Text='已找到 '+$Roots.Count+' 个壁纸文件夹';$ui.Controls.EngineSearchStatus.ToolTip=($Roots -join '；');$ui.Controls.EngineRefreshButton.Visibility='Visible'
   }else{
     $ui.EngineRoots=@();$ui.Controls.EngineRefreshButton.Visibility='Collapsed';$ui.Controls.EngineFolderButton.Visibility='Visible'
-    $ui.Controls.EngineSearchStatus.Text='定位本地夹失败，请手动选择wallpaper地址'
+    $ui.Controls.EngineSearchStatus.Text='未找到本机壁纸。请点击“选择壁纸目录”，选择已下载壁纸所在的文件夹。'
   }
 }

@@ -20,7 +20,7 @@ try{
   $cancel=[hashtable]::Synchronized(@{Cancel=$true;Request=$null})
   Reject {Save-DynamicAppUpdate $root @{version='1.0.1'} $null $cancel}
   $script:DynamicUpdateCancellation=$null
-  Assert ((Get-DynamicSetupFailureMessage 4) -match '磁盘空间') 'Write failure must explain disk/permissions'
+  Assert ((Get-DynamicSetupFailureMessage 4) -match '磁盘.*空间') 'Write failure must explain disk/permissions'
   Assert ((Get-DynamicSetupFailureMessage 8) -match '重启') 'Restart-needed exit must explain restart'
   Assert ((Get-DynamicSetupFailureMessage 2) -notmatch '占用') 'Cancellation must not be misreported as file contention'
   Save-DynamicUpdateResult $root @{Success=$false;Message='fixture'}

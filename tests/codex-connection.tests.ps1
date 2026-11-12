@@ -3,7 +3,7 @@
 function Assert($Condition,$Message){if(-not $Condition){throw $Message}}
 function Get-DreamSkinCodexInstall { [pscustomobject]@{Version='26.1000';Executable='C:\Codex\Codex.exe'} }
 $connection=Get-DynamicCodexConnection
-Assert ($connection.Available -and $connection.Message -like '*26.1000*') 'Registered Codex was not detected'
+Assert ($connection.Available -and $connection.Version -eq '26.1000') 'Registered Codex was not detected'
 Assert (-not $connection.Connected) 'Installed application alone must not imply connection'
 function Read-DreamSkinState {param($Path);[pscustomobject]@{port=9345;browserId='expected'}}
 function Get-DreamSkinVerifiedCdpIdentityForAnyRegistered {param($Port);[pscustomobject]@{Identity=[pscustomobject]@{BrowserId='wrong'};Codex=[pscustomobject]@{Version='26.1000'}}}

@@ -18,7 +18,7 @@ function Get-DreamSkinVerifiedCdpIdentityForAnyRegistered {
 foreach($scenario in @('state-error','endpoint-error')){
   $script:scenario=$scenario;$result=Get-DynamicCodexConnection
   Assert ($result.Available -and -not $result.Connected -and $result.Error) "$scenario must retain its diagnostic error without claiming Codex is missing"
-  Assert ($result.Message.Contains($result.Error)) "$scenario must explain its error in the connection details"
+  Assert (-not $result.Message.Contains($result.Error) -and $result.Message -match '请') "$scenario must explain its error in the connection details"
 }
 foreach($scenario in @('missing','unavailable','changed','healthy','install-error')){
   $script:scenario=$scenario;$result=Get-DynamicCodexConnection
