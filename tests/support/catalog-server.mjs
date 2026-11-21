@@ -17,8 +17,9 @@ const server = createServer(async (request, response) => {
   await appendFile(path.join(dir, 'requests.log'), request.url + '\n');
   try {
     if (request.url === '/v1/catalog') {
+      const body = await readFile(path.join(dir, 'catalog.json'));
       response.writeHead(200, { 'content-type': 'application/json' });
-      response.end(await readFile(path.join(dir, 'catalog.json')));
+      response.end(body);
       return;
     }
     const match = /^\/v1\/parts\/([a-f0-9]{64})\/(\d{1,4})$/.exec(request.url);
@@ -36,7 +37,7 @@ const server = createServer(async (request, response) => {
     }
     response.writeHead(404).end();
   } catch {
-    response.writeHead(404).end();
+    if (!response.headersSent) response.writeHead(404).end();
   }
 });
 server.listen(0, '127.0.0.1', async () => {
