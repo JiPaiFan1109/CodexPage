@@ -745,25 +745,31 @@ async function probeSession(session) {
     return {
       markers,
       excludedPetSurface,
+      // A Codex application document whose interface has not rendered yet.
+      appDocument: !excludedPetSurface && location.protocol === 'app:',
       codex: !excludedPetSurface && location.protocol === 'app:' &&
         ((markers.shell && markers.sidebar) || settings || markers.main || markers.generic),
     };
   })()`);
 }
 
-async function waitForCodexProbe(session, timeoutMs = 1800) {
-  const deadline = Date.now() + timeoutMs;
+async function waitForCodexProbe(session, timeoutMs = 1800, { pendingAppTimeoutMs = 0 } = {}) {
+  const startedAt = Date.now();
   let probe = null;
-  while (Date.now() < deadline) {
+  while (true) {
     try {
       probe = await probeSession(session);
       if (probe?.codex) return probe;
     } catch {
       // The renderer may be between documents while the early payload waits.
     }
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    const elapsed = Date.now() - startedAt;
+    // A Codex document that is still rendering its interface is worth waiting
+    // for on the open connection; anything else gets the short probe window.
+    const limit = probe?.appDocument && pendingAppTimeoutMs > timeoutMs ? pendingAppTimeoutMs : timeoutMs;
+    if (elapsed >= limit || session.closed) return probe;
+    await new Promise((resolve) => setTimeout(resolve, elapsed < timeoutMs ? 50 : 150));
   }
-  return probe;
 }
 
 async function connectTarget(target, port) {
@@ -1588,6 +1594,9 @@ export async function externalSourceUnavailable(themeDir) {
 }
 
 const UNHEALTHY_RECHECK_MS = 1500;
+const NEW_TARGET_WINDOW_MS = 90000;
+const PENDING_SHELL_RETRY_MS = 1500;
+const PENDING_SHELL_WAIT_MS = 20000;
 const UNHEALTHY_RECONNECT_MS = 60000;
 
 async function runWatch(options) {
@@ -1608,10 +1617,18 @@ async function runWatch(options) {
   const videoConfig = options.videoState && !await externalSourceUnavailable(options.themeDir) ? await loadVideoReadiness(options.videoState) : null;
   let paused = false;
   const stop = () => { stopping = true; };
-  const rejectTarget = (target, baseDelayMs, error = null) => {
+  // Codex can take from a few seconds to almost a minute to render its main
+  // screen after it starts. While a target is new, retry it quickly instead of
+  // backing off to 30 s, which used to leave the window without wallpaper.
+  const targetFirstSeen = new Map();
+  const targetIsNew = (target) => {
+    if (!targetFirstSeen.has(target.id)) targetFirstSeen.set(target.id, Date.now());
+    return Date.now() - targetFirstSeen.get(target.id) < NEW_TARGET_WINDOW_MS;
+  };
+  const rejectTarget = (target, baseDelayMs, error = null, maxDelayMs = 30000) => {
     const previous = targetFailures.get(target.id) ?? { failures: 0, lastLogAt: 0 };
     const failures = previous.failures + 1;
-    const delayMs = Math.min(30000, baseDelayMs * (2 ** Math.min(failures - 1, 4)));
+    const delayMs = Math.min(maxDelayMs, baseDelayMs * (2 ** Math.min(failures - 1, 4)));
     const now = Date.now();
     if (error && (failures === 1 || now - previous.lastLogAt >= 30000)) {
       console.error(`[dream-skin] inject failed for ${target.id}: ${error.message}; retrying in ${delayMs}ms`);
@@ -1822,13 +1839,19 @@ async function runWatch(options) {
               console.error(`[dream-skin] early injection unavailable for ${target.id}: ${error.message}`);
             }
           }
-          const probe = await waitForCodexProbe(session);
+          const probe = await waitForCodexProbe(session, 1800, {
+            pendingAppTimeoutMs: targetIsNew(target) ? PENDING_SHELL_WAIT_MS : 0,
+          });
           if (!probe?.codex) {
             await removeEarlyPayload(session, earlyScriptId);
             if (probe?.excludedPetSurface && !await cleanupExcludedSurface(session)) {
               throw new Error("Excluded Pet surface cleanup did not verify");
             }
-            rejectTarget(target, 5000);
+            if (probe?.appDocument && targetIsNew(target)) {
+              targetFailures.set(target.id, { failures: 0, lastLogAt: 0, until: Date.now() + PENDING_SHELL_RETRY_MS });
+            } else {
+              rejectTarget(target, 5000);
+            }
             session.close();
             continue;
           }
@@ -1846,6 +1869,7 @@ async function runWatch(options) {
           sessions.set(target.id, session);
           if (earlyScriptId) earlyScripts.set(target.id, earlyScriptId);
           targetFailures.delete(target.id);
+          targetFirstSeen.delete(target.id);
           console.log(`[dream-skin] injected target ${target.id}`);
         } catch (error) {
           await removeEarlyPayload(session, earlyScriptId);
@@ -1853,7 +1877,7 @@ async function runWatch(options) {
           fallbackListeners.delete(target.id);
           session?.close();
           if (identityAnchor.closed || error instanceof CdpIdentityMismatchError) break;
-          rejectTarget(target, 2500, error);
+          rejectTarget(target, 2500, error, targetIsNew(target) ? 10000 : 30000);
         }
       }
       await new Promise((resolve) => setTimeout(resolve, 1200));
