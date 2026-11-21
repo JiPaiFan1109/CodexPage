@@ -1,0 +1,132 @@
+{
+  "mode": "verify",
+  "port": 32975,
+  "targets": [
+    {
+      "targetId": "F40DAEAE88AD9CFD5374B578A3B0044C",
+      "markers": {
+        "shell": true,
+        "sidebar": true,
+        "composer": true,
+        "main": true,
+        "generic": true
+      },
+      "result": {
+        "installed": true,
+        "version": "1.5.18",
+        "expectedVersion": "1.5.18",
+        "themeId": "preset-neutral",
+        "revision": "2673b16ab8e3eed62e4f",
+        "styleMode": "adopted",
+        "stylePresent": true,
+        "scope": {
+          "state": "overlay",
+          "baseState": "home",
+          "overlay": true,
+          "level": "L0",
+          "missingL1": [
+            "header-tint"
+          ]
+        },
+        "businessClassPollution": 0,
+        "homePresent": true,
+        "suggestionsPresent": false,
+        "homeSurface": {
+          "x": 341,
+          "y": 90,
+          "width": 751,
+          "height": 671,
+          "visible": true
+        },
+        "settingsAnchor": null,
+        "hero": {
+          "x": 351,
+          "y": 90,
+          "width": 731,
+          "height": 671,
+          "visible": true
+        },
+        "cards": [],
+        "visibleCardCount": 0,
+        "suggestionLabels": [],
+        "suggestionLabelColorsMatch": true,
+        "composer": {
+          "x": 367,
+          "y": 647,
+          "width": 699,
+          "height": 98,
+          "visible": true
+        },
+        "shell": {
+          "x": 340,
+          "y": 44,
+          "width": 751,
+          "height": 717,
+          "visible": true
+        },
+        "sidebar": {
+          "x": 0,
+          "y": 44,
+          "width": 340,
+          "height": 717,
+          "visible": true
+        },
+        "genericMain": {
+          "x": 340,
+          "y": 44,
+          "width": 751,
+          "height": 717,
+          "visible": true
+        },
+        "genericInput": {
+          "x": 367,
+          "y": 647,
+          "width": 699,
+          "height": 98,
+          "visible": true
+        },
+        "nativeWindow": {
+          "pass": false,
+          "bound": false,
+          "unsupported": true,
+          "reason": "browser-window-not-found"
+        },
+        "documentVisibility": "visible",
+        "documentHidden": false,
+        "viewport": {
+          "width": 1091,
+          "height": 761
+        },
+        "documentOverflow": {
+          "x": false,
+          "y": false
+        },
+        "video": {
+          "expected": false,
+          "present": false,
+          "ready": false,
+          "playing": false,
+          "currentTime": null,
+          "width": null,
+          "height": null
+        },
+        "image": {
+          "expected": true,
+          "present": true,
+          "ready": true
+        },
+        "expectedThemeId": "preset-neutral",
+        "expectedRevision": "2673b16ab8e3eed62e4f",
+        "readiness": {
+          "windowPass": true,
+          "documentPass": true,
+          "viewportPass": true,
+          "structurePass": false,
+          "nativeWindowPass": false,
+          "fallbackWindowPass": true
+        },
+        "pass": false
+      }
+    }
+  ]
+}

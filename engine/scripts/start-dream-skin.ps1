@@ -71,6 +71,32 @@ function Test-DreamSkinPendingVerificationOutput {
   } catch { return $false }
 }
 
+# A Codex dialog (for example a notice after an update) can cover the home
+# screen while the wallpaper underneath is already installed and correct. That
+# is not a failure: keep the session, and the watcher keeps the wallpaper once
+# the dialog closes. Only plain opens use this; apply transactions still need
+# full visible proof.
+function Test-DreamSkinOverlayPendingVerificationOutput {
+  param([AllowEmptyCollection()][object[]]$Output)
+  try {
+    $payload = ($Output -join "`n") | ConvertFrom-Json -ErrorAction Stop
+    $targets = @($payload.targets)
+    if ($targets.Count -eq 0) { return $false }
+    foreach ($target in $targets) {
+      $r = $target.result
+      if ($r.installed -ne $true -or $r.stylePresent -ne $true -or
+          "$($r.scope.state)" -cne 'overlay' -or
+          -not $r.expectedVersion -or $r.version -cne $r.expectedVersion -or
+          -not $r.expectedRevision -or $r.revision -cne $r.expectedRevision -or
+          -not $r.expectedThemeId -or $r.themeId -cne $r.expectedThemeId -or
+          $r.businessClassPollution -ne 0 -or $r.readiness.viewportPass -ne $true -or
+          ($r.image.expected -eq $true -and $r.image.present -ne $true) -or
+          ($r.video.expected -eq $true -and $r.video.present -ne $true)) { return $false }
+    }
+    return $true
+  } catch { return $false }
+}
+
 function Test-DreamSkinRenderedVerificationOutput {
   param([AllowEmptyCollection()][object[]]$Output)
   try {
@@ -700,6 +726,11 @@ try {
         Write-Host 'Wallpaper prepared in a hidden window; keeping recovery active until the window becomes visible.'
         break
       }
+      if (-not $ResultToken -and (Test-DreamSkinOverlayPendingVerificationOutput -Output $verify.Output)) {
+        $startupPending = $true
+        Write-Host 'Wallpaper installed under a Codex dialog; keeping the session until the dialog closes.'
+        break
+      }
       Write-Host ('Verification failed at ' + (Get-Date).ToString('o') + ': ' + ($verify.Output -join "`r`n"))
       # A verify can fail while the theme is demonstrably on screen: the
       # renderer reports the document visible, the viewport sized and the shell
@@ -779,6 +810,10 @@ try {
       }
     }
     if ($injectorStopped) { Remove-Item -LiteralPath $StatePath -Force -ErrorAction SilentlyContinue }
+    # A start requested by the launch guard replaced a window the user may be
+    # using by now; never close it on a failed check. The monitor keeps
+    # maintaining the wallpaper through the recovery intent.
+    if ($LaunchGuard) { $skinLooksRendered = $true }
     if ($launchedWithCdp -and -not $skinLooksRendered) {
       $rendererRollbackClosed = $false
       try {
