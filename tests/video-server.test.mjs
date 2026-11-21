@@ -119,3 +119,29 @@ test('CLI exits and removes temporary readiness files when readiness commit fail
   assert.equal(stdout, '');
   assert.deepEqual((await readdir(root)).filter(name => name.startsWith('ready.json.tmp-')), []);
 });
+
+test('a verified video hash is reused only for the identical file', async (t) => {
+  const { validateVideoSource } = await import('../engine/scripts/video-server.mjs');
+  const { utimes, readFile } = await import('node:fs/promises');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'skin-video-hash-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const bytes = Buffer.alloc(256 * 1024, 3);
+  const filePath = path.join(root, 'video.mp4');
+  const hashCachePath = path.join(root, 'video-ready.json.hash-cache.json');
+  await writeFile(filePath, bytes);
+  const expectedSha256 = createHash('sha256').update(bytes).digest('hex');
+  const options = { filePath, expectedSize: bytes.length, expectedSha256, hashCachePath };
+  assert.equal((await validateVideoSource(options)).hashCached, false);
+  assert.equal(JSON.parse(await readFile(hashCachePath, 'utf8')).sha256, expectedSha256);
+  assert.equal((await validateVideoSource(options)).hashCached, true);
+  // Same size, different content and time: the cache must not hide the change.
+  const changed = Buffer.alloc(bytes.length, 4);
+  await writeFile(filePath, changed);
+  await utimes(filePath, new Date(Date.now() + 5000), new Date(Date.now() + 5000));
+  await assert.rejects(validateVideoSource(options), /SHA-256 mismatch/);
+  // A cache entry for a different expected hash is ignored.
+  const changedSha = createHash('sha256').update(changed).digest('hex');
+  assert.equal((await validateVideoSource({ ...options, expectedSha256: changedSha })).hashCached, false);
+  assert.equal((await validateVideoSource({ ...options, expectedSha256: changedSha })).hashCached, true);
+  await assert.rejects(validateVideoSource(options), /SHA-256 mismatch/);
+});

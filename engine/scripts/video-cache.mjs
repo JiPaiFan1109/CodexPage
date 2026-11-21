@@ -7,16 +7,23 @@ export async function restoreVideoCache(config, key, token, timeoutMs = 2000) {
     window.__CODEX_DREAM_SKIN_STATE__ === s && s.installToken === token && typeof s.attachVideoBlob === 'function';
   if (!active()) return false;
   let timer;
+  let abandoned = false;
+  const available = () => !abandoned && active();
   try {
     const lookup = (async () => {
       const cache = await caches.open('codex-dream-skin-video-v1');
+      if (!available()) return null;
       const cacheKey = 'https://codex-dream-skin.invalid/current-video';
       const response = await cache.match(cacheKey);
-      if (!response || response.headers.get('x-video-sha256') !== config.fileSha256 ||
+      if (!available() || !response || response.headers.get('x-video-sha256') !== config.fileSha256 ||
           response.headers.get('content-length') !== String(config.fileSize)) return null;
       const blob = await response.blob();
+      if (!available()) return null;
       if (blob.size !== config.fileSize) { await cache.delete(cacheKey); return null; }
-      const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer()));
+      const bytes = await blob.arrayBuffer();
+      if (!available()) return null;
+      const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+      if (!available()) return null;
       const hex = Array.from(hash, b => b.toString(16).padStart(2, '0')).join('');
       if (hex !== config.fileSha256) { await cache.delete(cacheKey); return null; }
       return blob;
@@ -24,7 +31,10 @@ export async function restoreVideoCache(config, key, token, timeoutMs = 2000) {
     // A blocked/quota-limited storage service must never hold up normal loading.
     // Late lookup results have no attachment side effects.
     const blob = await Promise.race([lookup, new Promise(resolve => {
-      timer = setTimeout(() => resolve(null), timeoutMs);
+      timer = setTimeout(() => {
+        abandoned = true;
+        resolve(null);
+      }, timeoutMs);
     })]);
     if (!blob || !active()) return false;
     const previousUrl = s.videoBlobUrl, previousKey = s.videoBlobKey;

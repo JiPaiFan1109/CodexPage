@@ -22,25 +22,58 @@ async function hashFile(filePath) {
   return hash.digest("hex");
 }
 
-export async function validateVideoSource({ filePath, expectedSize, expectedSha256 }) {
+// A verified hash is remembered with the file's identity (volume, file ID,
+// size, modification time). Starting the video service at sign-in then skips
+// reading a large video in full when that exact file was verified before.
+function fileIdentity(entry) {
+  return [entry.dev, entry.ino, entry.size, entry.mtimeNs ?? entry.mtimeMs, entry.ctimeNs ?? entry.ctimeMs]
+    .map(value => String(value)).join(":");
+}
+
+async function readHashCache(cachePath, resolved, identity, expectedHash) {
+  if (!cachePath) return false;
+  try {
+    const cached = JSON.parse(await fsp.readFile(cachePath, "utf8"));
+    return cached?.schema === "codex-dream-skin-video-hash/1" && cached.filePath === resolved &&
+      cached.identity === identity && cached.sha256 === expectedHash;
+  } catch {
+    return false;
+  }
+}
+
+async function writeHashCache(cachePath, value) {
+  if (!cachePath) return;
+  try { await writeJsonAtomically(cachePath, { schema: "codex-dream-skin-video-hash/1", ...value }); } catch {}
+}
+
+export async function validateVideoSource({ filePath, expectedSize, expectedSha256, hashCachePath = null }) {
   const resolved = path.resolve(String(filePath ?? ""));
   const expectedHash = normalizeHash(expectedSha256);
   const size = Number(expectedSize);
   if (!Number.isSafeInteger(size) || size <= 0) {
     throw new Error("Expected video size must be a positive safe integer.");
   }
-  const entry = await fsp.lstat(resolved);
+  const entry = await fsp.lstat(resolved, { bigint: true });
   if (!entry.isFile() || entry.isSymbolicLink()) {
     throw new Error("Video source must be a regular file.");
   }
-  if (entry.size !== size) {
+  if (entry.size !== BigInt(size)) {
     throw new Error("Video size mismatch: expected " + size + ", received " + entry.size + ".");
+  }
+  const identity = fileIdentity(entry);
+  if (await readHashCache(hashCachePath, resolved, identity, expectedHash)) {
+    return { filePath: resolved, size, sha256: expectedHash, hashCached: true };
   }
   const actualHash = await hashFile(resolved);
   if (actualHash !== expectedHash) {
     throw new Error("Video SHA-256 mismatch: expected " + expectedHash + ", received " + actualHash + ".");
   }
-  return { filePath: resolved, size, sha256: actualHash };
+  // Re-check the identity so a file replaced during hashing is never cached.
+  const after = await fsp.lstat(resolved, { bigint: true });
+  if (fileIdentity(after) === identity) {
+    await writeHashCache(hashCachePath, { filePath: resolved, identity, sha256: actualHash });
+  }
+  return { filePath: resolved, size, sha256: actualHash, hashCached: false };
 }
 
 export function parseSingleRange(header, size) {
@@ -101,11 +134,12 @@ export async function startVideoServer({
   expectedSize,
   expectedSha256,
   token = crypto.randomBytes(32).toString("hex"),
+  hashCachePath = null,
 }) {
   if (!/^[a-f0-9]{64}$/.test(token)) {
     throw new Error("Video access token must be 64 lowercase hexadecimal characters.");
   }
-  const source = await validateVideoSource({ filePath, expectedSize, expectedSha256 });
+  const source = await validateVideoSource({ filePath, expectedSize, expectedSha256, hashCachePath });
   const route = "/" + token + "/video.mp4";
   const playerRoute = "/" + token + "/player.html";
   const playerHtml = Buffer.from(playerDocument(), "utf8");
@@ -235,7 +269,13 @@ async function runCli() {
   const options = parseCliArguments(process.argv.slice(2));
   const config = JSON.parse(await fsp.readFile(path.resolve(options.config), "utf8"));
   const startedAt = new Date().toISOString();
-  const instance = await startVideoServer(config);
+  const instance = await startVideoServer({
+    filePath: config.filePath,
+    expectedSize: config.expectedSize,
+    expectedSha256: config.expectedSha256,
+    ...(config.token ? { token: config.token } : {}),
+    hashCachePath: path.resolve(options.ready) + ".hash-cache.json",
+  });
   const tokenSha256 = crypto.createHash("sha256").update(instance.token).digest("hex");
   try {
     await writeJsonAtomically(options.ready, {
