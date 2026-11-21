@@ -371,9 +371,11 @@ try {
       # Backgrounds are session-only; never rewrite the user's global theme,
       # fonts, model, account or plugin configuration during startup.
       $startFailureCategory = 'port-unavailable'
-      if (-not (Test-DreamSkinPortAvailable -Port $Port)) {
-        if ($PortExplicit) { throw "Port $Port is already occupied by an unverified listener. Choose another port." }
-        $Port = Select-DreamSkinPort -PreferredPort $Port
+      # Each new connected instance gets an unpredictable free loopback port
+      # instead of the well-known 9345 (fewer conflicts, harder to guess).
+      if (-not $PortExplicit) { $Port = Select-DreamSkinRandomPort }
+      elseif (-not (Test-DreamSkinPortAvailable -Port $Port)) {
+        throw "Port $Port is already occupied by an unverified listener. Choose another port."
       }
       $arguments = @('--remote-debugging-address=127.0.0.1', "--remote-debugging-port=$Port")
       if ($ProfilePathExplicit) {

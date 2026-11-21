@@ -1142,6 +1142,20 @@ function Select-DreamSkinPort {
   throw "No free loopback port was found between $PreferredPort and $([Math]::Min(65535, $PreferredPort + 100))."
 }
 
+function Select-DreamSkinRandomPort {
+  param([int]$Minimum = 20000, [int]$Maximum = 59999, [int]$Attempts = 64)
+  $bytes = New-Object byte[] 4
+  $generator = [Security.Cryptography.RandomNumberGenerator]::Create()
+  try {
+    for ($attempt = 0; $attempt -lt $Attempts; $attempt++) {
+      $generator.GetBytes($bytes)
+      $candidate = $Minimum + [int]([BitConverter]::ToUInt32($bytes, 0) % [uint32]($Maximum - $Minimum + 1))
+      if (Test-DreamSkinPortAvailable -Port $candidate) { return $candidate }
+    }
+  } finally { $generator.Dispose() }
+  return Select-DreamSkinPort -PreferredPort 9345
+}
+
 function Wait-DreamSkinPortAvailable {
   param([int]$Port, [int]$TimeoutSeconds = 5)
   $deadline = (Get-Date).AddSeconds($TimeoutSeconds)

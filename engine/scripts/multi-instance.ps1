@@ -322,12 +322,15 @@ function Stop-DreamSkinUnconnectedCodex {
   $children = @($Processes | Where-Object { [int]$_.ParentProcessId -eq [int]$Process.ProcessId -and (Test-DreamSkinPathEqual $_.ExecutablePath $Process.ExecutablePath) })
   Stop-Process -Id ([int]$Process.ProcessId) -Force -ErrorAction SilentlyContinue
   foreach ($child in $children) { Stop-Process -Id ([int]$child.ProcessId) -Force -ErrorAction SilentlyContinue }
-  $deadline = [datetime]::UtcNow.AddSeconds(3)
+  # Wait for the browser process and its children so the connected start that
+  # follows does not see a half-closed instance.
+  $ids = @([int]$Process.ProcessId) + @($children | ForEach-Object { [int]$_.ProcessId })
+  $deadline = [datetime]::UtcNow.AddSeconds(5)
   while ([datetime]::UtcNow -lt $deadline) {
-    if (-not (Get-Process -Id ([int]$Process.ProcessId) -ErrorAction SilentlyContinue)) { return $true }
+    if (-not @($ids | Where-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue }).Count) { return $true }
     Start-Sleep -Milliseconds 100
   }
-  return $false
+  return -not (Get-Process -Id ([int]$Process.ProcessId) -ErrorAction SilentlyContinue)
 }
 
 function Start-DreamSkinLaunchGuardConnection {
