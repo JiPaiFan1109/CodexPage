@@ -3,7 +3,8 @@
 //   node catalog-server.mjs <dir> <ready-file>
 // <dir>/catalog.json is returned as the catalog response, <dir>/blobs/<sha> are
 // served as 2 MiB parts, and every request is appended to <dir>/requests.log.
-// When <dir>/corrupt exists, the first byte of every part is flipped.
+// When <dir>/corrupt exists, the first byte of every part is flipped. <dir>/delay may
+// hold a per-part delay in milliseconds (used to show progress in previews).
 import { createServer } from 'node:http';
 import { readFile, appendFile, writeFile, access } from 'node:fs/promises';
 import path from 'node:path';
@@ -27,6 +28,8 @@ const server = createServer(async (request, response) => {
       const part = Buffer.from(bytes.subarray(index * CHUNK, Math.min(bytes.length, (index + 1) * CHUNK)));
       if (!part.length) { response.writeHead(404).end(); return; }
       if (await exists(path.join(dir, 'corrupt'))) part[0] ^= 0xff;
+      const delay = Number(await readFile(path.join(dir, 'delay'), 'utf8').catch(() => '0'));
+      if (delay > 0) await new Promise(resolve => setTimeout(resolve, Math.min(delay, 5000)));
       response.writeHead(200, { 'content-type': 'application/octet-stream', 'content-length': String(part.length) });
       response.end(part);
       return;
