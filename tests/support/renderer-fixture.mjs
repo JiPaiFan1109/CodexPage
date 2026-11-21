@@ -185,7 +185,7 @@ function makeFixture({
     partFixtures.composerToolbar = makeDomNode("composer-toolbar", partFixtures.composer);
     register("aside.app-shell-left-panel", partFixtures.sidebar);
     register("main:is(.main-surface, [data-app-shell-main-surface], [class*=\"_MainContentSurface_\"])", partFixtures.main);
-    register("header:is(.app-header-tint, [data-app-shell-header-edge-scroll], [class*=\"_Header_\"])", partFixtures.header);
+    register("header:is(.app-header-tint, [data-app-shell-header-edge-scroll], [data-app-shell-titlebar], [class*=\"_Header_\"])", partFixtures.header);
     register('[data-testid="home-icon"]', partFixtures.homeIcon);
     register('[data-feature="game-source"]', partFixtures.homeHero);
     register('[role="main"]:has([data-testid="home-icon"])', partFixtures.home);
