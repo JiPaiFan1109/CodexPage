@@ -16,3 +16,4 @@ engine/nested-install/
 *.lnk
 .DS_Store
 .update-gate
+previews/
