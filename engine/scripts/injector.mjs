@@ -944,7 +944,9 @@ export function earlyPayloadFor(payload, revision) {
     if (install()) return;
     document.addEventListener?.("DOMContentLoaded", install, { once: true });
     bootstrapTimer = setInterval(install, 250);
-    timeout = setTimeout(stop, 10000);
+    // A cache-bypassing reload can take well over 10 s before the Codex shell exists;
+    // giving up early left the wallpaper to the 10 s health audit and a reconnect (TASK-114).
+    timeout = setTimeout(stop, 45000);
   })()`;
 }
 
@@ -1585,6 +1587,9 @@ export async function externalSourceUnavailable(themeDir) {
   } catch { return true; }
 }
 
+const UNHEALTHY_RECHECK_MS = 1500;
+const UNHEALTHY_RECONNECT_MS = 60000;
+
 async function runWatch(options) {
   const identityAnchor = await connectBrowserIdentityAnchor(options.port, options.browserId, options.timeoutMs);
   const sessions = new Map();
@@ -1598,6 +1603,7 @@ async function runWatch(options) {
   let lastThemeErrorLogAt = 0;
   let lastStrongThemeAuditAt = 0;
   let lastSessionAuditAt = 0;
+  const unhealthySince = new Map();
   let loadedPayload = null;
   const videoConfig = options.videoState && !await externalSourceUnavailable(options.themeDir) ? await loadVideoReadiness(options.videoState) : null;
   let paused = false;
@@ -1759,14 +1765,28 @@ async function runWatch(options) {
         }
       }
 
-      if (!paused && Date.now() - lastSessionAuditAt >= 10000) {
+      // A reload leaves the page without wallpaper state until the Codex shell returns,
+      // which can take tens of seconds. Re-check quickly instead of dropping the session,
+      // and reconnect only after a sustained failure (TASK-114).
+      for (const id of unhealthySince.keys()) if (!sessions.has(id)) unhealthySince.delete(id);
+      const auditInterval = unhealthySince.size ? UNHEALTHY_RECHECK_MS : 10000;
+      if (!paused && Date.now() - lastSessionAuditAt >= auditInterval) {
         lastSessionAuditAt = Date.now();
         for (const [id, session] of sessions) {
           try {
-            if (await maintainSession(session, loadedPayload.payload, loadedPayload.video)) continue;
+            if (await maintainSession(session, loadedPayload.payload, loadedPayload.video)) {
+              unhealthySince.delete(id);
+              continue;
+            }
           } catch (error) {
-            console.error(`[dream-skin] health repair deferred for ${id}: ${error.message}`);
+            if (!unhealthySince.has(id)) console.error(`[dream-skin] health repair deferred for ${id}: ${error.message}`);
           }
+          const since = unhealthySince.get(id) ?? Date.now();
+          if (!session.closed && Date.now() - since < UNHEALTHY_RECONNECT_MS) {
+            unhealthySince.set(id, since);
+            continue;
+          }
+          unhealthySince.delete(id);
           await removeEarlyPayload(session, earlyScripts.get(id));
           earlyScripts.delete(id);
           fallbackTargets.delete(id);
