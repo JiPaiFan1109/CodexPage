@@ -32,7 +32,9 @@ try{
   Assert ($script:attempts -eq 2) 'Failure must attempt restoration'
   Assert (([IO.File]::ReadAllText((Join-Path $state 'active-theme/theme.json'))) -eq $old) 'Failure lost previous configuration'
   $failedBackups=@(Get-ChildItem -LiteralPath $state -Directory -Filter 'media-rollback-*')
-  Assert ($failedBackups.Count -eq 1) 'Failed operation must preserve recovery evidence'
+  Assert ($failedBackups.Count -eq 0) 'A failed apply whose previous background was restored must not leave a duplicate snapshot'
+  # A snapshot left by an apply whose restoration itself failed stays as evidence.
+  $older=Join-Path $state ('media-rollback-'+[guid]::NewGuid().ToString('N'));[void][IO.Directory]::CreateDirectory($older)
   Invoke-DynamicBackgroundTransaction $prepared $state {}
   Assert ((Get-ChildItem -LiteralPath $state -Directory -Filter 'media-rollback-*').Count -eq 1) 'Success must not remove older recovery evidence'
   # A cleanup error must not turn a successful apply into a second apply/rollback.
@@ -43,7 +45,7 @@ try{
     Invoke-DynamicBackgroundTransaction $prepared $state {$script:attempts++}
     Assert ($script:attempts -eq 1) 'Cleanup failure must not reapply or roll back'
   }finally{Set-Item Function:Remove-DreamSkinManagedDirectoryVerified $cleanup}
-  'PASS successful backup cleanup, failed recovery preservation and nonfatal cleanup failure'
+  'PASS successful and restored backup cleanup, older evidence preservation and nonfatal cleanup failure'
 }finally{
   if([IO.Path]::GetFullPath($root).StartsWith([IO.Path]::GetFullPath([IO.Path]::GetTempPath()),[StringComparison]::OrdinalIgnoreCase)){
     Remove-Item -LiteralPath $root -Recurse -Force

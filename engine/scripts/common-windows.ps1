@@ -691,6 +691,18 @@ namespace CodexDynamicSkin {
 '@
 }
 
+# Records that CodexPage itself opened Codex without the wallpaper connection
+# (restore, a failed start, an unavailable Steam source). The launch guard
+# leaves such a launch alone instead of replacing it again.
+function Write-DreamSkinNativeLaunchMarker {
+  try {
+    $stateRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+    if (-not (Test-Path -LiteralPath (Join-Path $stateRoot 'installed-files.json') -PathType Leaf)) { return }
+    $content = @{ At = [datetime]::UtcNow.ToString('o'); ProcessId = $PID } | ConvertTo-Json -Compress
+    Write-DreamSkinUtf8FileAtomically -Path (Join-Path $stateRoot 'native-launch.json') -Content $content
+  } catch { }
+}
+
 function Start-DreamSkinCodex {
   param(
     [Parameter(Mandatory = $true)][object]$Codex,
@@ -702,6 +714,7 @@ function Start-DreamSkinCodex {
   }
   Initialize-DreamSkinPackageLauncher
   $argumentLine = ConvertTo-DreamSkinArgumentLine -Arguments $Arguments
+  if (-not @($Arguments | Where-Object { "$_" -like '--remote-debugging-port=*' }).Count) { Write-DreamSkinNativeLaunchMarker }
   $processId = [CodexDynamicSkin.PackageLauncher]::Launch($appUserModelId, $argumentLine)
   if ($processId -le 0) { throw 'Windows did not return a Codex process ID after package activation.' }
   return $processId

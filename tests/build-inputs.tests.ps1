@@ -10,5 +10,5 @@ if(-not $files.Count){throw 'Release input list is empty'}
 $missing=@($files|Where-Object {-not(Test-Path -LiteralPath (Join-Path $repo $_) -PathType Leaf)})
 if($missing.Count){throw ('Release inputs are missing: '+($missing -join ', '))}
 if(@($files|Group-Object|Where-Object Count -gt 1).Count){throw 'Duplicate release inputs'}
-if($files -notcontains 'engine/scripts/background-task.ps1' -or $files -notcontains 'engine/scripts/launch-entries.ps1'){throw 'Monitor recovery dependencies missing from package'}
+if($files -notcontains 'engine/scripts/background-task.ps1' -or $files -notcontains 'engine/scripts/launch-entries.ps1' -or $files -notcontains 'engine/scripts/state-cleanup.ps1'){throw 'Monitor recovery dependencies missing from package'}
 'PASS: every explicit release input exists once, including background recovery dependencies'

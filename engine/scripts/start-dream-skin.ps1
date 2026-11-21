@@ -7,7 +7,11 @@ param(
   [switch]$ForegroundInjector,
   [ValidateRange(0, 300000)][int]$OperationLockTimeoutMilliseconds = 0,
   [switch]$RequireUnpaused,
+  # Accepted only so that a helper spawned by an older monitor exits quietly.
   [ValidatePattern('^[a-f0-9]{64}$')][string]$UpdateRecoveryKey,
+  # Set by the launch guard after it replaced an unconnected Codex launch.
+  [switch]$LaunchGuard,
+  [ValidatePattern('^codex://[A-Za-z0-9\-._~:/?#\[\]@!$&''()*+,;=%]{0,2000}$')][string]$ForwardUrl,
   [ValidatePattern('^[a-f0-9]{32}$')][string]$ResultToken
 )
 
@@ -100,9 +104,9 @@ $appearanceRecovery = 'not-needed'
 try {
   $startupTimer = [Diagnostics.Stopwatch]::StartNew()
   $updateEntryGate=[IO.File]::Open((Join-Path $StateRoot '.update-gate'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::ReadWrite)
-  if($UpdateRecoveryKey -and -not (Test-DreamSkinUpdateRecoveryCurrent $StateRoot $UpdateRecoveryKey)){exit 0}
+  # Restart prompts were replaced by the launch guard (TASK-117).
+  if($UpdateRecoveryKey){exit 0}
   if(Test-DreamSkinExternalSourceMissing -StateRoot $StateRoot){
-    if($UpdateRecoveryKey){exit 0}
     Set-DreamSkinPaused -Paused $true -StateRoot $StateRoot|Out-Null
     $nativeCodex=Get-DreamSkinCodexInstall
     $null=Start-DreamSkinCodex -Codex $nativeCodex
@@ -110,20 +114,12 @@ try {
     Write-Host 'Steam wallpaper is unavailable; opening Codex with its original appearance.'
     exit 0
   }
-  if($UpdateRecoveryKey){
-    # Consent is requested outside the operation lock: an ignored prompt must not block restore/apply.
-    $recoveryLanguage=Resolve-DreamSkinLanguage -StateRoot $StateRoot
-    $recoveryMessage=if($recoveryLanguage -eq 'en'){'Codex started without a wallpaper connection. Your wallpaper is saved. Restart once to restore it. Restarting interrupts current work; choose Not now to keep working and reconnect later from CodexPage.'}else{'本次 Codex 启动未建立壁纸连接，原壁纸仍已保存。重启一次即可重新连接；重启会中断当前操作，请先保存工作。选择“暂不重启”可继续工作，稍后从 CodexPage 恢复壁纸。'}
-    $accepted=Confirm-DreamSkinRestart -Message $recoveryMessage -TimeoutSeconds 60
-    $receiptPath=Join-Path $StateRoot 'update-recovery-notice.json'
-    $receipt=Read-DreamSkinUtf8File $receiptPath|ConvertFrom-Json
-    if($receipt.Key -ceq $UpdateRecoveryKey){$receipt|Add-Member -NotePropertyName Status -NotePropertyValue $(if($accepted){'confirmed'}else{'declined'}) -Force;Write-DreamSkinUtf8FileAtomically $receiptPath ($receipt|ConvertTo-Json)}
-    if(-not $accepted){exit 0}
-    $RestartExisting=$true;$PromptRestart=$false
-  }
+  # A codex:// link that started the replaced instance is handed to the
+  # connected instance. --single-argument must stay the final argument.
+  $forwardArguments = @()
+  if ($ForwardUrl) { $forwardArguments = @('--single-argument', $ForwardUrl) }
   $operationLock = Enter-DreamSkinOperationLock `
     -TimeoutMilliseconds $OperationLockTimeoutMilliseconds
-  if($UpdateRecoveryKey -and -not (Test-DreamSkinUpdateRecoveryCurrent $StateRoot $UpdateRecoveryKey)){exit 0}
   Assert-DreamSkinPort -Port $Port
   if ($ProfilePath) { $ProfilePath = [System.IO.Path]::GetFullPath($ProfilePath) }
   Write-Host 'Opening Codex Dream Skin...'
@@ -145,7 +141,7 @@ try {
   }
   if ($null -ne $fastState) {
     $fastArguments = @('--remote-debugging-address=127.0.0.1', "--remote-debugging-port=$($fastState.port)", "--user-data-dir=$($fastState.profilePath)")
-    if(-not $ResultToken){$null = Start-DreamSkinCodex -Codex $currentCodex -Arguments $fastArguments}
+    if(-not $ResultToken){$null = Start-DreamSkinCodex -Codex $currentCodex -Arguments (@($fastArguments) + $forwardArguments)}
     Write-Host ('Existing window opened after {0:N2} seconds; checking playback...' -f $startupTimer.Elapsed.TotalSeconds)
   } elseif (-not $PortExplicit -and -not $ProfilePathExplicit -and -not $ForegroundInjector -and
             -not $RestartExisting -and -not $ResultToken -and -not $coexistingProfiles) {
@@ -153,9 +149,9 @@ try {
       Test-DreamSkinBackgroundWindowProcess -Process $_ -Port $openingPort -ProfilePath $openingProfile
     })
     if ($backgroundApp.Count -eq 1) {
-      $null = Start-DreamSkinCodex -Codex $currentCodex -Arguments @(
+      $null = Start-DreamSkinCodex -Codex $currentCodex -Arguments (@(
         '--remote-debugging-address=127.0.0.1', "--remote-debugging-port=$openingPort", "--user-data-dir=$openingProfile"
-      )
+      ) + $forwardArguments)
       Write-Host ('Existing window opened after {0:N2} seconds; preparing its background...' -f $startupTimer.Elapsed.TotalSeconds)
     }
   }
@@ -252,7 +248,6 @@ try {
     exit 0
   }
   if ($coexistenceAction -ceq 'restart') {
-    if($UpdateRecoveryKey -and -not (Test-DreamSkinUpdateRecoveryCurrent $StateRoot $UpdateRecoveryKey)){exit 0}
     Stop-DreamSkinCodex -Codex $currentCodex -AllowForce
     $currentProcesses = @()
     $closedExistingCodex = $true
@@ -342,7 +337,6 @@ try {
     if (-not $restartAuthorized) {
       throw 'Codex is open without a verified Dream Skin CDP endpoint. Close it first or explicitly use -RestartExisting.'
     }
-    if($UpdateRecoveryKey -and -not (Test-DreamSkinUpdateRecoveryCurrent $StateRoot $UpdateRecoveryKey)){exit 0}
     Stop-DreamSkinCodex -Codex $codexToStop -AllowForce
     $closedExistingCodex = $true
     $codex = $currentCodex
@@ -386,6 +380,7 @@ try {
         New-Item -ItemType Directory -Force -Path $ProfilePath | Out-Null
       }
       $arguments += "--user-data-dir=$ProfilePath"
+      $arguments += $forwardArguments
       $debugLaunchAttempted = $true
       $debugLaunchBaselineProcessIds = @(
         Get-DreamSkinCodexProcesses -Codex $codex | ForEach-Object { [int]$_.ProcessId }
@@ -402,7 +397,7 @@ try {
       # profile through package activation so the main window is shown again.
       Write-Host 'Opening the existing Earth background window...'
       $resumeArguments = @('--remote-debugging-address=127.0.0.1', "--remote-debugging-port=$Port", "--user-data-dir=$ProfilePath")
-      $null = Start-DreamSkinCodex -Codex $codex -Arguments $resumeArguments
+      $null = Start-DreamSkinCodex -Codex $codex -Arguments ($resumeArguments + $forwardArguments)
     }
 
     $startFailureCategory = 'cdp-endpoint-unavailable'

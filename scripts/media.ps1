@@ -203,6 +203,25 @@ function Set-DynamicBackground {
   } finally { if ($acquired) { $mutex.ReleaseMutex() }; $mutex.Dispose() }
 }
 
+# A snapshot is only kept while it may still be needed to restore the previous
+# background. Once that background is back in place (or was never changed), the
+# copy is removed; earlier versions left one directory behind per cancelled or
+# failed apply.
+function Remove-DynamicRollbackSnapshot {
+  param([string]$Backup, [string]$Root)
+  try {
+    if (-not (Test-Path -LiteralPath $Backup)) { return }
+    Assert-DreamSkinNoReparseComponents -Path $Backup
+    foreach($entry in Get-ChildItem -LiteralPath $Backup -Recurse -Force -ErrorAction Stop){
+      Assert-DreamSkinNoReparseComponents -Path $entry.FullName
+    }
+    Remove-DreamSkinManagedDirectoryVerified -Path $Backup -Root $Root
+  } catch {
+    # A locked backup must not turn a verified apply into a rollback or retry.
+    Write-Warning ('临时备份未能清理：'+$Backup+'；'+$_.Exception.Message)
+  }
+}
+
 function Invoke-DynamicBackgroundTransaction {
   param([Parameter(Mandatory)]$Prepared, [Parameter(Mandatory)][string]$StateRoot, [Parameter(Mandatory)][scriptblock]$Apply)
   $root = [IO.Path]::GetFullPath($StateRoot)
@@ -249,6 +268,8 @@ function Invoke-DynamicBackgroundTransaction {
       if ($hadActive) { Copy-Item -LiteralPath (Join-Path $backup 'active-theme') -Destination $active -Recurse }
       if ($hadVideo) { Copy-Item -LiteralPath (Join-Path $backup 'video-theme.json') -Destination $video -Force } else { Remove-Item -LiteralPath $video -Force -ErrorAction SilentlyContinue }
     }
+    # Reached only when the previous files are back (or were never touched).
+    Remove-DynamicRollbackSnapshot -Backup $backup -Root $root
     throw
   } finally { Exit-DreamSkinOperationLock -Mutex $lock }
   try { & $Apply } catch {
@@ -260,6 +281,7 @@ function Invoke-DynamicBackgroundTransaction {
       if (Test-Path -LiteralPath $active) { Remove-Item -LiteralPath $active -Recurse -Force }
       if ($hadActive) { Copy-Item -LiteralPath (Join-Path $backup 'active-theme') -Destination $active -Recurse }
       if ($hadVideo) { Copy-Item -LiteralPath (Join-Path $backup 'video-theme.json') -Destination $video -Force } else { Remove-Item -LiteralPath $video -Force -ErrorAction SilentlyContinue }
+      Remove-DynamicRollbackSnapshot -Backup $backup -Root $root
     } finally { Exit-DreamSkinOperationLock -Mutex $lock }
     # Consent was refused before the engine changed the running session.
     # Restoring its files is sufficient; applying again would ask to restart twice.
@@ -267,18 +289,7 @@ function Invoke-DynamicBackgroundTransaction {
     try { & $Apply } catch { throw "新背景应用失败：$failure；旧配置已恢复，但重新应用失败：$_。请使用打开 Codex 重试。" }
     throw $failure
   }
-  # Only this successful transaction's snapshot is disposable. Failed/older
-  # snapshots remain recovery evidence and must never be swept here.
-  try {
-    Assert-DreamSkinNoReparseComponents -Path $backup
-    foreach($entry in Get-ChildItem -LiteralPath $backup -Recurse -Force -ErrorAction Stop){
-      Assert-DreamSkinNoReparseComponents -Path $entry.FullName
-    }
-    Remove-DreamSkinManagedDirectoryVerified -Path $backup -Root $root
-  } catch {
-    # A locked backup must not turn a verified apply into a rollback or retry.
-    Write-Warning ('背景已应用，但临时备份未能清理：'+$backup+'；'+$_.Exception.Message)
-  }
+  Remove-DynamicRollbackSnapshot -Backup $backup -Root $root
 }
 
 function Invoke-DynamicEngine {
