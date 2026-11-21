@@ -53,7 +53,9 @@ try {
   function Start-Process { param($FilePath, $ArgumentList, [switch]$NoNewWindow, $ErrorAction, $RedirectStandardOutput, $RedirectStandardError) $script:started += , $ArgumentList }
   function Get-DreamSkinLastInputUtc { $now.AddMinutes(-10) }
   function Test-DreamSkinProcessHasVisibleWindow { param([int]$ProcessId) $true }
-  function Start-DreamSkinCodex { param($Codex, $Arguments) $script:native++ }
+  $script:connected = @()
+  function Start-DreamSkinCodex { param($Codex, $Arguments) if (@($Arguments) -match '^--remote-debugging-port=') { $script:connected += , @($Arguments) } else { $script:native++ } }
+  function Test-DreamSkinPortAvailable { param($Port) $true }
 
   $fresh = New-Fixture 20 1 '"C:\pkg\app\ChatGPT.exe" --single-argument codex://threads/42'
   $child = New-Fixture 21 1 '"C:\pkg\app\ChatGPT.exe" --type=renderer' 20
@@ -62,7 +64,9 @@ try {
   $result = Invoke-DreamSkinLaunchGuard -StateRoot $root -State $state -Installs @($install) -Processes @($fresh, $child) -Guard $guard -LogDirectory $root -Now $now
   Assert ($result.Decision -eq 'replaced') "Fresh launch must be replaced, got $($result.Decision)"
   Assert ($script:stopped -contains 20 -and $script:stopped -contains 21) 'The unconnected browser process and its children must stop'
-  Assert ($script:started.Count -eq 1 -and $script:started[0] -match '-LaunchGuard' -and $script:started[0] -match 'codex://threads/42') 'A connected start must follow, carrying the link'
+  Assert ($script:connected.Count -eq 1 -and ($script:connected[0] -contains '--remote-debugging-port=9345') -and ($script:connected[0] -contains 'codex://threads/42') -and $script:connected[0][-2] -eq '--single-argument') 'The connected Codex opens at once on the saved port, carrying the link last'
+  Assert ($script:connected[0] -contains ('--user-data-dir=' + (Join-Path $root 'cdp-profile'))) 'The connected Codex uses the wallpaper profile'
+  Assert ($script:started.Count -eq 1 -and $script:started[0] -match '-LaunchGuard' -and $script:started[0] -notmatch 'ForwardUrl') 'The start script attaches afterwards without opening the link twice'
   Assert ($script:started[0] -notmatch '-RestartExisting|-PromptRestart') 'The guard never asks and never authorizes stopping other instances'
   $again = Invoke-DreamSkinLaunchGuard -StateRoot $root -State $state -Installs @($install) -Processes @($fresh) -Guard $guard -LogDirectory $root -Now $now
   Assert (-not $again -and $script:started.Count -eq 1) 'One process is handled at most once'
@@ -87,11 +91,17 @@ try {
     Assert ($result.Decision -eq 'updating' -and $script:stopped.Count -eq 0) 'Updates must block the guard'
   } finally { $gate.Dispose() }
 
-  # A start failure reopens Codex the ordinary way.
+  # The start script failing to launch leaves the connected Codex open and opens nothing else.
   function Start-Process { param($FilePath, $ArgumentList, [switch]$NoNewWindow, $ErrorAction, $RedirectStandardOutput, $RedirectStandardError) throw 'fixture start failure' }
-  $script:native = 0
+  $script:native = 0; $script:connected = @()
   $script:alive[33] = $now.AddSeconds(-1).ToLocalTime()
   $result = Invoke-DreamSkinLaunchGuard -StateRoot $root -State $state -Installs @($install) -Processes @((New-Fixture 33 1)) -Guard @{} -LogDirectory $root -Now $now
+  Assert ($result.Decision -eq 'replaced' -and $script:connected.Count -eq 1 -and $script:native -eq 0) 'A connected window must not be followed by a second plain one'
+  # Opening the connected Codex failing reopens Codex the ordinary way.
+  function Start-DreamSkinCodex { param($Codex, $Arguments) if (@($Arguments) -match '^--remote-debugging-port=') { throw 'fixture activation failure' } else { $script:native++ } }
+  $script:native = 0
+  $script:alive[34] = $now.AddSeconds(-1).ToLocalTime()
+  $result = Invoke-DreamSkinLaunchGuard -StateRoot $root -State $state -Installs @($install) -Processes @((New-Fixture 34 1)) -Guard @{} -LogDirectory $root -Now $now
   Assert ($result.Decision -eq 'start-failed' -and $script:native -eq 1) 'Codex must never disappear after a failed replacement'
 
   # --- Old restart prompt is gone ------------------------------------------

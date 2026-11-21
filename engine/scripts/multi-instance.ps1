@@ -333,16 +333,35 @@ function Stop-DreamSkinUnconnectedCodex {
   return -not (Get-Process -Id ([int]$Process.ProcessId) -ErrorAction SilentlyContinue)
 }
 
+# Opens the connected Codex right away (the user just clicked an icon and is
+# waiting for a window), then lets the start script attach, inject and verify.
 function Start-DreamSkinLaunchGuardConnection {
-  param([string]$StateRoot, [string]$ForwardUrl)
+  param([string]$StateRoot, [string]$ForwardUrl, $Install, $State)
+  if ($Install) {
+    $port = 0
+    if ($State.port -and [int]$State.port -ge 1024 -and (Test-DreamSkinPortAvailable -Port ([int]$State.port))) { $port = [int]$State.port }
+    if (-not $port) { $port = Select-DreamSkinRandomPort }
+    $arguments = @('--remote-debugging-address=127.0.0.1', "--remote-debugging-port=$port", ('--user-data-dir=' + (Join-Path $StateRoot 'cdp-profile')))
+    if ($ForwardUrl) { $arguments += @('--single-argument', $ForwardUrl) }
+    $null = Start-DreamSkinCodex -Codex $Install -Arguments $arguments
+    $ForwardUrl = $null
+  }
   $launcher = Join-Path $PSScriptRoot 'start-dream-skin.ps1'
   $args = '-NoProfile -WindowStyle Hidden -ExecutionPolicy RemoteSigned -File ' + (ConvertTo-DreamSkinProcessArgument $launcher) +
     ' -LaunchGuard -RequireUnpaused -OperationLockTimeoutMilliseconds 30000'
   if ($ForwardUrl) { $args += ' -ForwardUrl ' + (ConvertTo-DreamSkinProcessArgument $ForwardUrl) }
   $logs = Join-Path $StateRoot 'logs/multi-instance'
   [IO.Directory]::CreateDirectory($logs) | Out-Null
-  Start-Process (Join-Path $PSHOME 'powershell.exe') -ArgumentList $args -NoNewWindow -ErrorAction Stop `
-    -RedirectStandardOutput (Join-Path $logs 'launch-guard-start.log') -RedirectStandardError (Join-Path $logs 'launch-guard-start-error.log') | Out-Null
+  try {
+    Start-Process (Join-Path $PSHOME 'powershell.exe') -ArgumentList $args -NoNewWindow -ErrorAction Stop `
+      -RedirectStandardOutput (Join-Path $logs 'launch-guard-start.log') -RedirectStandardError (Join-Path $logs 'launch-guard-start-error.log') | Out-Null
+  } catch {
+    # Codex is already open with its connection; the monitor's own watcher
+    # applies the wallpaper, so a second plain window must not be opened.
+    if ($Install) { return 'connected-without-start' }
+    throw
+  }
+  return 'started'
 }
 
 # Called by the monitor while it holds the operation lock, so no apply,
@@ -394,8 +413,8 @@ function Invoke-DreamSkinLaunchGuard {
     }
     $Guard.History = @(@($Guard.History) + $Now.ToUniversalTime())
     try {
-      Start-DreamSkinLaunchGuardConnection $StateRoot $forward
-      Write-DreamSkinLaunchGuardLog $LogDirectory ("pid=$($process.ProcessId) decision=replaced forward=$([bool]$forward)")
+      $outcome = Start-DreamSkinLaunchGuardConnection -StateRoot $StateRoot -ForwardUrl $forward -Install $install -State $State
+      Write-DreamSkinLaunchGuardLog $LogDirectory ("pid=$($process.ProcessId) decision=replaced forward=$([bool]$forward) start=$outcome")
       $result = [pscustomobject]@{ Decision = 'replaced'; ProcessId = $process.ProcessId; At = $Now.ToString('o') }
     } catch {
       # Never leave the user without Codex: open it the ordinary way.
@@ -465,6 +484,8 @@ function Invoke-DreamSkinInstanceMonitor {
   $logDir = Join-Path $StateRoot 'logs/multi-instance'; [IO.Directory]::CreateDirectory($logDir) | Out-Null
   $cleanupPending = $true
   $nextHousekeeping = [datetime]::MinValue
+  # Compile the probe and package launcher now so a replacement is not delayed later.
+  try { Initialize-DreamSkinLaunchGuardProbe; Initialize-DreamSkinPackageLauncher } catch { }
   try {
     $cycle = 0
     while ($MaxCycles -eq 0 -or $cycle -lt $MaxCycles) {
