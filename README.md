@@ -57,6 +57,7 @@ CodexPage 壁纸库界面。图中为原创演示素材，不随应用预置。
 
 | 日期（北京时间） | 版本 | 更新内容 |
 | --- | --- | --- |
+| 2026-11-21 | [3.9.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.9.0) | 任意方式打开 Codex 都自动接上壁纸，不再弹出重启提示 |
 | 2026-11-12 | [3.8.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.8.0) | 改进提示文案、重试操作和可复制的问题信息 |
 | 2026-11-09 | [3.7.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.7.0) | 动态视频缩略图、媒体分类顺序、三款默认视频与启动命令修复 |
 | 2026-11-07 | [3.6.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.6.0) | 图库与后台效率、预览缓存预算、导入诊断和可访问名称 |
@@ -68,7 +69,7 @@ CodexPage 壁纸库界面。图中为原创演示素材，不随应用预置。
 | 2026-10-30 | [3.1.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.1) | 开始菜单统一为 CodexPage 单入口，清理已知旧快捷方式 |
 | 2026-10-28 | [3.1.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0) | 修复后台目录污染与重复后台升级阻塞，先加载壁纸库再连接 |
 
-[3.8.0 发布说明](docs/releases/v3.8.0.md) · [完整更新记录](CHANGELOG.md)
+[3.9.0 发布说明](docs/releases/v3.9.0.md) · [完整更新记录](CHANGELOG.md)
 
 ## 素材与常见问题
 
@@ -100,7 +101,7 @@ Steam 兼容图片和视频直接引用源文件；删除源文件或断开所�
 
 - **卸载**：从 Windows「已安装的应用」卸载。卸载前会执行外观恢复；取消或失败时停止卸载。壁纸库默认保留。
 - **未找到 Codex**：确认当前 Windows 用户已安装官方 Store 版客户端，再点击左下角连接图标重试。
-- **从官方入口打开后没有皮肤**：回到 CodexPage 重新应用壁纸，按提示处理正在运行的会话。
+- **从官方入口打开后没有皮肤**：从 3.9.0 起，从任务栏、开始菜单或链接打开的 Codex 会在启动时自动接上壁纸。已经在使用中的窗口不会被自动关闭，下次打开 Codex 即可恢复；也可以回到 CodexPage 重新应用壁纸。
 - **Codex 更新后换肤失败**：页面结构和启动方式可能变化，请查看项目新版及 [Releases](https://github.com/JiPaiFan1109/CodexPage/releases)。
 
 ## 技术说明与源码构建

@@ -15,7 +15,7 @@ try{
   Assert (-not(Test-DynamicUpdateDue $state)) 'Retry must not spin immediately'
   Reject {Get-DynamicAppUpdate $root $root -Manual}
   $state=Read-DynamicUpdateState $root
-  Assert ($state.Failures -eq 2 -and [datetime]$state.NextRetryUtc -gt [datetime]::UtcNow.AddMinutes(9)) 'Repeated failures must back off'
+  Assert ($state.Failures -eq 2 -and [datetime]::Parse($state.NextRetryUtc).ToUniversalTime() -gt [datetime]::UtcNow.AddMinutes(9)) 'Repeated failures must back off'
 
   $cancel=[hashtable]::Synchronized(@{Cancel=$true;Request=$null})
   Reject {Save-DynamicAppUpdate $root @{version='1.0.1'} $null $cancel}

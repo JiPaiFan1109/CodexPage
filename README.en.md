@@ -57,6 +57,7 @@ On the first launch each local day, CodexPage checks for updates. Confirm the ce
 
 | Date (Beijing time) | Version | Changes |
 | --- | --- | --- |
+| 2026-11-21 | [3.9.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.9.0) | Wallpaper connects however Codex is opened; no more restart prompt |
 | 2026-11-12 | [3.8.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.8.0) | Clearer messages, retry actions and copyable diagnostics |
 | 2026-11-09 | [3.7.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.7.0) | Animated video thumbnails, reordered media filters, three default videos and startup command fix |
 | 2026-11-07 | [3.6.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.6.0) | Gallery and startup efficiency, bounded preview cache, import diagnostics and accessible control names |
@@ -68,7 +69,7 @@ On the first launch each local day, CodexPage checks for updates. Confirm the ce
 | 2026-10-30 | [3.1.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.1) | Use a single CodexPage Start menu entry and remove known legacy shortcuts |
 | 2026-10-28 | [3.1.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0) | Fix monitor directory handling and duplicate-worker upgrade blockage; load the library before connecting |
 
-[3.8.0 release notes](docs/releases/v3.8.0.md) · [Full changelog](CHANGELOG.md)
+[3.9.0 release notes](docs/releases/v3.9.0.md) · [Full changelog](CHANGELOG.md)
 
 ## Media and troubleshooting
 
@@ -100,7 +101,7 @@ Images are limited to 16,384 pixels per side and 50 million pixels in total. Con
 
 - **Uninstall:** use Windows Installed apps. Restoration must finish first; cancellation or failure aborts uninstall. The library is retained.
 - **Codex not found:** verify that the current Windows user has the official Store package, then detect again.
-- **No skin after using the official entry:** open Codex from the manager or apply a wallpaper again, following any restart prompt.
+- **No skin after using the official entry:** since 3.9.0, Codex opened from the taskbar, Start menu or a link is connected automatically while it starts. A window that is already in use is never closed; the wallpaper returns the next time Codex opens, or apply a wallpaper again from the manager.
 - **Failure after a Codex update:** client layout and launch behavior can change. Check [Releases](https://github.com/JiPaiFan1109/CodexPage/releases) for compatibility updates.
 
 ## Technical details and source builds
