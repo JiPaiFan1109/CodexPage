@@ -1,4 +1,6 @@
-﻿. (Join-Path $PSScriptRoot 'user-messages.ps1')
+﻿. (Join-Path $PSScriptRoot 'cloud-catalog.ps1')
+. (Join-Path $PSScriptRoot 'manager-cloud.ps1')
+. (Join-Path $PSScriptRoot 'user-messages.ps1')
 . (Join-Path $PSScriptRoot 'manager-theme.ps1')
 function Get-DynamicVisibleWallpapers {
   param($Items,[ValidateSet('All','Image','Video')][string]$Filter,[ValidateSet('All','Local','WallpaperEngine')][string]$Source='All')
@@ -122,7 +124,7 @@ function Get-DynamicManagerActionState {
   [pscustomobject]@{
     Import=(-not $Busy);Apply=($available -and -not $Busy -and -not $PrepareOnly -and $CodexAvailable)
     Rename=($available -and -not $Busy)
-    Delete=($null -ne $Selected -and -not $Busy -and -not $Status.Error -and $Status.CurrentId -ne $Selected.Id)
+    Delete=($null -ne $Selected -and -not $Selected.IsCloud -and -not $Busy -and -not $Status.Error -and $Status.CurrentId -ne $Selected.Id)
     Open=(-not $Busy -and -not $PrepareOnly -and $CodexAvailable);Restore=(-not $Busy -and -not $PrepareOnly)
   }
 }
@@ -176,7 +178,16 @@ namespace DynamicSkin {
     # WPF cannot bind ImageSource from a PSObject-wrapped property reliably.
     Add-Type -ReferencedAssemblies @([Windows.Media.ImageSource].Assembly.Location,[Windows.DependencyObject].Assembly.Location) -TypeDefinition @'
 namespace DynamicSkin {
-  public sealed class WallpaperCard {
+  public sealed class WallpaperCard : System.ComponentModel.INotifyPropertyChanged {
+    public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+    void Notify(string name) { var handler = PropertyChanged; if (handler != null) handler(this, new System.ComponentModel.PropertyChangedEventArgs(name)); }
+    string downloadVisibility = "Collapsed", progressVisibility = "Collapsed", progressText = "";
+    public string DownloadVisibility { get { return downloadVisibility; } set { downloadVisibility = value; Notify("DownloadVisibility"); } }
+    public string ProgressVisibility { get { return progressVisibility; } set { progressVisibility = value; Notify("ProgressVisibility"); } }
+    public string ProgressText { get { return progressText; } set { progressText = value; Notify("ProgressText"); } }
+    public string CloudVisibility { get; set; }
+    public string SizeText { get; set; }
+    public string NameMargin { get; set; }
     public string Id { get; set; }
     public object Item { get; set; }
     public string Name { get; set; }
@@ -279,6 +290,7 @@ function Format-DynamicWallpaperSize {
 
 function Stop-DynamicManagerWorkers {
   $ui=$script:SkinManager
+  if(Get-Command Stop-DynamicCloudWork -ErrorAction SilentlyContinue){Stop-DynamicCloudWork}
   if($ui.UpdateCancellation){
     $ui.UpdateCancellation.Cancel=$true
     if($ui.UpdateCancellation.Request){try{$ui.UpdateCancellation.Request.Abort()}catch{}}
@@ -433,7 +445,15 @@ function Update-DynamicManagerSelection {
     $ui.Controls.SelectedDetails.Text='这里只显示预览，点击“应用壁纸”后才会更换 Codex 的壁纸。'
     if($ui.Status.CurrentId -eq $item.Id){$ui.Controls.SelectedStatus.Text='正在使用';$ui.Controls.SelectedDetails.Text='当前正在使用这张壁纸。'}
     $ui.Controls.PreviewPlaceholder.Text='预览暂不可用'
-    if(-not $item.IsAvailable){$ui.Controls.PreviewNotice.Text=Get-DynamicUserErrorMessage $item.Error Preview;$ui.Controls.PreviewNotice.Visibility='Visible'}
+    if($item.IsCloud){
+      $ui.Controls.SelectedFormat.Text=$kind+' · 云端'
+      $ui.Controls.SelectedStatus.Text='未下载'
+      $ui.Controls.SelectedDetails.Text='点击缩略图上的下载按钮，下载完成后即可预览和应用。'
+      $ui.Controls.PreviewImage.Source=Read-DynamicManagerBitmap $item.ThumbnailPath
+      $ui.Controls.PreviewNotice.Text='云端壁纸，下载后可预览和应用。';$ui.Controls.PreviewNotice.Visibility='Visible'
+      if(-not $ui.Controls.PreviewImage.Source){$ui.Controls.PreviewPlaceholder.Visibility='Visible'}
+    }
+    elseif(-not $item.IsAvailable){$ui.Controls.PreviewNotice.Text=Get-DynamicUserErrorMessage $item.Error Preview;$ui.Controls.PreviewNotice.Visibility='Visible'}
     elseif($item.Kind -eq 'Video'){
       $ui.Controls.PreviewImage.Source=Read-DynamicManagerBitmap $item.ThumbnailPath
       $ui.Controls.PreviewNotice.Text='静音循环预览，不会更换当前壁纸。'
@@ -484,7 +504,8 @@ function Update-DynamicManagerList {
   $source='Local';if($ui.Source){$source=$ui.Source}
   $title=$ui.Window.FindName('GalleryTitle');$count=$ui.Window.FindName('GalleryCount')
   if($title){$title.Text=if($source -eq 'WallpaperEngine'){'Wallpaper'}else{'本地壁纸'};if($ui.Filter -eq 'Image'){$title.Text+=' · 图片'}elseif($ui.Filter -eq 'Video'){$title.Text+=' · 视频'}}
-  $visible=@(Get-DynamicVisibleWallpapers $ui.Items $ui.Filter $source)
+  $pool=$ui.Items;if($source -eq 'Local'){$pool=@(Get-DynamicGalleryItems $ui.Items $ui.CloudEntries)}
+  $visible=@(Get-DynamicVisibleWallpapers $pool $ui.Filter $source)
   if($count){$count.Text=([string]$visible.Count)+' 张'}
   $context=$source+'|'+$ui.Filter
   if($ui.PageContext -ne $context){$ui.PageIndex=0;$ui.PageContext=$context}
@@ -500,7 +521,7 @@ function Update-DynamicManagerList {
   $ui.Window.Content.UpdateLayout()
   $views=@(foreach($item in $page.Items){
     $kind='图片';$placeholder='图片';if($item.Kind -eq 'Video'){$kind='视频';$placeholder='视频'}
-    if(-not $item.IsAvailable){$kind='不可用';$placeholder='!'}
+    if(-not $item.IsAvailable -and -not $item.IsCloud){$kind='不可用';$placeholder='!'}
     $visibility='Collapsed';if($ui.Status.CurrentId -eq $item.Id){$visibility='Visible'}
     $card=New-Object DynamicSkin.WallpaperCard
     $availableWidth=$ui.Controls.WallpaperList.ActualWidth
@@ -511,7 +532,11 @@ function Update-DynamicManagerList {
     if($availableHeight -gt 100){$card.CardHeight=[Math]::Min($card.CardHeight,[Math]::Floor($availableHeight/3)-28)}
     $card.Id=$item.Id;$card.Item=$item;$card.Name=$item.Name;$card.Caption=($kind+' · '+(Format-DynamicWallpaperSize $item.Size))
     if($item.Kind -eq 'Video' -and $item.IsAvailable){$card.VideoPath=$item.MediaPath}
-    $card.PlayVisibility=if($item.Kind -eq 'Video'){'Visible'}else{'Collapsed'}
+    $card.PlayVisibility=if($item.Kind -eq 'Video' -and -not $item.IsCloud){'Visible'}else{'Collapsed'}
+    $card.CloudVisibility=if($item.IsCloud){'Visible'}else{'Collapsed'}
+    $card.SizeText=Format-DynamicWallpaperSize $item.Size
+    $card.NameMargin=if($item.IsCloud){'14,0,84,12'}else{'14,0,46,12'}
+    if($item.IsCloud){Set-DynamicCloudCardState $card}
     $card.Placeholder=$placeholder;$card.ThumbnailImage=Read-DynamicManagerBitmap $item.ThumbnailPath;$card.CurrentVisibility=$visibility
     $card
   })
@@ -562,6 +587,7 @@ function Start-DynamicManagerWork {
     $ErrorActionPreference='Stop'
     . (Join-Path $ModuleRoot 'media.ps1');Initialize-DynamicMedia -InstallRoot $InstallRoot
     . (Join-Path $ModuleRoot 'wallpaper-library.ps1')
+    . (Join-Path $ModuleRoot 'cloud-catalog.ps1')
     . (Join-Path $ModuleRoot 'skin-manager.ps1')
     $report={param($message)$Queue.Enqueue([string]$message)}
     if($PrepareOnly -and $Operation -in @('Apply','Open','Restore')){throw '预览模式不能更改真实 Codex。'}
@@ -616,7 +642,7 @@ function Start-DynamicManagerWork {
       }
       'Refresh' { }
       'LibraryLoad' { Initialize-DynamicDefaultWallpapers -StateRoot $StateRoot -InstallRoot $InstallRoot }
-      'LibrarySync' { }
+      'LibrarySync' { if($Argument -cmatch '^[0-9a-f]{32}$'){$selected=$Argument} }
       default {throw '未知管理操作。'}
     }}catch{
       if(-not (Test-DynamicOperationCancelled $_.Exception)){throw}
@@ -627,7 +653,9 @@ function Start-DynamicManagerWork {
     if($Operation -in @('Apply','Restore')){$connection=Get-DynamicCodexConnection -StateRoot $StateRoot}
     if($status.Error){$message=Get-DynamicUserErrorMessage ('读取当前背景失败：'+$status.Error) LibraryLoad}
     if($PrepareOnly){$message='预览模式 · '+$message}
-    [pscustomobject]@{Items=$items;Status=$status;Connection=$connection;SelectedId=$selected;Message=$message;EngineReport=$engineReport;EngineRoots=$engineRoots;ConversionPrompt=$conversionPrompt;Cancelled=$cancelled;ConnectionError=$connectionError}
+    $cloudEntries=$null
+    if($Operation -in @('LibraryLoad','LibrarySync')){try{$cloudEntries=@(Get-DynamicCloudEntries -StateRoot $StateRoot -InstallRoot $InstallRoot)}catch{$cloudEntries=$null}}
+    [pscustomobject]@{Items=$items;Status=$status;Connection=$connection;SelectedId=$selected;Message=$message;EngineReport=$engineReport;EngineRoots=$engineRoots;ConversionPrompt=$conversionPrompt;Cancelled=$cancelled;ConnectionError=$connectionError;CloudEntries=$cloudEntries}
   }
   $null=$worker.AddScript($body.ToString()).AddArgument($ui.InstallRoot).AddArgument($ui.StateRoot).AddArgument($ui.ModuleRoot).AddArgument($Operation).AddArgument($Argument).AddArgument($Name).AddArgument($ui.PrepareOnly).AddArgument($queue).AddArgument($ui.Connection).AddArgument(@($ui.EngineRoots))
   $ui.Worker=$worker;$ui.Runspace=$runspace;$ui.Queue=$queue;$ui.Async=$worker.BeginInvoke();$ui.Timer.Start()
@@ -647,6 +675,7 @@ function Complete-DynamicManagerWork {
     if($ui.PendingOperation -in @('EngineLocate','EngineImport','EngineRefresh','EngineConvert')){$ui.EngineLocated=$true;Set-DynamicEngineSearchState -Roots @($result.EngineRoots)}
     $conversionPrompt=$result.ConversionPrompt
     $ui.Items=@($result.Items);$ui.Status=$result.Status;$ui.Controls.StatusText.Text=$result.Message
+    if($null -ne $result.CloudEntries){$ui.CloudEntries=@($result.CloudEntries)}
     if($null -ne $result.EngineReport){$importReport=$result.EngineReport;$ui.Controls.StatusText.Text='';$ui.Controls.StatusText.Visibility='Collapsed'}
      $ui.Connection=$result.Connection
     Update-DynamicManagerConnectionBadge
@@ -686,7 +715,9 @@ function Complete-DynamicManagerWork {
   elseif($null -ne $importReport){Show-DynamicImportResult $importReport}
   if($connectionFailure){Show-DynamicManagerFailure $connectionFailure Open}
   elseif($workFailure){Show-DynamicManagerFailure $workFailure $ui.PendingOperation}
+  if($ui.PendingOperation -eq 'LibraryLoad' -and -not $workFailure -and -not $ui.CloudRefreshed){$ui.CloudRefreshed=$true;Start-DynamicCloudJob Refresh}
   if($startupNext){Start-DynamicManagerWork $startupNext}
+  elseif($ui.CloudSyncId -and -not $ui.Busy){$id=$ui.CloudSyncId;$ui.CloudSyncId=$null;Start-DynamicManagerWork LibrarySync $id}
 }
 
 function New-DynamicRenameWindow {
@@ -780,6 +811,7 @@ function Show-DynamicSkinManager {
   $script:SkinManager.Connection=[pscustomobject]@{Available=$false}
   . (Join-Path $PSScriptRoot 'update-ui.ps1')
   Initialize-DynamicUpdateUI
+  Initialize-DynamicCloudUI
   if(-not $PrepareOnly -and (Test-Path -LiteralPath (Join-Path $StateRoot 'state.json'))){
     . (Join-Path $InstallRoot 'engine/scripts/multi-instance.ps1') -StateRoot $script:SkinManager.StateRoot
     Start-DreamSkinInstanceMonitor -StateRoot $script:SkinManager.StateRoot
@@ -1233,6 +1265,8 @@ function Invoke-DynamicManagerCardSwap {
   if($ui.Busy -or $FirstId -eq $SecondId){return}
   $visible=@($ui.Controls.WallpaperList.ItemsSource|ForEach-Object {$_.Id})
   if($visible -notcontains $FirstId -or $visible -notcontains $SecondId){return}
+  $library=@($ui.Items|ForEach-Object {$_.Id})
+  if($library -notcontains $FirstId -or $library -notcontains $SecondId){return}
   Start-DynamicManagerWork Swap $FirstId $SecondId
 }
 function Initialize-DynamicManagerDrag {
@@ -1266,6 +1300,7 @@ function Initialize-DynamicManagerDrag {
       [Windows.Input.Mouse]::Capture($null)|Out-Null
       $card=$gesture.Region.Card
       $ui.Controls.WallpaperList.SelectedItem=$card.Content
+      if($card.Content.Item.IsCloud){return}
       $data=New-Object Windows.DataObject
       $data.SetData('CodexWallpaperId',[string]$card.Content.Id)
       $card.Opacity=0.6

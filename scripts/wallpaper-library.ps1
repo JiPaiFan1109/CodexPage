@@ -32,6 +32,14 @@ function Initialize-DynamicDefaultWallpapers {
       if([long]$entry.size -le 0 -or [long]$entry.size -gt 128MB){throw '默认视频大小无效。'}
     }
     if(@($entries.id|Select-Object -Unique).Count -ne 3){throw '默认壁纸 ID 重复。'}
+    # Since 3.9.0 the package ships only thumbnails: the default videos appear
+    # as cloud wallpapers and are downloaded when the user asks for them.
+    $bundled=@($entries|Where-Object {[IO.File]::Exists((Join-Path (Join-Path $bundle $_.id) 'wallpaper.mp4'))}).Count -eq $entries.Count
+    if(-not $bundled){
+      $state.complete=$true;$state.pending=@()
+      Write-DreamSkinUtf8FileAtomically -Path $marker -Content ($state|ConvertTo-Json)
+      return
+    }
     if(-not [IO.File]::Exists($marker)){
       $state.pending=@($entries.id)
       Write-DreamSkinUtf8FileAtomically -Path $marker -Content ($state|ConvertTo-Json)
