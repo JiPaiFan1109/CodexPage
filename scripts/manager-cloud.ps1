@@ -78,9 +78,11 @@ function Complete-DynamicCloudWork {
   if (-not $job.Async.IsCompleted) { return }
   $failure = $null; $result = $null
   try {
+    # Retried network errors are recorded even when the job succeeds, so the
+    # outcome is the returned result; a real failure surfaces from EndInvoke.
     $results = $job.Worker.EndInvoke($job.Async)
-    if ($job.Worker.HadErrors) { throw $job.Worker.Streams.Error[0].Exception }
     $result = $results | Select-Object -Last 1
+    if (-not $result) { throw '云端操作没有返回结果。' }
   } catch { $failure = $_.Exception }
   finally {
     $job.Worker.Dispose(); $job.Runspace.Dispose(); $ui.CloudJob = $null
@@ -89,7 +91,11 @@ function Complete-DynamicCloudWork {
   if ($result -and $result.Entries) { $ui.CloudEntries = @($result.Entries) }
   if ($job.Kind -eq 'Download') {
     if ($failure) {
-      Show-DynamicManagerToast ('下载失败：' + (Get-DynamicUserErrorMessage $failure Import)) Error
+      $text = [string]$failure.Message
+      if ($failure.InnerException) { $text = [string]$failure.InnerException.Message }
+      # Our own messages are already written for users; anything else gets a plain explanation.
+      if ($text -notmatch '[一-鿿]') { $text = '下载失败，请检查网络后重试。已下载的部分会保留。' }
+      Show-DynamicManagerToast $text Error
     } else {
       $ui.CloudSyncId = $job.Id
       Show-DynamicManagerToast '下载完成，可以应用了' Success

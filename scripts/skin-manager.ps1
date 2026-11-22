@@ -588,7 +588,7 @@ function Start-DynamicManagerWork {
     $ErrorActionPreference='Stop'
     . (Join-Path $ModuleRoot 'media.ps1');Initialize-DynamicMedia -InstallRoot $InstallRoot
     . (Join-Path $ModuleRoot 'wallpaper-library.ps1')
-    . (Join-Path $ModuleRoot 'cloud-catalog.ps1')
+    $cloudModule=Join-Path $ModuleRoot 'cloud-catalog.ps1';if(Test-Path -LiteralPath $cloudModule){. $cloudModule}
     . (Join-Path $ModuleRoot 'skin-manager.ps1')
     $report={param($message)$Queue.Enqueue([string]$message)}
     if($PrepareOnly -and $Operation -in @('Apply','Open','Restore')){throw '预览模式不能更改真实 Codex。'}
@@ -655,7 +655,8 @@ function Start-DynamicManagerWork {
     if($status.Error){$message=Get-DynamicUserErrorMessage ('读取当前背景失败：'+$status.Error) LibraryLoad}
     if($PrepareOnly){$message='预览模式 · '+$message}
     $cloudEntries=$null
-    if($Operation -in @('LibraryLoad','LibrarySync')){try{$cloudEntries=@(Get-DynamicCloudEntries -StateRoot $StateRoot -InstallRoot $InstallRoot)}catch{$cloudEntries=$null}}
+    # Test-Path on the function drive writes no error records (the worker treats any as a failure).
+    if($Operation -in @('LibraryLoad','LibrarySync') -and (Test-Path function:Get-DynamicCloudEntries) -and (Test-Path function:Ensure-DreamSkinManagedDirectory)){try{$cloudEntries=@(Get-DynamicCloudEntries -StateRoot $StateRoot -InstallRoot $InstallRoot)}catch{$cloudEntries=$null}}
     [pscustomobject]@{Items=$items;Status=$status;Connection=$connection;SelectedId=$selected;Message=$message;EngineReport=$engineReport;EngineRoots=$engineRoots;ConversionPrompt=$conversionPrompt;Cancelled=$cancelled;ConnectionError=$connectionError;CloudEntries=$cloudEntries}
   }
   $null=$worker.AddScript($body.ToString()).AddArgument($ui.InstallRoot).AddArgument($ui.StateRoot).AddArgument($ui.ModuleRoot).AddArgument($Operation).AddArgument($Argument).AddArgument($Name).AddArgument($ui.PrepareOnly).AddArgument($queue).AddArgument($ui.Connection).AddArgument(@($ui.EngineRoots))
@@ -716,7 +717,7 @@ function Complete-DynamicManagerWork {
   elseif($null -ne $importReport){Show-DynamicImportResult $importReport}
   if($connectionFailure){Show-DynamicManagerFailure $connectionFailure Open}
   elseif($workFailure){Show-DynamicManagerFailure $workFailure $ui.PendingOperation}
-  if($ui.PendingOperation -eq 'LibraryLoad' -and -not $workFailure -and -not $ui.CloudRefreshed){$ui.CloudRefreshed=$true;Start-DynamicCloudJob Refresh}
+  if($ui.PendingOperation -eq 'LibraryLoad' -and -not $workFailure -and -not $ui.CloudRefreshed -and $ui.CloudTimer){$ui.CloudRefreshed=$true;Start-DynamicCloudJob Refresh}
   if($startupNext){Start-DynamicManagerWork $startupNext}
   elseif($ui.CloudSyncId -and -not $ui.Busy){$id=$ui.CloudSyncId;$ui.CloudSyncId=$null;Start-DynamicManagerWork LibrarySync $id}
 }
