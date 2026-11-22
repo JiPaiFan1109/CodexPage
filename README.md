@@ -57,7 +57,7 @@ CodexPage 壁纸库界面。图中为原创演示素材，不随应用预置。
 
 | 日期（北京时间） | 版本 | 更新内容 |
 | --- | --- | --- |
-| 2026-11-21 | [3.9.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.9.0) | 任意方式打开 Codex 都自动接上壁纸，不再弹出重启提示 |
+| 2026-11-21 | [3.9.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.9.0) | 任意方式打开 Codex 都自动接上壁纸；新增云端壁纸，安装包变小 |
 | 2026-11-12 | [3.8.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.8.0) | 改进提示文案、重试操作和可复制的问题信息 |
 | 2026-11-09 | [3.7.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.7.0) | 动态视频缩略图、媒体分类顺序、三款默认视频与启动命令修复 |
 | 2026-11-07 | [3.6.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.6.0) | 图库与后台效率、预览缓存预算、导入诊断和可访问名称 |

@@ -57,7 +57,7 @@ On the first launch each local day, CodexPage checks for updates. Confirm the ce
 
 | Date (Beijing time) | Version | Changes |
 | --- | --- | --- |
-| 2026-11-21 | [3.9.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.9.0) | Wallpaper connects however Codex is opened; no more restart prompt |
+| 2026-11-21 | [3.9.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.9.0) | Wallpaper connects however Codex is opened; cloud wallpapers and a smaller installer |
 | 2026-11-12 | [3.8.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.8.0) | Clearer messages, retry actions and copyable diagnostics |
 | 2026-11-09 | [3.7.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.7.0) | Animated video thumbnails, reordered media filters, three default videos and startup command fix |
 | 2026-11-07 | [3.6.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.6.0) | Gallery and startup efficiency, bounded preview cache, import diagnostics and accessible control names |
