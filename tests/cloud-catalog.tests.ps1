@@ -110,6 +110,12 @@ try {
   $image = @(Get-DynamicWallpaperItems $state | Where-Object Id -EQ $remoteId)
   Assert ($image.Count -eq 1 -and $image[0].IsAvailable -and $image[0].Kind -eq 'Image') 'Remote images download into the library'
   try { Save-DynamicCloudWallpaper -StateRoot $state -InstallRoot $install -Id ('d' * 32); throw 'unexpected' } catch { Assert ($_.Exception.Message -ne 'unexpected') 'Unknown IDs must be refused' }
+  # Libraries set up by earlier versions do not get deleted defaults back as cloud cards.
+  $upgraded = Join-Path $root 'upgraded'; [IO.Directory]::CreateDirectory((Join-Path $upgraded 'wallpaper-library')) | Out-Null
+  [IO.File]::WriteAllText((Join-Path $upgraded 'wallpaper-library/defaults.json'), '{"schema":1,"complete":true,"pending":[]}')
+  Assert (@(Get-DynamicCloudEntries -StateRoot $upgraded -InstallRoot $install | Where-Object Bundled).Count -eq 0) 'Deleted defaults from an earlier version must stay deleted'
+  [IO.File]::WriteAllText((Join-Path $upgraded 'wallpaper-library/defaults.json'), '{"schema":1,"complete":true,"pending":[],"cloudDefaults":true}')
+  Assert (@(Get-DynamicCloudEntries -StateRoot $upgraded -InstallRoot $install | Where-Object Bundled).Count -eq 1) 'A cloud-defaults library offers the packaged defaults'
   'PASS: bundled defaults offline, signed catalog only, verified thumbnails and cache, ignored future kinds, gallery merge, corruption refusal, resume, progress and library import'
 } finally {
   if ($server -and -not $server.HasExited) { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }

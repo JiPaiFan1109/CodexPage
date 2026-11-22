@@ -36,7 +36,10 @@ function Initialize-DynamicDefaultWallpapers {
     # as cloud wallpapers and are downloaded when the user asks for them.
     $bundled=@($entries|Where-Object {[IO.File]::Exists((Join-Path (Join-Path $bundle $_.id) 'wallpaper.mp4'))}).Count -eq $entries.Count
     if(-not $bundled){
+      # cloudDefaults marks a library that starts with the defaults as cloud
+      # cards. Libraries set up by earlier versions keep the user's choices.
       $state.complete=$true;$state.pending=@()
+      $state|Add-Member -NotePropertyName cloudDefaults -NotePropertyValue $true -Force
       Write-DreamSkinUtf8FileAtomically -Path $marker -Content ($state|ConvertTo-Json)
       return
     }

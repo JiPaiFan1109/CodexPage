@@ -65,8 +65,21 @@ function ConvertTo-DynamicCloudEntry {
   }
 }
 
+# The packaged defaults are offered as cloud cards only to a library that began
+# with them in the cloud (or has not been set up yet). A library set up by an
+# earlier version already had the default videos copied in; if the user deleted
+# them, they stay deleted.
+function Test-DynamicCloudDefaultsOffered {
+  param([string]$StateRoot)
+  if (-not $StateRoot) { return $true }
+  $marker = Join-Path $StateRoot 'wallpaper-library/defaults.json'
+  if (-not (Test-Path -LiteralPath $marker -PathType Leaf)) { return $true }
+  try { return [bool](([IO.File]::ReadAllText($marker) | ConvertFrom-Json).cloudDefaults) } catch { return $false }
+}
+
 function Get-DynamicBundledCloudEntries {
-  param([string]$InstallRoot)
+  param([string]$InstallRoot, [string]$StateRoot)
+  if (-not (Test-DynamicCloudDefaultsOffered $StateRoot)) { return @() }
   $bundle = Join-Path $InstallRoot 'engine/assets/default-wallpapers'
   $manifest = Join-Path $bundle 'manifest.json'
   if (-not (Test-Path -LiteralPath $manifest -PathType Leaf)) { return @() }
@@ -162,7 +175,7 @@ function Read-DynamicVerifiedCloudIndex {
 function Get-DynamicCloudEntries {
   param([string]$StateRoot, [string]$InstallRoot, [switch]$Refresh)
   $entries = [ordered]@{}
-  foreach ($entry in @(Get-DynamicBundledCloudEntries $InstallRoot)) { $entries[$entry.Id] = $entry }
+  foreach ($entry in @(Get-DynamicBundledCloudEntries -InstallRoot $InstallRoot -StateRoot $StateRoot)) { $entries[$entry.Id] = $entry }
   $paths = Get-DynamicCloudPaths $StateRoot
   $base = $null; try { $base = Get-DynamicCloudBaseUrl $StateRoot $InstallRoot } catch { }
   $index = $null

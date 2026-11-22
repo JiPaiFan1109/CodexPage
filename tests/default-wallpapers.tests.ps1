@@ -60,6 +60,12 @@ try{
   Write-DreamSkinUtf8FileAtomically $manifest ($catalog|ConvertTo-Json -Depth 5)
   $rejected=$false;try{Initialize-DynamicDefaultWallpapers $unsafe $fixture}catch{$rejected=$true}
   Assert $rejected 'Unsafe default path accepted'
+  # A package without the default videos (3.9.0+) marks the library for cloud defaults instead of copying.
+  $slim=Join-Path $root 'slim-install';$slimBundle=Join-Path $slim 'engine/assets/default-wallpapers'
+  [IO.Directory]::CreateDirectory($slimBundle)|Out-Null;Copy-Item (Join-Path $repo 'engine/assets/default-wallpapers/manifest.json') $slimBundle
+  $cloudLibrary=Join-Path $root 'cloud-library';Initialize-DynamicDefaultWallpapers $cloudLibrary $slim
+  $marker=Get-Content (Join-Path $cloudLibrary 'wallpaper-library/defaults.json') -Raw|ConvertFrom-Json
+  Assert ($marker.complete -and $marker.cloudDefaults -and @(Get-DynamicWallpaperItems $cloudLibrary).Count -eq 0) 'A slim package must leave defaults in the cloud'
   'PASS defaults: exact media, order, idempotence, rename/delete, existing library, interrupted resume, corrupt hash and unsafe path'
 }finally{
   $resolved=[IO.Path]::GetFullPath($root)
