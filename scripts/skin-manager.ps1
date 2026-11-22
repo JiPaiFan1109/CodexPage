@@ -540,7 +540,8 @@ function Update-DynamicManagerList {
     $card.Placeholder=$placeholder;$card.ThumbnailImage=Read-DynamicManagerBitmap $item.ThumbnailPath;$card.CurrentVisibility=$visibility
     $card
   })
-  $ui.Controls.WallpaperList.ItemsSource=$views
+  # A typed array keeps WPF bound to the cards themselves, so progress changes reach the view.
+  $ui.Controls.WallpaperList.ItemsSource=[DynamicSkin.WallpaperCard[]]@($views)
   $selection=@($views|Where-Object Id -eq $SelectedId)
   if($selection.Count){$ui.Controls.WallpaperList.SelectedItem=$selection[0]}else{$ui.Controls.WallpaperList.SelectedIndex=-1}
   $ui.Controls.EmptyState.Visibility='Collapsed'
