@@ -57,6 +57,7 @@ On the first launch each local day, CodexPage checks for updates. Confirm the ce
 
 | Date (Beijing time) | Version | Changes |
 | --- | --- | --- |
+| 2026-11-28 | [3.9.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.9.1) | Fix wallpapers hidden behind the Codex workspace after a successful apply |
 | 2026-11-21 | [3.9.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.9.0) | Wallpaper connects however Codex is opened; cloud wallpapers and a smaller installer |
 | 2026-11-12 | [3.8.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.8.0) | Clearer messages, retry actions and copyable diagnostics |
 | 2026-11-09 | [3.7.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.7.0) | Animated video thumbnails, reordered media filters, three default videos and startup command fix |
@@ -69,7 +70,7 @@ On the first launch each local day, CodexPage checks for updates. Confirm the ce
 | 2026-10-30 | [3.1.1](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.1) | Use a single CodexPage Start menu entry and remove known legacy shortcuts |
 | 2026-10-28 | [3.1.0](https://github.com/JiPaiFan1109/CodexPage/releases/tag/v3.1.0) | Fix monitor directory handling and duplicate-worker upgrade blockage; load the library before connecting |
 
-[3.9.0 release notes](docs/releases/v3.9.0.md) · [Full changelog](CHANGELOG.md)
+[3.9.1 release notes](docs/releases/v3.9.1.md) · [Full changelog](CHANGELOG.md)
 
 ## Media and troubleshooting
 

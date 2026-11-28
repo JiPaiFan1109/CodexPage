@@ -26,6 +26,8 @@ html[data-dream-skin="active"] #codex-dream-skin-video-overlay {
   z-index: -1;
   background: rgb(3 8 18 / .58);
 }
+/* Newer shells paint a separate backing behind both home and thread content. */
+html[data-dream-skin="active"] :is([data-app-shell-frame], [data-app-shell-surface-backing]),
 html[data-dream-skin="active"] :is(main.main-surface, [data-app-shell-main-surface], [class*="_MainContentSurface_"], [data-ds-part="main"], [data-ds-part="home"], .thread-scroll-container) {
   background-color: transparent !important;
   background-image: none !important;

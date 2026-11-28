@@ -17,7 +17,10 @@ test('native light and dark text stays readable over the opposite wallpaper extr
     const file = path.join(directory, 'contrast.html');
     await fs.writeFile(file, `<!doctype html><html data-dream-skin="active"><head><style>${css}</style></head>
       <body><div id="codex-dream-skin-image"></div><div id="codex-dream-skin-video-overlay"></div>
-      <main class="main-surface">Native text</main><pre id="result"></pre><script>
+      <div data-app-shell-frame style="background-image:linear-gradient(#18181880,#18181880)">
+        <div data-app-shell-surface-backing aria-hidden="true" style="background-color:#181818"></div>
+        <main class="main-surface">Native text</main>
+      </div><pre id="result"></pre><script>
       const results = [];
       const rgb = value => value.match(/[\\d.]+/g).map(Number);
       const luminance = channels => channels.slice(0, 3).map(v => {
@@ -35,7 +38,10 @@ test('native light and dark text stays readable over the opposite wallpaper extr
         const background = overlay.slice(0, 3).map(v => v * alpha + artwork * brightness * (1 - alpha));
         const text = rgb(getComputedStyle(document.querySelector('main')).color);
         const a = luminance(text), b = luminance(background);
-        results.push({mode, foreground, nativeText: text, contrast: (Math.max(a,b) + .05) / (Math.min(a,b) + .05)});
+        const frame = getComputedStyle(document.querySelector('[data-app-shell-frame]'));
+        const backing = getComputedStyle(document.querySelector('[data-app-shell-surface-backing]'));
+        results.push({mode, foreground, frameImage: frame.backgroundImage, backingColor: backing.backgroundColor,
+          nativeText: text, contrast: (Math.max(a,b) + .05) / (Math.min(a,b) + .05)});
       }
       document.getElementById('result').textContent = JSON.stringify(results);
       </script></body></html>`);
@@ -51,6 +57,8 @@ test('native light and dark text stays readable over the opposite wallpaper extr
     const results = JSON.parse(match[1]);
     assert.equal(results.length, 2);
     for (const result of results) {
+      assert.equal(result.backingColor, 'rgba(0, 0, 0, 0)', 'Opaque workspace backing covers the wallpaper');
+      assert.equal(result.frameImage, 'none', 'Native window gradient dims the wallpaper twice');
       assert.deepEqual(result.nativeText.slice(0,3), Array(3).fill(result.foreground), 'Native text color changed');
       assert.ok(result.contrast >= 4.5, result.mode + ' wallpaper contrast was ' + result.contrast.toFixed(2));
     }
